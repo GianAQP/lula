@@ -35,9 +35,30 @@ enum class AnticipacionRecordatorio { MISMO_DIA, UN_DIA_ANTES, UNA_SEMANA_ANTES 
 
 enum class TipoAviso { ALARMA_SONORA, MENSAJE_SILENCIOSO }
 
+/** Intensidad del recordatorio de un Hábito/Tarea — elegible por el usuario, nunca decidido por Lula. */
+enum class NivelRecordatorio { SILENCIOSO, SONIDO, ALARMA }
+
+/**
+ * Cada cuánto se repite una Tarea (pagar la luz, agua, etc.) — a diferencia de `Recurrencia`
+ * (solo para Fecha importante). Al marcarla `CONFIRMADO`, se registra en el historial y se
+ * reprograma sola para la próxima fecha, igual que un Hábito. Ver `08-decisiones-tecnicas.md`.
+ */
+enum class RecurrenciaTarea { SIN_REPETIR, DIARIA, SEMANAL, QUINCENAL, MENSUAL, BIMESTRAL, TRIMESTRAL, ANUAL }
+
 /** Acción registrada en `HistorialCambios` — ver lección de auditoría en el plan técnico. */
 enum class AccionAuditoria { CREAR, ACTUALIZAR, ELIMINAR }
+
+/** Qué puede hacer la persona con quien se comparte una actividad — nunca más de esto. */
+enum class PermisoCompartir { PUEDE_VER, PUEDE_VER_Y_RECORDAR }
+
+/** Ver `Plan/01-arquitectura.md` — compartir siempre es solicitud + aceptación, nunca automático. */
+enum class EstadoSolicitud { PENDIENTE, ACEPTADA, RECHAZADA, ESPERANDO_INSTALACION }
+
+enum class CanalEnvio { CORREO, WHATSAPP, SMS }
 
 enum class OrigenCambio { LOCAL, SYNC }
 
 enum class SyncStatus { LOCAL, PENDIENTE, SINCRONIZADO }
+
+/** Solo Diaria/Semanal, a propósito más simple que `RecurrenciaTarea` — ver `02-pantallas.md`. */
+enum class FrecuenciaRetoFamiliar { DIARIA, SEMANAL }

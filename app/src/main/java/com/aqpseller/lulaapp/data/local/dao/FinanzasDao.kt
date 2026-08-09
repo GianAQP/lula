@@ -14,4 +14,14 @@ interface FinanzasDao {
 
     @Query("SELECT * FROM finanzas WHERE espacioId = :espacioId AND fecha BETWEEN :desde AND :hasta ORDER BY fecha DESC")
     fun observarEntrePeriodo(espacioId: String, desde: Long, hasta: Long): Flow<List<FinanzasEntity>>
+
+    @Query("SELECT * FROM finanzas WHERE id = :id")
+    suspend fun obtenerPorId(id: String): FinanzasEntity?
+
+    @Query("DELETE FROM finanzas WHERE id = :id")
+    suspend fun eliminar(id: String)
+
+    /** Para eliminar un espacio completo (ver `EspacioRepositoryImpl.eliminarEspacio`). */
+    @Query("DELETE FROM finanzas WHERE espacioId = :espacioId")
+    suspend fun eliminarPorEspacio(espacioId: String)
 }

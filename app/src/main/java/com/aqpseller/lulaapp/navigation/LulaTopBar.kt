@@ -1,0 +1,147 @@
+package com.aqpseller.lulaapp.navigation
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.aqpseller.lulaapp.core.ui.StatPill
+import com.aqpseller.lulaapp.ui.theme.LulaFamiliaContainerDark
+import com.aqpseller.lulaapp.ui.theme.LulaFamiliaContainerLight
+import com.aqpseller.lulaapp.ui.theme.LulaFinanzasContainerLight
+import com.aqpseller.lulaapp.ui.theme.LulaRachaContainerLight
+import com.aqpseller.lulaapp.ui.theme.lulaContainerColor
+import com.aqpseller.lulaapp.ui.theme.lulaContentColorSobreContainer
+
+/**
+ * Fila fija en todas las pantallas (mismo nivel que el menú "⋮"): racha 🔥, gastos de hoy 💰 —
+ * antes solo vivían dentro de Hoy, dejando este espacio vacío en el resto — y un aviso de
+ * invitación pendiente si llegara alguna (hoy siempre vacío en un solo dispositivo, ver
+ * `Plan/08-decisiones-tecnicas.md`, pero queda conectado para activarse solo).
+ */
+@Composable
+fun LulaTopBar(
+    currentRoute: String?,
+    onAbrirAjustes: () -> Unit,
+    onAbrirPerfil: () -> Unit,
+    onAbrirFamilia: () -> Unit,
+    onAbrirCirculoDeCuidado: () -> Unit,
+    onVerHistorial: () -> Unit,
+    onVerFinanzas: () -> Unit,
+    onAbrirDiario: () -> Unit,
+    viewModel: TopBarStatsViewModel = hiltViewModel(),
+) {
+    val uiState by viewModel.uiState.collectAsState()
+    var mostrarMenu by remember { mutableStateOf(false) }
+    LaunchedEffect(currentRoute) { viewModel.refrescar() }
+
+    Column(modifier = Modifier.fillMaxWidth().statusBarsPadding()) {
+        // Banda de color propio (nunca usado para otra cosa) para que se note en CUALQUIER
+        // pantalla que el espacio activo no es Personal — antes solo se avisaba dentro de Hoy,
+        // y el usuario se "perdía" al cambiar de pantalla pensando que sus datos habían
+        // desaparecido. Ver feedback del usuario, 2026-07-30, `08-decisiones-tecnicas.md`.
+        uiState.nombreEspacioActivo?.let { nombreEspacio ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(lulaContainerColor(LulaFamiliaContainerLight, LulaFamiliaContainerDark))
+                    .clickable(onClick = onAbrirFamilia)
+                    .padding(horizontal = 16.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = "👨‍👩‍👧 Estás en $nombreEspacio",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = lulaContentColorSobreContainer(),
+                    modifier = Modifier.weight(1f),
+                )
+                Text(text = "Cambiar", style = MaterialTheme.typography.labelLarge, color = lulaContentColorSobreContainer())
+            }
+        }
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                // La app usa `enableEdgeToEdge()` — el contenido de `Scaffold.topBar` es
+                // responsable de su propio inset de la barra de estado (`TopAppBar` lo maneja
+                // solo; esta fila no lo hacía, así que el ícono "⋮" quedaba dibujado detrás del
+                // reloj/batería, invisible en toda la app). Ese inset ahora vive en la `Column`
+                // que envuelve todo, para que la banda de espacio activo también respete la
+                // barra de estado.
+                .padding(horizontal = 8.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            StatPill(
+                emoji = "🔥",
+                valor = "${uiState.racha} días",
+                colorContenedor = LulaRachaContainerLight,
+                modifier = Modifier
+                    .padding(end = 8.dp)
+                    .clickable(onClick = onVerHistorial),
+            )
+            StatPill(
+                emoji = "💰",
+                valor = "S/ ${"%.0f".format(uiState.gastosHoyTotal)}",
+                colorContenedor = LulaFinanzasContainerLight,
+                modifier = Modifier.clickable(onClick = onVerFinanzas),
+            )
+
+            Box(modifier = Modifier.weight(1f))
+
+            if (uiState.solicitudesPendientes > 0) {
+                IconButton(onClick = onAbrirCirculoDeCuidado) {
+                    Text("📩", style = MaterialTheme.typography.titleLarge)
+                }
+            }
+
+            // El ancla de `DropdownMenu` es el layout que lo contiene directamente — envolver
+            // el ícono y el menú juntos evita que el menú se desplace lejos del botón.
+            Box {
+                IconButton(onClick = { mostrarMenu = true }) {
+                    Text("⋮", style = MaterialTheme.typography.titleLarge)
+                }
+                DropdownMenu(expanded = mostrarMenu, onDismissRequest = { mostrarMenu = false }) {
+                    DropdownMenuItem(
+                        text = { Text("🧑 Mi perfil") },
+                        onClick = { mostrarMenu = false; onAbrirPerfil() },
+                    )
+                    DropdownMenuItem(
+                        text = { Text("👥 Mi círculo de cuidado") },
+                        onClick = { mostrarMenu = false; onAbrirCirculoDeCuidado() },
+                    )
+                    DropdownMenuItem(
+                        text = { Text("📓 Diario") },
+                        onClick = { mostrarMenu = false; onAbrirDiario() },
+                    )
+                    DropdownMenuItem(
+                        text = { Text("👨‍👩‍👧 Familia / Espacios") },
+                        onClick = { mostrarMenu = false; onAbrirFamilia() },
+                    )
+                    DropdownMenuItem(
+                        text = { Text("⚙️ Ajustes") },
+                        onClick = { mostrarMenu = false; onAbrirAjustes() },
+                    )
+                }
+            }
+        }
+    }
+}

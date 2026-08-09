@@ -5,21 +5,16 @@ data class RetoFamiliar(
     val espacioId: String,
     val nombre: String,
     val objetivo: String,
-    val frecuencia: FrecuenciaHabito,
+    val frecuencia: FrecuenciaRetoFamiliar,
     val participantesIds: List<String>,
+    /** Texto libre, la define la familia — ver `Plan/02-pantallas.md`. */
     val recompensa: String?,
 )
 
-data class SolicitudCompartir(
-    val id: String,
-    val de: String,
-    val para: String,
-    val tieneCuenta: Boolean,
-    val elementoId: String,
-    val contexto: String,
-    val permisos: String,
-    val estado: String,
-    val canalEnvio: String?,
-    val fechaSolicitud: Long,
-    val fechaRespuesta: Long? = null,
+/** Un Reto familiar con cuántos de sus participantes ya cumplieron hoy — para su pantalla. */
+data class ProgresoRetoFamiliar(
+    val reto: RetoFamiliar,
+    val cumplidosHoy: Int,
+    val totalParticipantes: Int,
+    val yoCumpliHoy: Boolean,
 )

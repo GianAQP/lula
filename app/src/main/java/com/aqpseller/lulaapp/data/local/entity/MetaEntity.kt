@@ -4,7 +4,9 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import kotlinx.serialization.Serializable
 
+@Serializable
 @Entity(
     tableName = "meta",
     foreignKeys = [
@@ -30,6 +32,13 @@ data class MetaEntity(
     val areaDeVidaId: String?,
     val fechaLimite: Long?,
     val comoSeMide: String,
+    /** Para POR_HABITO: días objetivo (ventana móvil). Para POR_MONTO/POR_NUMERO/MANUAL: cantidad objetivo. */
+    val valorObjetivo: Double,
+    /** Ignorado para POR_HABITO (se calcula en vivo desde `registro_actividad`). */
+    val valorActual: Double,
+    /** Último hito (0/25/50/75/100) ya celebrado en Hoy — evita repetir la misma tarjeta de
+     * felicitación cada vez que se recompone. */
+    val ultimoHitoCelebrado: Int = 0,
 )
 
 @Entity(

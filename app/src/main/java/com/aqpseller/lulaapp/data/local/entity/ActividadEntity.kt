@@ -37,6 +37,7 @@ import kotlinx.serialization.Serializable
         Index("momentoDelDia"),
         Index("areaDeVidaId"),
         Index("propietario"),
+        Index("activa"),
     ],
 )
 @Serializable
@@ -56,4 +57,8 @@ data class ActividadEntity(
     val areaDeVidaId: String?,
     val momentoDelDia: String?,
     val fechaCreacion: Long,
+    /** "Pausar" un hábito o archivar una tarea sin borrar su historial — ver detalle en `08-decisiones-tecnicas.md`. */
+    val activa: Boolean,
+    /** Solo para Tarea puntual: momento en que `estado` pasó a CONFIRMADO. Null si no está completada. */
+    val fechaCompletado: Long? = null,
 )

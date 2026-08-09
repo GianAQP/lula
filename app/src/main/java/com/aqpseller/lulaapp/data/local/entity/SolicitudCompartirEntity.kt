@@ -3,7 +3,9 @@ package com.aqpseller.lulaapp.data.local.entity
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import kotlinx.serialization.Serializable
 
+@Serializable
 @Entity(
     tableName = "solicitud_compartir",
     indices = [Index("de"), Index("para"), Index("estado")],

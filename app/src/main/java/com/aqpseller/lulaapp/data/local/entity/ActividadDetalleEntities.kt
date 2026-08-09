@@ -4,7 +4,9 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import kotlinx.serialization.Serializable
 
+@Serializable
 @Entity(
     tableName = "habito_detalle",
     foreignKeys = [
@@ -25,6 +27,11 @@ data class HabitoDetalleEntity(
     val duracionObjetivoMin: Int?,
     val incrementoMin: Int?,
     val frecuenciaRevisionDias: Int?,
+    /** Formato "HH:mm", null = sin recordatorio. Ver `core/notifications/`. */
+    val horaRecordatorio: String?,
+    val nivelRecordatorio: String,
+    val duracionActualMin: Int?,
+    val proximaRevisionEpochDay: Long?,
 )
 
 @Entity(
@@ -36,8 +43,16 @@ data class HabitoDetalleEntity(
             childColumns = ["actividadId"],
             onDelete = ForeignKey.CASCADE,
         ),
+        // Sin CASCADE acá a propósito: si se elimina el Medicamento/Cita vinculado, la Tarea no
+        // debe desaparecer con él, solo perder el vínculo.
+        ForeignKey(
+            entity = ActividadEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["actividadVinculadaId"],
+            onDelete = ForeignKey.SET_NULL,
+        ),
     ],
-    indices = [Index("fechaLimite")],
+    indices = [Index("fechaLimite"), Index("actividadVinculadaId")],
 )
 data class TareaDetalleEntity(
     @PrimaryKey val actividadId: String,
@@ -45,6 +60,11 @@ data class TareaDetalleEntity(
     val prioridad: Int?,
     val importante: Boolean,
     val urgente: Boolean,
+    /** Formato "HH:mm", solo tiene efecto si hay `fechaLimite`. Ver `core/notifications/`. */
+    val horaRecordatorio: String?,
+    val nivelRecordatorio: String,
+    val recurrencia: String,
+    val actividadVinculadaId: String? = null,
 )
 
 @Entity(
@@ -64,6 +84,7 @@ data class RutinaDetalleEntity(
     val momentoDelDia: String,
 )
 
+@Serializable
 @Entity(
     tableName = "medicamento_detalle",
     foreignKeys = [
@@ -87,8 +108,13 @@ data class MedicamentoDetalleEntity(
     val comidasRelacionadasJson: String?,
     val fechaInicio: Long,
     val fechaFin: Long?,
+    val cantidadDosisTotal: Int?,
+    val nivelRecordatorio: String,
+    val recordatorioPersistente: Boolean,
+    val intervaloPersistenciaMin: Int?,
 )
 
+@Serializable
 @Entity(
     tableName = "cita_detalle",
     foreignKeys = [
@@ -106,9 +132,62 @@ data class CitaDetalleEntity(
     val lugar: String?,
     val motivo: String?,
     val fechaHora: Long,
-    val recordatorioAnticipacion: String,
+    val recordatoriosJson: String?,
+    val nivelRecordatorio: String,
+    val esCurso: Boolean = false,
+    val diasSemanaJson: String? = null,
+    val horaSesion: String? = null,
+    val fechaInicioCurso: Long? = null,
+    val cantidadSesionesTotal: Int? = null,
 )
 
+/** Una toma de Medicamento — a diferencia de Hábito, hay varias por día, una fila por horario. */
+@Serializable
+@Entity(
+    tableName = "toma_medicamento",
+    foreignKeys = [
+        ForeignKey(
+            entity = ActividadEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["actividadId"],
+            onDelete = ForeignKey.CASCADE,
+        ),
+    ],
+    indices = [Index(value = ["actividadId", "fecha", "horario"], unique = true)],
+)
+data class TomaMedicamentoEntity(
+    @PrimaryKey val id: String,
+    val actividadId: String,
+    val fecha: Long,
+    val horario: String,
+    val estado: String,
+)
+
+/** Una sesión de una Cita de curso — una fila por ocurrencia, mismo principio que `TomaMedicamentoEntity`. */
+@Serializable
+@Entity(
+    tableName = "sesion_cita",
+    foreignKeys = [
+        ForeignKey(
+            entity = ActividadEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["actividadId"],
+            onDelete = ForeignKey.CASCADE,
+        ),
+    ],
+    indices = [Index(value = ["actividadId", "numeroSesion"], unique = true), Index("fecha")],
+)
+data class SesionCitaEntity(
+    @PrimaryKey val id: String,
+    val actividadId: String,
+    val numeroSesion: Int,
+    val fecha: Long,
+    val fechaOriginal: Long,
+    val horario: String,
+    val estado: String,
+)
+
+@Serializable
 @Entity(
     tableName = "fecha_importante_detalle",
     foreignKeys = [

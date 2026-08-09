@@ -4,7 +4,9 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import kotlinx.serialization.Serializable
 
+@Serializable
 @Entity(
     tableName = "reto_familiar",
     foreignKeys = [
@@ -42,4 +44,26 @@ data class RetoFamiliarEntity(
 data class RetoFamiliarParticipanteEntity(
     val retoId: String,
     val usuarioId: String,
+)
+
+/** Cumplimiento de un participante en un día puntual — mismo patrón que `RegistroActividadEntity`. */
+@Serializable
+@Entity(
+    tableName = "reto_familiar_registro",
+    foreignKeys = [
+        ForeignKey(
+            entity = RetoFamiliarEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["retoId"],
+            onDelete = ForeignKey.CASCADE,
+        ),
+    ],
+    indices = [Index(value = ["retoId", "usuarioId", "fecha"], unique = true)],
+)
+data class RetoFamiliarRegistroEntity(
+    @PrimaryKey val id: String,
+    val retoId: String,
+    val usuarioId: String,
+    val fecha: Long,
+    val estado: String,
 )

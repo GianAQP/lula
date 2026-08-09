@@ -28,4 +28,16 @@ class ObtenerProgresoDeHoyUseCase @Inject constructor(
         }
         return racha
     }
+
+    /**
+     * Constancia = % de días activos (≥1 actividad cumplida) en los últimos 30 días —
+     * independiente de la racha, no se resetea si se rompe (`01-arquitectura.md`).
+     */
+    suspend fun calcularConstancia(espacioId: String): Int {
+        val hoy = DateTimeUtils.hoy().toEpochDays().toLong()
+        val desde = hoy - 29
+        val diasActivos = registroDiarioRepository.observarHistorial(espacioId).first()
+            .count { it.fecha in desde..hoy && it.actividadesCompletadas > 0 }
+        return diasActivos * 100 / 30
+    }
 }

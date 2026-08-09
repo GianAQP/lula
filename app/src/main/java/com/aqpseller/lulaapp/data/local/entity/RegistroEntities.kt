@@ -32,6 +32,7 @@ data class RegistroDiarioEntity(
     val queAjusto: String?,
 )
 
+@Serializable
 @Entity(
     tableName = "registro_semanal",
     foreignKeys = [

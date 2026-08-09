@@ -1,0 +1,26 @@
+package com.aqpseller.lulaapp.domain.model
+
+/**
+ * Compartir siempre es solicitud + aceptación, nunca automático (ver `Plan/01-arquitectura.md`):
+ * se crea esta solicitud, y solo cuando `para` la acepta se agrega a `puedeVer[]`/
+ * `puedeRecordar[]` de la `Actividad` referenciada por `elementoId`. Esa aceptación real
+ * todavía no está conectada (necesita que la otra persona tenga cuenta y la app instalada,
+ * ver `Plan/08-decisiones-tecnicas.md`) — por ahora toda solicitud creada queda `PENDIENTE`.
+ */
+data class SolicitudCompartir(
+    val id: String,
+    /** usuarioId de quien comparte. */
+    val de: String,
+    /** Contacto (correo/teléfono) de quien recibe — todavía no hay búsqueda de cuentas reales. */
+    val para: String,
+    val tieneCuenta: Boolean,
+    /** actividadId del elemento compartido. */
+    val elementoId: String,
+    /** Nombre del elemento, denormalizado para mostrar sin resolver un join. */
+    val contexto: String,
+    val permisos: PermisoCompartir,
+    val estado: EstadoSolicitud,
+    val canalEnvio: CanalEnvio?,
+    val fechaSolicitud: Long,
+    val fechaRespuesta: Long? = null,
+)

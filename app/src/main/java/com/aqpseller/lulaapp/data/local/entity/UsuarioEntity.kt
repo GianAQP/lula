@@ -14,4 +14,10 @@ data class UsuarioEntity(
     val metodoLogin: String,
     val privacidadAceptadaEn: Long?,
     val modoDefectoAsistente: String?,
+    val horaDesayuno: String? = null,
+    val horaAlmuerzo: String? = null,
+    val horaCena: String? = null,
+    val confirmoMayorDe13: Boolean = false,
+    val terminosAceptadosEn: Long? = null,
+    val consentimientoDatosSaludEn: Long? = null,
 )

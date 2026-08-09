@@ -1,6 +1,7 @@
 package com.aqpseller.lulaapp.domain.usecase.usuario
 
 import com.aqpseller.lulaapp.domain.model.SesionActual
+import com.aqpseller.lulaapp.domain.repository.AjustesRepository
 import com.aqpseller.lulaapp.domain.repository.AuthRepository
 import com.aqpseller.lulaapp.domain.repository.EspacioRepository
 import javax.inject.Inject
@@ -14,10 +15,19 @@ import javax.inject.Inject
 class ObtenerSesionActualUseCase @Inject constructor(
     private val authRepository: AuthRepository,
     private val espacioRepository: EspacioRepository,
+    private val ajustesRepository: AjustesRepository,
 ) {
+    /**
+     * El espacio activo es Personal por defecto, salvo que haya uno elegido en Ajustes (ver
+     * "selector de espacio", `Plan/02-pantallas.md`) — siempre se valida que el usuario siga
+     * siendo miembro de ese espacio antes de usarlo, nunca se confía a ciegas en el id guardado
+     * (si el espacio se borró o el usuario ya no pertenece, cae de nuevo a Personal).
+     */
     suspend operator fun invoke(): SesionActual {
         val usuarioId = checkNotNull(authRepository.usuarioActualId()) { "Usuario no inicializado" }
-        val espacio = checkNotNull(espacioRepository.obtenerEspacioPersonal(usuarioId)) { "Espacio no inicializado" }
-        return SesionActual(usuarioId = usuarioId, espacioId = espacio.id)
+        val personal = checkNotNull(espacioRepository.obtenerEspacioPersonal(usuarioId)) { "Espacio no inicializado" }
+        val activoId = ajustesRepository.obtenerEspacioActivoId()
+        val espacio = activoId?.let { espacioRepository.obtenerEspacioSiEsMiembro(it, usuarioId) } ?: personal
+        return SesionActual(usuarioId = usuarioId, espacioId = espacio.id, espacioPersonalId = personal.id)
     }
 }

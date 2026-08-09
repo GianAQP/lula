@@ -1,6 +1,5 @@
 package com.aqpseller.lulaapp.domain.usecase.finanzas
 
-import com.aqpseller.lulaapp.core.utils.DateTimeUtils
 import com.aqpseller.lulaapp.core.utils.IdGenerator
 import com.aqpseller.lulaapp.domain.model.MovimientoFinanciero
 import com.aqpseller.lulaapp.domain.model.Privacidad
@@ -18,6 +17,7 @@ class RegistrarMovimientoUseCase @Inject constructor(
         monto: Double,
         categoria: String,
         descripcion: String?,
+        fecha: Long,
     ) {
         val movimiento = MovimientoFinanciero(
             id = IdGenerator.newId(),
@@ -26,7 +26,7 @@ class RegistrarMovimientoUseCase @Inject constructor(
             monto = monto,
             categoria = categoria,
             descripcion = descripcion,
-            fecha = DateTimeUtils.ahoraEpochMillis(),
+            fecha = fecha,
             privacidad = Privacidad.SOLO_YO,
         )
         finanzasRepository.registrarMovimiento(movimiento, usuarioId)

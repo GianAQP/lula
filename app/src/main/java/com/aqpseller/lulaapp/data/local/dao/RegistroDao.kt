@@ -26,6 +26,9 @@ interface RegistroSemanalDao {
     @Upsert
     suspend fun upsert(registro: RegistroSemanalEntity)
 
+    @Query("SELECT * FROM registro_semanal WHERE espacioId = :espacioId AND semana = :semana LIMIT 1")
+    suspend fun obtenerPorSemana(espacioId: String, semana: String): RegistroSemanalEntity?
+
     @Query("SELECT * FROM registro_semanal WHERE espacioId = :espacioId ORDER BY semana DESC")
     fun observarHistorial(espacioId: String): Flow<List<RegistroSemanalEntity>>
 }

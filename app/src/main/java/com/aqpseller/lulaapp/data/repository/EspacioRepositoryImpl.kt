@@ -1,8 +1,14 @@
 package com.aqpseller.lulaapp.data.repository
 
+import androidx.room.withTransaction
+import com.aqpseller.lulaapp.core.database.LulaDatabase
+import com.aqpseller.lulaapp.data.local.dao.ActividadDao
 import com.aqpseller.lulaapp.data.local.dao.AreaDeVidaDao
 import com.aqpseller.lulaapp.data.local.dao.EspacioDao
 import com.aqpseller.lulaapp.data.local.dao.EspacioMiembroDao
+import com.aqpseller.lulaapp.data.local.dao.FinanzasDao
+import com.aqpseller.lulaapp.data.local.dao.ListaDao
+import com.aqpseller.lulaapp.data.local.dao.MetaDao
 import com.aqpseller.lulaapp.data.local.entity.EspacioEntity
 import com.aqpseller.lulaapp.domain.model.AccionAuditoria
 import com.aqpseller.lulaapp.domain.model.AreaDeVida
@@ -17,12 +23,20 @@ class EspacioRepositoryImpl @Inject constructor(
     private val espacioDao: EspacioDao,
     private val espacioMiembroDao: EspacioMiembroDao,
     private val areaDeVidaDao: AreaDeVidaDao,
+    private val actividadDao: ActividadDao,
+    private val metaDao: MetaDao,
+    private val listaDao: ListaDao,
+    private val finanzasDao: FinanzasDao,
+    private val lulaDatabase: LulaDatabase,
     private val auditLogger: AuditLogger,
 ) : EspacioRepository {
 
     override suspend fun contarEspacios(): Int = espacioDao.contar()
 
-    override suspend fun crearEspacioPersonal(espacio: Espacio, miembro: EspacioMiembro) {
+    override suspend fun crearEspacioPersonal(espacio: Espacio, miembro: EspacioMiembro) =
+        crearEspacio(espacio, miembro)
+
+    override suspend fun crearEspacio(espacio: Espacio, miembro: EspacioMiembro) {
         val entity = espacio.toEntity()
         espacioDao.upsert(entity)
         espacioMiembroDao.upsert(miembro.toEntity())
@@ -37,6 +51,56 @@ class EspacioRepositoryImpl @Inject constructor(
 
     override suspend fun obtenerEspacioPersonal(usuarioId: String): Espacio? =
         espacioDao.obtenerEspacioPersonal(usuarioId)?.toDomain()
+
+    override fun observarEspaciosDeUsuario(usuarioId: String): Flow<List<Espacio>> =
+        espacioDao.observarEspaciosDeUsuario(usuarioId).map { lista -> lista.map { it.toDomain() } }
+
+    override suspend fun obtenerEspacioSiEsMiembro(espacioId: String, usuarioId: String): Espacio? {
+        espacioMiembroDao.obtenerMiembro(espacioId, usuarioId) ?: return null
+        return espacioDao.obtenerPorId(espacioId)?.toDomain()
+    }
+
+    override fun observarMiembros(espacioId: String): Flow<List<EspacioMiembro>> =
+        espacioMiembroDao.observarMiembros(espacioId).map { lista -> lista.map { it.toDomain() } }
+
+    override suspend fun renombrarEspacio(espacioId: String, nuevoNombre: String, usuarioId: String) {
+        val actual = espacioDao.obtenerPorId(espacioId) ?: return
+        espacioDao.actualizarNombre(espacioId, nuevoNombre)
+        auditLogger.registrar<EspacioEntity>(
+            entidad = "espacio",
+            entidadId = espacioId,
+            accion = AccionAuditoria.ACTUALIZAR,
+            antes = actual,
+            despues = actual.copy(nombre = nuevoNombre),
+            usuarioId = usuarioId,
+        )
+    }
+
+    /**
+     * `actividad`/`meta`/`lista`/`finanzas` tienen FK `RESTRICT` hacia `espacio` a propósito
+     * (evita borrar un espacio con datos por accidente en el resto de la app) — acá, donde sí
+     * es intencional, se limpian primero en una transacción. `espacio_miembro` y
+     * `reto_familiar` (+ sus tablas hijas) sí cascadean solos al borrar la fila de `espacio`.
+     * Notas/Diario nunca llegan a tener filas en un espacio Familia (siempre usan
+     * `espacioPersonalId`, ver `SesionActual`), así que no hace falta limpiarlas acá.
+     */
+    override suspend fun eliminarEspacio(espacioId: String, usuarioId: String) {
+        val actual = espacioDao.obtenerPorId(espacioId) ?: return
+        lulaDatabase.withTransaction {
+            actividadDao.eliminarPorEspacio(espacioId)
+            metaDao.eliminarPorEspacio(espacioId)
+            listaDao.eliminarPorEspacio(espacioId)
+            finanzasDao.eliminarPorEspacio(espacioId)
+            espacioDao.eliminar(espacioId)
+        }
+        auditLogger.registrar<EspacioEntity>(
+            entidad = "espacio",
+            entidadId = espacioId,
+            accion = AccionAuditoria.ELIMINAR,
+            antes = actual,
+            usuarioId = usuarioId,
+        )
+    }
 
     override suspend fun contarAreasDeVida(): Int = areaDeVidaDao.contar()
 
