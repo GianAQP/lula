@@ -1,6 +1,6 @@
 # Lula — Guía del proyecto para Claude Code
 
-## Qué es Lula
+## Qué es Lula - Leer jose
 
 Lula es una app Android (Kotlin) de **mejora continua personal**: organiza hábitos, rutinas,
 tareas, metas, finanzas y cuidado familiar, y ayuda a la persona a medir su progreso diario
