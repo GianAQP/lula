@@ -33,6 +33,9 @@ interface MetaDao {
     @Query("UPDATE meta SET valorActual = :valorActual WHERE id = :id")
     suspend fun actualizarValorActual(id: String, valorActual: Double)
 
+    @Query("UPDATE meta SET fechaLimite = :fechaLimite WHERE id = :id")
+    suspend fun actualizarFechaLimite(id: String, fechaLimite: Long?)
+
     @Query("DELETE FROM meta WHERE id = :id")
     suspend fun eliminar(id: String)
 

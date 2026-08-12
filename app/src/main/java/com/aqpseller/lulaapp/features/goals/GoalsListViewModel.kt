@@ -2,6 +2,7 @@ package com.aqpseller.lulaapp.features.goals
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.aqpseller.lulaapp.domain.model.CategoriaMeta
 import com.aqpseller.lulaapp.domain.model.ComoSeMideMeta
 import com.aqpseller.lulaapp.domain.usecase.actividad.ObtenerDetalleActividadUseCase
 import com.aqpseller.lulaapp.domain.usecase.meta.MetaConProgreso
@@ -29,13 +30,22 @@ class GoalsListViewModel @Inject constructor(
         viewModelScope.launch {
             val sesion = obtenerSesionActualUseCase()
             obtenerMetasConProgresoUseCase(sesion.espacioId)
-                .map { metas ->
-                    // Pendientes primero (las más urgentes arriba), completadas al final — con
-                    // muchas metas, lo que falta por hacer debe verse antes que lo ya logrado.
-                    metas.map { it.aUi() }
-                        .sortedWith(compareBy({ it.fraccionProgreso >= 1f }, { it.fechaLimite ?: Long.MAX_VALUE }))
+                .map { metas -> metas.map { it.aUi() } }
+                .collect { metas ->
+                    val enProgreso = metas.filter { it.fraccionProgreso < 1f }
+                        .sortedBy { it.fechaLimite ?: Long.MAX_VALUE }
+                    // Agrupadas por categoría — ver de un vistazo "8 metas cumplidas" (por
+                    // categoría) motiva más que una sola lista plana (pedido del usuario). Las
+                    // sin categoría van al final, como su propio grupo.
+                    val completadas = metas.filter { it.fraccionProgreso >= 1f }
+                    val categoriasOrdenadas = CategoriaMeta.entries + listOf(null)
+                    val grupos = categoriasOrdenadas.mapNotNull { cat ->
+                        completadas.filter { it.categoria == cat }
+                            .takeIf { it.isNotEmpty() }
+                            ?.let { GrupoMetasCompletadasUi(cat, it) }
+                    }
+                    _uiState.value = GoalsListUiState(cargando = false, metasEnProgreso = enProgreso, gruposCompletadas = grupos)
                 }
-                .collect { metas -> _uiState.value = GoalsListUiState(cargando = false, metas = metas) }
         }
     }
 
@@ -53,6 +63,7 @@ class GoalsListViewModel @Inject constructor(
             objetivo = meta.valorObjetivo,
             nombreHabitoVinculado = nombreHabito,
             fechaLimite = meta.fechaLimite,
+            categoria = meta.categoria,
         )
     }
 }

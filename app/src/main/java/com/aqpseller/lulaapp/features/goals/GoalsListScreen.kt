@@ -6,7 +6,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -21,6 +21,17 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.aqpseller.lulaapp.core.ui.EmptyState
 import com.aqpseller.lulaapp.core.ui.LulaProgressBar
 import com.aqpseller.lulaapp.core.utils.DateTimeUtils
+import com.aqpseller.lulaapp.domain.model.CategoriaMeta
+
+private fun etiquetaCategoria(categoria: CategoriaMeta?): String = when (categoria) {
+    CategoriaMeta.HACER -> "🎯 Qué quiero hacer"
+    CategoriaMeta.SER -> "🎯 Qué quiero ser"
+    CategoriaMeta.VER -> "🎯 Qué quiero ver"
+    CategoriaMeta.TENER -> "🎯 Qué quiero tener"
+    CategoriaMeta.IR -> "🎯 Adónde quiero ir"
+    CategoriaMeta.COMPARTIR -> "🎯 Qué deseo compartir"
+    null -> "Sin categoría"
+}
 
 @Composable
 fun GoalsListScreen(
@@ -37,7 +48,7 @@ fun GoalsListScreen(
             FloatingActionButton(onClick = onNuevaMeta) { Text("+") }
         },
     ) { innerPadding ->
-        if (!uiState.cargando && uiState.metas.isEmpty()) {
+        if (!uiState.cargando && uiState.metasEnProgreso.isEmpty() && uiState.gruposCompletadas.isEmpty()) {
             EmptyState(
                 emoji = "🎯",
                 titulo = "Todavía no tienes metas.",
@@ -50,45 +61,60 @@ fun GoalsListScreen(
             Text(text = "Tus metas", style = MaterialTheme.typography.titleLarge)
 
             LazyColumn(modifier = Modifier.padding(top = 8.dp)) {
-                itemsIndexed(uiState.metas, key = { _, meta -> meta.id }) { index, meta ->
-                    // La lista ya viene ordenada con las completadas al final — un solo
-                    // separador justo antes de la primera marca el quiebre, sin duplicar por
-                    // cada fila.
-                    val esPrimeraCompletada = meta.fraccionProgreso >= 1f &&
-                        (index == 0 || uiState.metas[index - 1].fraccionProgreso < 1f)
-                    if (esPrimeraCompletada) {
+                items(uiState.metasEnProgreso, key = { it.id }) { meta ->
+                    FilaMeta(meta, onClick = { onMetaClick(meta.id) })
+                    HorizontalDivider()
+                }
+                if (uiState.gruposCompletadas.isNotEmpty()) {
+                    item {
                         Text(
-                            text = "✅ Completadas",
+                            text = "✅ Completadas (${uiState.totalCompletadas})",
                             style = MaterialTheme.typography.titleSmall,
                             modifier = Modifier.padding(top = 16.dp, bottom = 4.dp),
                         )
                     }
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { onMetaClick(meta.id) }
-                            .padding(vertical = 12.dp),
-                    ) {
-                        Text(text = meta.nombre, style = MaterialTheme.typography.bodyLarge)
-                        LulaProgressBar(progreso = meta.fraccionProgreso, modifier = Modifier.padding(top = 6.dp))
-                        Text(
-                            text = "${meta.progreso.toInt()} de ${meta.objetivo.toInt()}",
-                            style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.padding(top = 4.dp),
-                        )
-                        meta.nombreHabitoVinculado?.let {
-                            Text(text = "Hábito vinculado: $it", style = MaterialTheme.typography.bodySmall)
-                        }
-                        meta.fechaLimite?.let { fechaLimite ->
+                    uiState.gruposCompletadas.forEach { grupo ->
+                        item {
                             Text(
-                                text = "📅 ${DateTimeUtils.formatearFechaLarga(DateTimeUtils.epochMillisToLocalDate(fechaLimite))}",
-                                style = MaterialTheme.typography.bodySmall,
+                                text = "${etiquetaCategoria(grupo.categoria)} (${grupo.metas.size})",
+                                style = MaterialTheme.typography.labelLarge,
+                                modifier = Modifier.padding(top = 12.dp, bottom = 4.dp),
                             )
                         }
+                        items(grupo.metas, key = { it.id }) { meta ->
+                            FilaMeta(meta, onClick = { onMetaClick(meta.id) })
+                            HorizontalDivider()
+                        }
                     }
-                    HorizontalDivider()
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun FilaMeta(meta: MetaListItemUi, onClick: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(vertical = 12.dp),
+    ) {
+        Text(text = meta.nombre, style = MaterialTheme.typography.bodyLarge)
+        LulaProgressBar(progreso = meta.fraccionProgreso, modifier = Modifier.padding(top = 6.dp))
+        Text(
+            text = "${meta.progreso.toInt()} de ${meta.objetivo.toInt()}",
+            style = MaterialTheme.typography.bodySmall,
+            modifier = Modifier.padding(top = 4.dp),
+        )
+        meta.nombreHabitoVinculado?.let {
+            Text(text = "Hábito vinculado: $it", style = MaterialTheme.typography.bodySmall)
+        }
+        meta.fechaLimite?.let { fechaLimite ->
+            Text(
+                text = "📅 ${DateTimeUtils.formatearFechaLarga(DateTimeUtils.epochMillisToLocalDate(fechaLimite))}",
+                style = MaterialTheme.typography.bodySmall,
+            )
         }
     }
 }

@@ -1,5 +1,6 @@
 package com.aqpseller.lulaapp.domain.repository
 
+import com.aqpseller.lulaapp.domain.model.MomentoDelDia
 import kotlinx.coroutines.flow.Flow
 
 interface AjustesRepository {
@@ -14,6 +15,13 @@ interface AjustesRepository {
      * defecto). Ver `Plan/08-decisiones-tecnicas.md`. */
     fun observarHoraRecordatorioCierreDia(): Flow<String?>
     suspend fun setHoraRecordatorioCierreDia(hora: String?)
+
+    /** Hora "HH:mm" de un recordatorio genérico "revisa Lula" por franja del día — null =
+     * desactivado (por defecto en las 3). Independiente del recordatorio de cierre del día:
+     * este es para no perderse de revisar/marcar nada durante el día, no solo al final. Ver
+     * `Plan/08-decisiones-tecnicas.md`. */
+    fun observarHoraRecordatorioFranja(momento: MomentoDelDia): Flow<String?>
+    suspend fun setHoraRecordatorioFranja(momento: MomentoDelDia, hora: String?)
 
     /**
      * Qué va en cada posición configurable de la barra inferior (`Plan/02-pantallas.md`:

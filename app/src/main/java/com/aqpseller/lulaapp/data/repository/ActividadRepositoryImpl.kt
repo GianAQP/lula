@@ -128,7 +128,7 @@ class ActividadRepositoryImpl @Inject constructor(
      * recurrente no tiene un solo "estado" de por vida) — para TAREA, el estado vive
      * directamente en `ActividadEntity` (ver `Plan/08-decisiones-tecnicas.md`).
      */
-    override suspend fun marcarEstado(id: String, estado: EstadoActividad, usuarioId: String) {
+    override suspend fun marcarEstado(id: String, estado: EstadoActividad, usuarioId: String, fechaCompletado: Long?) {
         val actual = actividadDao.obtenerPorId(id) ?: return
         if (actual.tipo == TipoActividad.HABITO.name) {
             val fechaHoy = DateTimeUtils.hoy().toEpochDays().toLong()
@@ -152,14 +152,18 @@ class ActividadRepositoryImpl @Inject constructor(
             // Solo tiene sentido para Tarea puntual: para Habito el estado por día vive en
             // registro_actividad (ver arriba); Rutina/Medicamento/Cita/Fecha importante no
             // exponen "completado el {fecha}" en ninguna pantalla todavía.
-            val fechaCompletado = if (estado == EstadoActividad.CONFIRMADO) DateTimeUtils.ahoraEpochMillis() else null
-            actividadDao.actualizarEstadoYFechaCompletado(id, estado.name, fechaCompletado)
+            val fechaCompletadoFinal = if (estado == EstadoActividad.CONFIRMADO) {
+                fechaCompletado ?: DateTimeUtils.ahoraEpochMillis()
+            } else {
+                null
+            }
+            actividadDao.actualizarEstadoYFechaCompletado(id, estado.name, fechaCompletadoFinal)
             auditLogger.registrar<ActividadEntity>(
                 entidad = "actividad",
                 entidadId = id,
                 accion = AccionAuditoria.ACTUALIZAR,
                 antes = actual,
-                despues = actual.copy(estado = estado.name, fechaCompletado = fechaCompletado),
+                despues = actual.copy(estado = estado.name, fechaCompletado = fechaCompletadoFinal),
                 usuarioId = usuarioId,
             )
         }

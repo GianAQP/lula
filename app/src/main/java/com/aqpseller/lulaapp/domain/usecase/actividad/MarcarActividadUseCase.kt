@@ -12,8 +12,8 @@ class MarcarActividadUseCase @Inject constructor(
     private val actividadRepository: ActividadRepository,
     private val recordatorioScheduler: RecordatorioScheduler,
 ) {
-    suspend operator fun invoke(actividadId: String, estado: EstadoActividad, usuarioId: String) {
-        actividadRepository.marcarEstado(actividadId, estado, usuarioId)
+    suspend operator fun invoke(actividadId: String, estado: EstadoActividad, usuarioId: String, fechaCompletado: Long? = null) {
+        actividadRepository.marcarEstado(actividadId, estado, usuarioId, fechaCompletado)
         if (estado != EstadoActividad.CONFIRMADO) return
         avanzarSiEsTareaRecurrente(actividadId, usuarioId)
     }

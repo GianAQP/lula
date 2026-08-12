@@ -1,7 +1,7 @@
 package com.aqpseller.lulaapp.domain.usecase.medicamento
 
 import com.aqpseller.lulaapp.core.utils.DateTimeUtils
-import com.aqpseller.lulaapp.core.utils.indiceUltimaDosisEnDiaFinal
+import com.aqpseller.lulaapp.core.utils.horariosParaFecha
 import com.aqpseller.lulaapp.core.utils.instruccionParaHorario
 import com.aqpseller.lulaapp.domain.model.ActividadDetalle
 import com.aqpseller.lulaapp.domain.model.EstadoActividad
@@ -29,24 +29,10 @@ class ObtenerMedicamentosDeHoyUseCase @Inject constructor(
             val ids = activos.map { it.id }
             actividadRepository.observarTomasDeHoy(ids).map { tomas ->
                 val tomasPorClave = tomas.associateBy { it.actividadId to it.horario }
-                val hoy = DateTimeUtils.hoy().toEpochDays().toLong()
                 activos.mapNotNull { actividad ->
                     val detalle = actividad.detalle as? ActividadDetalle.Medicamento ?: return@mapNotNull null
-                    val fechaInicioDay = DateTimeUtils.epochMillisToLocalDate(detalle.fechaInicio).toEpochDays().toLong()
-                    val fechaFinDay = detalle.fechaFin?.let { DateTimeUtils.epochMillisToLocalDate(it).toEpochDays().toLong() }
-                    if (hoy < fechaInicioDay || (fechaFinDay != null && hoy > fechaFinDay)) return@mapNotNull null
-                    // Si el fin se calculó por "cantidad de dosis", el último día no necesariamente
-                    // agota todos los horarios del día (ej. 4 dosis a 3 por día: el 2do día solo
-                    // cuenta la primera) — sin este recorte se mostraban de más, ver `08-decisiones-tecnicas.md`.
-                    val horariosDelDia = if (
-                        detalle.cantidadDosisTotal != null && fechaFinDay != null && hoy == fechaFinDay &&
-                        detalle.horariosCalculados.isNotEmpty()
-                    ) {
-                        val indiceCorte = indiceUltimaDosisEnDiaFinal(detalle.horariosCalculados, detalle.cantidadDosisTotal)
-                        detalle.horariosCalculados.take(indiceCorte + 1)
-                    } else {
-                        detalle.horariosCalculados
-                    }
+                    val horariosDelDia = horariosParaFecha(detalle, DateTimeUtils.hoy())
+                    if (horariosDelDia.isEmpty()) return@mapNotNull null
                     MedicamentoDeHoy(
                         actividadId = actividad.id,
                         nombre = actividad.nombre,

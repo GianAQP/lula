@@ -3,6 +3,7 @@ package com.aqpseller.lulaapp.features.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aqpseller.lulaapp.core.notifications.RecordatorioScheduler
+import com.aqpseller.lulaapp.domain.model.MomentoDelDia
 import com.aqpseller.lulaapp.domain.repository.AjustesRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
@@ -24,6 +25,13 @@ class SettingsViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 7)
 
     val horaRecordatorioCierreDia: StateFlow<String?> = ajustesRepository.observarHoraRecordatorioCierreDia()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    val horaRecordatorioManana: StateFlow<String?> = ajustesRepository.observarHoraRecordatorioFranja(MomentoDelDia.MANANA)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+    val horaRecordatorioTarde: StateFlow<String?> = ajustesRepository.observarHoraRecordatorioFranja(MomentoDelDia.TARDE)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+    val horaRecordatorioNoche: StateFlow<String?> = ajustesRepository.observarHoraRecordatorioFranja(MomentoDelDia.NOCHE)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     val bottomBarPosicion2: StateFlow<String> = ajustesRepository.observarBottomBarPosicion2()
@@ -50,6 +58,18 @@ class SettingsViewModel @Inject constructor(
                 recordatorioScheduler.programarRecordatorioCierreDia(hora)
             } else {
                 recordatorioScheduler.cancelarRecordatorioCierreDia()
+            }
+        }
+    }
+
+    /** `hora = null` apaga esa franja — mismo criterio que `setHoraRecordatorioCierreDia`. */
+    fun setHoraRecordatorioFranja(momento: MomentoDelDia, hora: String?) {
+        viewModelScope.launch {
+            ajustesRepository.setHoraRecordatorioFranja(momento, hora)
+            if (hora != null) {
+                recordatorioScheduler.programarRecordatorioFranja(momento, hora)
+            } else {
+                recordatorioScheduler.cancelarRecordatorioFranja(momento)
             }
         }
     }

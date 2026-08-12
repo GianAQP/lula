@@ -269,7 +269,9 @@ fun CrearMedicamentoScreen(
                     val horariosPreview = horariosSegunModo(modoFrecuencia, horaPrimeraDosis, intervaloTexto.toIntOrNull(), comidasSeleccionadas, horariosComida)
                     val cantidadPreview = dosisTotalTexto.toIntOrNull()
                     if (cantidadPreview != null && horariosPreview.isNotEmpty()) {
-                        calcularFechaFinPorCantidadDosis(DateTimeUtils.inicioDeHoyEpochMillis(), horariosPreview, cantidadPreview)
+                        calcularFechaFinPorCantidadDosis(
+                            DateTimeUtils.inicioDeHoyEpochMillis(), horariosPreview, cantidadPreview, modoFrecuencia, horaPrimeraDosis,
+                        )
                     } else {
                         null
                     }

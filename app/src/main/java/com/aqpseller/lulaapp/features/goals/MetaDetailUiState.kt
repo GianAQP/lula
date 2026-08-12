@@ -9,6 +9,7 @@ data class MetaDetailUiState(
     val progreso: Double = 0.0,
     val objetivo: Double = 0.0,
     val nombreHabitoVinculado: String? = null,
+    val fechaLimite: Long? = null,
     val eliminada: Boolean = false,
 ) {
     val fraccionProgreso: Float

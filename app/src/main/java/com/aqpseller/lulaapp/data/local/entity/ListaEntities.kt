@@ -24,6 +24,7 @@ data class ListaEntity(
     val espacioId: String,
     val nombre: String,
     val fechaCreacion: Long,
+    val orden: Int = 0,
 )
 
 @Serializable

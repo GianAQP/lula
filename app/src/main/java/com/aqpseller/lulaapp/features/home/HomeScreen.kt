@@ -18,6 +18,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -26,9 +27,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import com.aqpseller.lulaapp.core.ui.EmptyState
 import com.aqpseller.lulaapp.core.ui.LulaProgressBar
 import com.aqpseller.lulaapp.core.ui.SectionLinkRow
@@ -37,9 +42,14 @@ import com.aqpseller.lulaapp.core.ui.emojiEstadoActividad
 import com.aqpseller.lulaapp.core.ui.emojiTipoActividad
 import com.aqpseller.lulaapp.core.utils.DateTimeUtils
 import com.aqpseller.lulaapp.core.utils.SonidoUtils
+import com.aqpseller.lulaapp.core.utils.abrirAjustesDeNotificaciones
+import com.aqpseller.lulaapp.core.utils.abrirAjustesDeOptimizacionBateria
+import com.aqpseller.lulaapp.core.utils.exentoDeOptimizacionBateria
+import com.aqpseller.lulaapp.core.utils.notificacionesPermitidas
 import com.aqpseller.lulaapp.domain.model.EstadoActividad
 import com.aqpseller.lulaapp.domain.model.ItemAgenda
 import com.aqpseller.lulaapp.domain.model.MedicamentoDeHoy
+import com.aqpseller.lulaapp.domain.model.TipoActividad
 import com.aqpseller.lulaapp.domain.model.TomaDeHoy
 import com.aqpseller.lulaapp.ui.theme.LulaAsistenteContainerLight
 import com.aqpseller.lulaapp.ui.theme.LulaFamiliaContainerDark
@@ -72,10 +82,71 @@ fun HomeScreen(
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
+    // Android nunca vuelve a mostrar el diálogo de sistema después de una negación — sin este
+    // aviso, un recordatorio programado "suena" en el sentido de que la alarma sí se dispara,
+    // pero la notificación se descarta en silencio, sin ningún rastro visible en la app (bug
+    // real reportado por el usuario, ver `08-decisiones-tecnicas.md`).
+    var notificacionesPermitidas by remember { mutableStateOf(notificacionesPermitidas(context)) }
+    // Motivo real, ya diagnosticado con el usuario, de "sonó un segundo y se cortó" en el nivel
+    // Alarma: el fabricante mata a Lula en segundo plano si no tiene esta excepción. Antes solo
+    // se veía si el usuario entraba por su cuenta a Ajustes — igual que con el permiso de
+    // notificaciones, ahora se avisa acá sin que tenga que ir a buscarlo. Ver
+    // `Plan/08-decisiones-tecnicas.md`.
+    var exentoDeOptimizacionBateria by remember { mutableStateOf(exentoDeOptimizacionBateria(context)) }
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                notificacionesPermitidas = notificacionesPermitidas(context)
+                exentoDeOptimizacionBateria = exentoDeOptimizacionBateria(context)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     Column(modifier = modifier.fillMaxSize()) {
         if (uiState.cargando) {
             return@Column
+        }
+
+        if (!notificacionesPermitidas) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.errorContainer)
+                    .clickable { abrirAjustesDeNotificaciones(context) }
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = "🔕 Sin permiso de notificaciones — tus recordatorios no van a avisarte",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onErrorContainer,
+                    modifier = Modifier.weight(1f),
+                )
+                Text(text = "Activar →", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onErrorContainer)
+            }
+        }
+
+        if (!exentoDeOptimizacionBateria) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.errorContainer)
+                    .clickable { abrirAjustesDeOptimizacionBateria(context) }
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = "🔋 Tu celular puede apagar Lula en segundo plano — tus alarmas pueden sonar cortadas o no sonar",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onErrorContainer,
+                    modifier = Modifier.weight(1f),
+                )
+                Text(text = "Activar →", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onErrorContainer)
+            }
         }
 
         if (uiState.pendientesEnFamilia > 0) {
@@ -429,8 +500,13 @@ private fun androidx.compose.foundation.lazy.LazyListScope.seccionActividades(
     val horaActual = DateTimeUtils.horaHHmm(DateTimeUtils.ahoraEpochMillis())
     items(actividades, key = { it.id }) { actividad ->
         // Ya pasó su hora y sigue sin marcar — mismo criterio que Cita/Fecha importante/Medicamento.
+        // Una Tarea, además, cuenta como vencida si su fecha límite (no solo la hora) ya pasó —
+        // antes solo se miraba `horaRecordatorio`, así que una tarea vencida de días atrás sin
+        // hora de aviso configurada nunca se pintaba en rojo (ver `08-decisiones-tecnicas.md`).
+        val vencidaPorFecha = actividad.tipo == TipoActividad.TAREA &&
+            actividad.fechaLimite != null && actividad.fechaLimite < DateTimeUtils.inicioDeHoyEpochMillis()
         val vencida = actividad.estado == EstadoActividad.SIN_CONFIRMAR &&
-            actividad.horaRecordatorio != null && actividad.horaRecordatorio < horaActual
+            (vencidaPorFecha || (actividad.horaRecordatorio != null && actividad.horaRecordatorio < horaActual))
         Row(
             modifier = Modifier
                 .fillMaxWidth()

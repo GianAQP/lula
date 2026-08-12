@@ -12,6 +12,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -27,6 +28,8 @@ import com.aqpseller.lulaapp.core.ui.CompartirActividadDialog
 import com.aqpseller.lulaapp.core.ui.ConfirmarEliminarDialog
 import com.aqpseller.lulaapp.core.ui.InvitacionEnviadaDialog
 import com.aqpseller.lulaapp.core.ui.LulaProgressBar
+import com.aqpseller.lulaapp.core.ui.SelectorFechaRapida
+import com.aqpseller.lulaapp.core.utils.DateTimeUtils
 import com.aqpseller.lulaapp.domain.model.PermisoCompartir
 
 @Composable
@@ -43,6 +46,7 @@ fun MetaDetailScreen(
     var mostrarCompartir by remember { mutableStateOf(false) }
     var permisoPendiente by remember { mutableStateOf(PermisoCompartir.PUEDE_VER) }
     var invitacionEnviada by remember { mutableStateOf(false) }
+    var mostrarAplazar by remember { mutableStateOf(false) }
     LaunchedEffect(uiState.eliminada) { if (uiState.eliminada) onEliminada() }
     LaunchedEffect(Unit) { viewModel.recargar() }
     LaunchedEffect(solicitudEnviada) {
@@ -63,6 +67,21 @@ fun MetaDetailScreen(
         )
         uiState.nombreHabitoVinculado?.let {
             Text(text = "Hábito vinculado: $it", modifier = Modifier.padding(top = 4.dp))
+        }
+        uiState.fechaLimite?.let { fechaLimite ->
+            Text(
+                text = "📅 ${DateTimeUtils.formatearFechaLarga(DateTimeUtils.epochMillisToLocalDate(fechaLimite))}",
+                modifier = Modifier.padding(top = 4.dp),
+            )
+            TextButton(onClick = { mostrarAplazar = !mostrarAplazar }, modifier = Modifier.padding(top = 4.dp)) {
+                Text("🔜 Aplazar")
+            }
+            if (mostrarAplazar) {
+                SelectorFechaRapida(
+                    fechaActual = uiState.fechaLimite,
+                    onFechaElegida = { viewModel.aplazar(it); mostrarAplazar = false },
+                )
+            }
         }
 
         if (uiState.esManual) {

@@ -150,6 +150,7 @@ class HomeViewModel @Inject constructor(
                                         estado = it.estado,
                                         tipo = it.tipo,
                                         horaRecordatorio = (it.detalle as? ActividadDetalle.Tarea)?.horaRecordatorio,
+                                        fechaLimite = (it.detalle as? ActividadDetalle.Tarea)?.fechaLimite,
                                     )
                                 },
                             revisionesHabitoPendientes = revisionesPendientes,

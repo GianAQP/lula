@@ -3,7 +3,9 @@ package com.aqpseller.lulaapp.features.calendar
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aqpseller.lulaapp.core.utils.DateTimeUtils
+import com.aqpseller.lulaapp.domain.model.EstadoActividad
 import com.aqpseller.lulaapp.domain.model.SesionActual
+import com.aqpseller.lulaapp.domain.usecase.actividad.MarcarActividadUseCase
 import com.aqpseller.lulaapp.domain.usecase.calendario.ObtenerAgendaDelRangoUseCase
 import com.aqpseller.lulaapp.domain.usecase.registrodiario.ObtenerRegistroDiarioDeFechaUseCase
 import com.aqpseller.lulaapp.domain.usecase.usuario.ObtenerSesionActualUseCase
@@ -24,6 +26,7 @@ class CalendarViewModel @Inject constructor(
     private val obtenerSesionActualUseCase: ObtenerSesionActualUseCase,
     private val obtenerAgendaDelRangoUseCase: ObtenerAgendaDelRangoUseCase,
     private val obtenerRegistroDiarioDeFechaUseCase: ObtenerRegistroDiarioDeFechaUseCase,
+    private val marcarActividadUseCase: MarcarActividadUseCase,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CalendarUiState(fechaSeleccionada = DateTimeUtils.hoy()))
@@ -54,6 +57,25 @@ class CalendarViewModel @Inject constructor(
     fun seleccionarFecha(fecha: LocalDate) {
         _uiState.update { it.copy(fechaSeleccionada = fecha, modo = ModoCalendario.DIA) }
         recargar()
+    }
+
+    /**
+     * Marca una Tarea como hecha con fecha de completado [fechaEpochDay] en vez de "ahora" —
+     * solo tiene sentido para un día PASADO (Hoy ya tiene su propio checkbox que sí usa "ahora",
+     * y un día futuro todavía no pasó). A pedido del usuario: la única forma de completar una
+     * tarea "atrasada" con la fecha real en que se hizo es entrando a Calendario y marcándola
+     * ahí, en su día correspondiente — ver `Plan/08-decisiones-tecnicas.md`.
+     */
+    fun marcarTareaEnFecha(actividadId: String, fechaEpochDay: Long) {
+        viewModelScope.launch {
+            marcarActividadUseCase(
+                actividadId,
+                EstadoActividad.CONFIRMADO,
+                sesionActual().usuarioId,
+                fechaCompletado = DateTimeUtils.epochDiasAEpochMillis(fechaEpochDay),
+            )
+            recargar()
+        }
     }
 
     private fun mover(direccion: Int) {

@@ -6,7 +6,7 @@ object LulaDestinations {
     const val CREAR_HABITO = "crear_habito?actividadId={actividadId}"
     const val CREAR_TAREA = "crear_tarea?actividadId={actividadId}"
     const val CREAR_MOVIMIENTO = "crear_movimiento/{tipo}?movimientoId={movimientoId}"
-    const val CERRAR_DIA = "cerrar_dia"
+    const val CERRAR_DIA = "cerrar_dia?fecha={fecha}"
     const val HABITOS = "habitos"
     const val HABITO_DETALLE = "habito/{actividadId}"
     const val TAREAS = "tareas"
@@ -82,4 +82,9 @@ object LulaDestinations {
         val params = listOfNotNull(entradaId?.let { "entradaId=$it" }, fecha?.let { "fecha=$it" })
         return "diario_entrada" + if (params.isEmpty()) "" else "?" + params.joinToString("&")
     }
+
+    /** [fechaEpochDay] null = hoy (comportamiento de siempre). Un epoch day explícito permite
+     * llenar o actualizar el cierre de un día anterior desde Calendario. */
+    fun cerrarDia(fechaEpochDay: Long? = null): String =
+        "cerrar_dia" + (fechaEpochDay?.let { "?fecha=$it" } ?: "")
 }

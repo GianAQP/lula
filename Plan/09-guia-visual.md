@@ -79,17 +79,37 @@ Extraído de `LulaBottomBar` a `core/ui/ColoredEmojiIcon.kt` para reusarlo tambi
 `AddMenuSheet` (cada opción del menú `+` tiene su ícono a color, no solo texto violeta) — una
 sola fuente de verdad para "emoji dentro de un círculo de color", en vez de duplicar el patrón.
 
-## Aplicado hasta ahora (2026-07-27)
+## Aplicado hasta ahora (actualizado 2026-08-08)
 
 Bottom nav (íconos a color por sección, círculos de 44dp), menú `+` (ícono a color por
-opción), pantalla Hoy (stats, progreso, estado vacío, racha clicable → historial, enlace a
-Tareas con `SectionLinkRow`), Hábitos/Tareas/Finanzas (estado vacío), Historial (insignia de
-puntos), Cerrar mi día (racha en `StatPill` al confirmar), selectores de fecha/hora reales
-(`DatePicker`/`TimePicker`) en Crear Hábito y Crear Tarea, categorías de Finanzas por chips
-con "Ahorro" destacado en `StatPill` propio cuando es mayor a 0.
+opción), pantalla Hoy (stats, progreso, estado vacío, racha clicable → historial, enlaces con
+`SectionLinkRow`), Hábitos/Tareas/Finanzas (estado vacío), Historial (insignia de puntos),
+Cerrar mi día (racha en `StatPill` al confirmar), selectores de fecha/hora reales
+(`DatePicker`/`TimePicker`), categorías de Finanzas por chips con "Ahorro" destacado en
+`StatPill` propio, resumen de Finanzas (`StatPill` 📈/📉/⚖️) reusado también en el Historial
+navegable, no solo en la pantalla principal.
+
+**Patrón de formulario compacto** (`core/ui/SelectorRow.kt`, 2026-08-06): fila colapsada con
+resumen en vivo ("🔔 Recordatorio — Cada 8h desde 08:00 ›") que abre un `ModalBottomSheet` al
+tocarla. Aplicado en Crear Medicamento/Tarea/Hábito/Cita/Fecha importante. Los sheets largos
+con un campo numérico llevan `.verticalScroll() + .imePadding()` para que el teclado no los
+tape (lección real, ver `08-decisiones-tecnicas.md`, 2026-08-07).
+
+**Hábitos rediseñado** (2026-08-06): tarjetas `Card` (antes filas planas) con ícono automático
+por palabra clave del nombre, racha propia por tarjeta (`🔥 N`), letras de día reales con
+"hoy" resaltado (borde más grueso + negrita) en vez de puntos sin contexto, agrupado por
+momento del día, mensaje motivacional nunca punitivo arriba de la lista.
+
+**Rojo reservado para "vencido"** (no solo "urgente"): se agregó el color de error
+(`MaterialTheme.colorScheme.error`) + sufijo "⚠️" como criterio consistente en toda la app
+para "tenía hora de recordatorio, ya pasó, sigue sin marcar" — Hoy (hábitos/tareas/citas/
+fechas importantes/medicamentos), Tareas, Mi salud, detalle de Cita de curso. Sigue sin usarse
+para amenazar con "perder algo" (ninguna racha se pinta de rojo) — coherente con la regla de
+no usar rojo de alerta de la sección de arriba.
+
 **Pendiente para ir sumando en próximas sesiones**:
-- Detalle de Hábito/Tarea y pantallas de creación — todavía usan `FilterChip`/`Button`
-  default de Material3, sin el tratamiento cálido.
+- Detalle de Hábito/Tarea todavía usan `FilterChip`/`Button` default de Material3, sin el
+  tratamiento cálido de Card que ya tiene la lista de Hábitos.
 - Cerrar mi día — el mensaje "Buen trabajo..." sigue siendo texto plano; podría llevar un
   banner de color de fondo, no solo la insignia de racha que ya tiene.
 - Ícono/mascota de estado del día (🙂/✅/⏳/💤) descrito en `01-arquitectura.md` — todavía no

@@ -75,7 +75,7 @@ fun AccionTomaScreen(
             Text("⏭️ La omito")
         }
         TextButton(
-            onClick = onListo,
+            onClick = viewModel::verEnMiSalud,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 12.dp),

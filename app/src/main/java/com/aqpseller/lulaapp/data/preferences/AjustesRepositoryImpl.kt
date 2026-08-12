@@ -5,6 +5,7 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import com.aqpseller.lulaapp.domain.model.MomentoDelDia
 import com.aqpseller.lulaapp.domain.repository.AjustesRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
@@ -21,6 +22,9 @@ class AjustesRepositoryImpl @Inject constructor(
     private val sonidoCheckKey = booleanPreferencesKey("sonido_check_habilitado")
     private val diaRevisionSemanalKey = intPreferencesKey("dia_revision_semanal")
     private val horaRecordatorioCierreDiaKey = stringPreferencesKey("hora_recordatorio_cierre_dia")
+
+    private fun horaRecordatorioFranjaKey(momento: MomentoDelDia) =
+        stringPreferencesKey("hora_recordatorio_franja_${momento.name}")
     private val bottomBarPosicion2Key = stringPreferencesKey("bottom_bar_posicion_2")
     private val bottomBarPosicion3Key = stringPreferencesKey("bottom_bar_posicion_3")
     private val bottomBarPosicion4Key = stringPreferencesKey("bottom_bar_posicion_4")
@@ -55,6 +59,16 @@ class AjustesRepositoryImpl @Inject constructor(
     override suspend fun setHoraRecordatorioCierreDia(hora: String?) {
         context.ajustesDataStore.edit {
             if (hora != null) it[horaRecordatorioCierreDiaKey] = hora else it.remove(horaRecordatorioCierreDiaKey)
+        }
+    }
+
+    override fun observarHoraRecordatorioFranja(momento: MomentoDelDia) =
+        context.ajustesDataStore.data.map { it[horaRecordatorioFranjaKey(momento)] }
+
+    override suspend fun setHoraRecordatorioFranja(momento: MomentoDelDia, hora: String?) {
+        val key = horaRecordatorioFranjaKey(momento)
+        context.ajustesDataStore.edit {
+            if (hora != null) it[key] = hora else it.remove(key)
         }
     }
 

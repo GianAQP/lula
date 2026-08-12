@@ -53,7 +53,7 @@ class ActualizarMedicamentoUseCase @Inject constructor(
                 calcularHorariosPorComida(comidasRelacionadas, horaDesayuno, horaAlmuerzo, horaCena)
         }
         val fechaFinFinal = if (cantidadDosisTotal != null) {
-            calcularFechaFinPorCantidadDosis(fechaInicio, horarios, cantidadDosisTotal)
+            calcularFechaFinPorCantidadDosis(fechaInicio, horarios, cantidadDosisTotal, modoFrecuencia, horaPrimeraDosis)
         } else {
             fechaFin
         }

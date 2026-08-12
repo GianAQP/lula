@@ -8,6 +8,11 @@
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <!-- Mantiene la CPU despierta mientras suena el nivel Alarma — sin esto, con el teléfono
+         inactivo (pantalla apagada) el sistema puede volver a dormir a mitad de la reproducción
+         y cortar el sonido en menos de un segundo, aunque el Service siga vivo en primer plano.
+         Ver `AlarmaSonidoService`, `Plan/08-decisiones-tecnicas.md`. -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
     <!-- Solo para pedir la excepción de forma explícita (botón en Ajustes) — Lula nunca la
          asume ni la fuerza en segundo plano. Play Store la permite para apps cuya función
          principal depende de alarmas/recordatorios confiables (ver `08-decisiones-tecnicas.md`). -->

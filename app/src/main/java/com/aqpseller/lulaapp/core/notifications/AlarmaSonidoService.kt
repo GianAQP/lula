@@ -11,6 +11,7 @@ import android.media.MediaPlayer
 import android.net.Uri
 import android.os.Build
 import android.os.IBinder
+import android.os.PowerManager
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -33,6 +34,7 @@ class AlarmaSonidoService : Service() {
 
     private var mediaPlayer: MediaPlayer? = null
     private var audioFocusRequest: AudioFocusRequest? = null
+    private var wakeLock: PowerManager.WakeLock? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -56,6 +58,22 @@ class AlarmaSonidoService : Service() {
             .setOngoing(true)
             .build()
         startForeground(ID_NOTIFICACION_SERVICIO, notificacionServicio)
+
+        // Un Service en primer plano normalmente no necesita esto — pero con la pantalla apagada
+        // y el teléfono inactivo, la CPU puede volver a dormirse a mitad de la reproducción del
+        // `MediaPlayer` (nada más lo mantenía despierto) y el sonido se cortaba en menos de un
+        // segundo, exactamente el bug reportado por el usuario. Se libera solo, como máximo, a
+        // los 2 minutos — más que de sobra para que termine de sonar y el usuario alcance a
+        // tocar "Detener"; después de eso ya no hace falta forzar la CPU despierta. Ver
+        // `Plan/08-decisiones-tecnicas.md`.
+        runCatching {
+            val powerManager = getSystemService<PowerManager>()
+            wakeLock = powerManager
+                ?.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "LulaApp:AlarmaSonidoWakeLock")
+                ?.apply { acquire(2 * 60_000L) }
+        }.onFailure { error ->
+            Log.e(TAG, "No se pudo tomar el WakeLock de la alarma", error)
+        }
 
         val atributosAlarma = AudioAttributes.Builder()
             .setUsage(AudioAttributes.USAGE_ALARM)
@@ -122,6 +140,8 @@ class AlarmaSonidoService : Service() {
         mediaPlayer?.let { runCatching { it.stop() }; it.release() }
         mediaPlayer = null
         abandonarAudioFocus()
+        wakeLock?.let { if (it.isHeld) it.release() }
+        wakeLock = null
     }
 
     override fun onDestroy() {

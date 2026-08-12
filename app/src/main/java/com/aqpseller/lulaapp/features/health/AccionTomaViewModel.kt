@@ -1,10 +1,10 @@
 package com.aqpseller.lulaapp.features.health
 
 import android.content.Context
-import androidx.core.app.NotificationManagerCompat
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.aqpseller.lulaapp.core.notifications.AlarmaSonidoService
 import com.aqpseller.lulaapp.core.utils.instruccionParaHorario
 import com.aqpseller.lulaapp.domain.model.ActividadDetalle
 import com.aqpseller.lulaapp.domain.model.EstadoActividad
@@ -47,8 +47,10 @@ class AccionTomaViewModel @Inject constructor(
     private var sesion: SesionActual? = null
 
     init {
-        NotificationManagerCompat.from(context).cancel("$actividadId:$horario".hashCode())
-
+        // A propósito NO se detiene acá la Alarma si estaba sonando — mismo motivo que
+        // `RecordatorioAccionViewModel`: esta pantalla también se abre sola por el
+        // `fullScreenIntent`, sin acción real de la persona todavía. Se detiene recién en
+        // `marcar`, cuando sí hay una acción real. Ver `08-decisiones-tecnicas.md`.
         viewModelScope.launch {
             sesion = obtenerSesionActualUseCase()
             val actividad = obtenerDetalleActividadUseCase(actividadId)
@@ -74,10 +76,23 @@ class AccionTomaViewModel @Inject constructor(
     }
 
     fun marcar(estado: EstadoActividad) {
+        detenerAlarmaSiSonando()
         viewModelScope.launch {
             marcarTomaMedicamentoUseCase(actividadId, horario, estado, sesionActual().usuarioId)
             _uiState.update { it.copy(estado = estado, listo = true) }
         }
+    }
+
+    /** "Ver en Mi salud" es la 3ra acción real de esta pantalla (además de "Ya la tomé"/"La
+     * omito") — también debe cortar la Alarma si estaba sonando. Antes navegaba directo sin
+     * pasar por acá, así que ese botón dejaba la Alarma sonando. */
+    fun verEnMiSalud() {
+        detenerAlarmaSiSonando()
+        _uiState.update { it.copy(listo = true) }
+    }
+
+    private fun detenerAlarmaSiSonando() {
+        context.startService(AlarmaSonidoService.intentDetener(context, "$actividadId:$horario".hashCode()))
     }
 
     private suspend fun sesionActual(): SesionActual = sesion ?: obtenerSesionActualUseCase().also { sesion = it }

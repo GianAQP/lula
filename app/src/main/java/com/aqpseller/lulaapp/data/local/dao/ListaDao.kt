@@ -14,6 +14,7 @@ data class ListaConConteoRow(
     val nombre: String,
     val total: Int,
     val marcados: Int,
+    val orden: Int,
 )
 
 @Dao
@@ -29,17 +30,23 @@ interface ListaDao {
 
     @Query(
         """
-        SELECT lista.id as id, lista.nombre as nombre,
+        SELECT lista.id as id, lista.nombre as nombre, lista.orden as orden,
                COUNT(lista_item.id) as total,
                COALESCE(SUM(lista_item.marcado), 0) as marcados
         FROM lista
         LEFT JOIN lista_item ON lista_item.listaId = lista.id
         WHERE lista.espacioId = :espacioId
         GROUP BY lista.id
-        ORDER BY lista.fechaCreacion DESC
+        ORDER BY lista.orden ASC
         """,
     )
     fun observarConConteo(espacioId: String): Flow<List<ListaConConteoRow>>
+
+    @Query("UPDATE lista SET orden = :nuevoOrden WHERE id = :id")
+    suspend fun actualizarOrden(id: String, nuevoOrden: Int)
+
+    @Query("SELECT COALESCE(MAX(orden), -1) FROM lista WHERE espacioId = :espacioId")
+    suspend fun obtenerMayorOrden(espacioId: String): Int
 
     @Query("DELETE FROM lista WHERE id = :id")
     suspend fun eliminar(id: String)

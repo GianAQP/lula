@@ -39,6 +39,8 @@ data class MetaEntity(
     /** Último hito (0/25/50/75/100) ya celebrado en Hoy — evita repetir la misma tarjeta de
      * felicitación cada vez que se recompone. */
     val ultimoHitoCelebrado: Int = 0,
+    val categoria: String? = null,
+    val avisarAlVencer: Boolean = false,
 )
 
 @Entity(

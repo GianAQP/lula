@@ -11,15 +11,13 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
-import androidx.compose.material3.DatePicker
-import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -27,26 +25,40 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.aqpseller.lulaapp.core.ui.DescartarCambiosAlSalir
 import com.aqpseller.lulaapp.core.ui.DictationTextField
+import com.aqpseller.lulaapp.core.ui.SelectorFechaRapida
 import com.aqpseller.lulaapp.core.utils.DateTimeUtils
+import com.aqpseller.lulaapp.domain.model.CategoriaMeta
 import com.aqpseller.lulaapp.domain.model.ComoSeMideMeta
 
-/** Ayuda de referencia para definir una meta — no se guarda, solo orienta. Ver
+/** Ayuda de referencia para definir una meta — la pregunta a la vez etiqueta la categoría de la
+ * meta (`CategoriaMeta`), para poder agrupar más adelante las completadas. Ver
  * `Plan/08-decisiones-tecnicas.md`, 2026-08-01 (antes vivía, mal ubicada, dentro de "Mi
- * propósito"). */
-private val PREGUNTAS_AYUDA_META = listOf(
-    "¿Qué quiero hacer?",
-    "¿Qué quiero ser?",
-    "¿Qué quiero ver?",
-    "¿Qué quiero tener?",
-    "¿Adónde quiero ir?",
-    "¿Qué es lo que deseo compartir?",
-)
+ * propósito") y 2026-08-11 (se sumaron ejemplos y la selección de categoría, a pedido del usuario). */
+private fun preguntaAyuda(categoria: CategoriaMeta) = when (categoria) {
+    CategoriaMeta.HACER -> "¿Qué quiero hacer?"
+    CategoriaMeta.SER -> "¿Qué quiero ser?"
+    CategoriaMeta.VER -> "¿Qué quiero ver?"
+    CategoriaMeta.TENER -> "¿Qué quiero tener?"
+    CategoriaMeta.IR -> "¿Adónde quiero ir?"
+    CategoriaMeta.COMPARTIR -> "¿Qué es lo que deseo compartir?"
+}
+
+private fun ejemplosAyuda(categoria: CategoriaMeta) = when (categoria) {
+    CategoriaMeta.HACER -> listOf("Yo administro mi tiempo haciendo un plan", "Yo gano dinero mientras duermo", "Yo creo empresas y las hago crecer")
+    CategoriaMeta.SER -> listOf("Yo soy un ejemplo a seguir", "Yo soy más positivo", "Yo soy mejor cada día")
+    CategoriaMeta.VER -> listOf("Yo veo a varios crecer conmigo", "Yo veo la alegría de mi familia", "Yo veo a mis socios más grandes")
+    CategoriaMeta.TENER -> listOf("Yo tengo un carro donde llevo a toda mi familia", "Yo tengo casas para alquilar", "Yo tengo a mis trabajadores contentos")
+    CategoriaMeta.IR -> listOf("Yo voy de viaje a todo el Perú", "Yo voy a México", "Yo voy al evento de Tomorrowland")
+    CategoriaMeta.COMPARTIR -> listOf("Yo comparto mis conocimientos", "Yo comparto momentos inolvidables con mi familia", "Yo comparto sonrisas todos los días")
+}
+
 private val CONSEJOS_REDACCION_META = listOf(
     "Escribe en tiempo presente — ej. \"Yo gano S/ 5000 al mes\".",
     "Usa oraciones afirmativas — ej. \"Yo superé la adicción al cigarrillo\".",
@@ -81,11 +93,12 @@ fun CrearMetaScreen(
     var objetivoTexto by remember { mutableStateOf("") }
     var habitoVinculadoId by remember { mutableStateOf<String?>(null) }
     var areaDeVidaId by remember { mutableStateOf<String?>(null) }
+    var categoria by remember { mutableStateOf<CategoriaMeta?>(null) }
     var fechaLimite by remember { mutableStateOf<Long?>(null) }
-    var mostrarSelectorFecha by remember { mutableStateOf(false) }
+    var avisarAlVencer by remember { mutableStateOf(false) }
     var mostrarAyuda by remember { mutableStateOf(false) }
 
-    fun snapshot() = listOf(nombre, comoSeMide, objetivoTexto, habitoVinculadoId, areaDeVidaId, fechaLimite)
+    fun snapshot() = listOf(nombre, comoSeMide, objetivoTexto, habitoVinculadoId, areaDeVidaId, categoria, fechaLimite, avisarAlVencer)
     var snapshotInicial by remember { mutableStateOf(snapshot()) }
 
     val guardado by viewModel.guardado.collectAsState()
@@ -104,7 +117,9 @@ fun CrearMetaScreen(
             objetivoTexto = it.valorObjetivo.toString()
             habitoVinculadoId = it.actividadesVinculadasIds.firstOrNull()
             areaDeVidaId = it.areaDeVidaId
+            categoria = it.categoria
             fechaLimite = it.fechaLimite
+            avisarAlVencer = it.avisarAlVencer
         }
     }
 
@@ -130,9 +145,27 @@ fun CrearMetaScreen(
         if (mostrarAyuda) {
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(12.dp)) {
-                    Text(text = "Preguntas para ayudarte a pensarla", style = MaterialTheme.typography.titleSmall)
-                    PREGUNTAS_AYUDA_META.forEach { pregunta ->
-                        Text(text = "· $pregunta", style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 4.dp))
+                    Text(text = "¿A cuál de estas preguntas responde? (opcional)", style = MaterialTheme.typography.titleSmall)
+                    Text(
+                        text = "Elegir una categoría también ayuda a agrupar tus metas ya cumplidas más adelante.",
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(top = 2.dp),
+                    )
+                    FlowRow(modifier = Modifier.padding(top = 8.dp)) {
+                        CategoriaMeta.entries.forEach { opcion ->
+                            FilterChip(
+                                selected = categoria == opcion,
+                                onClick = { categoria = if (categoria == opcion) null else opcion },
+                                label = { Text(preguntaAyuda(opcion)) },
+                                modifier = Modifier.padding(end = 8.dp, bottom = 8.dp),
+                            )
+                        }
+                    }
+                    categoria?.let { seleccionada ->
+                        Text(text = "Ejemplos", style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(top = 8.dp))
+                        ejemplosAyuda(seleccionada).forEach { ejemplo ->
+                            Text(text = "· $ejemplo", style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 4.dp))
+                        }
                     }
                     Text(
                         text = "Consejos para redactarla",
@@ -242,48 +275,38 @@ fun CrearMetaScreen(
         }
 
         Text(text = "Fecha límite (opcional)", modifier = Modifier.padding(top = 16.dp))
-        Row(modifier = Modifier.padding(top = 8.dp)) {
-            FilterChip(
-                selected = fechaLimite == null,
-                onClick = { fechaLimite = null },
-                label = { Text("Sin fecha límite") },
-                modifier = Modifier.padding(end = 8.dp),
+        fechaLimite?.let {
+            Text(
+                text = "📅 " + DateTimeUtils.formatearFechaLarga(DateTimeUtils.epochMillisToLocalDate(it)),
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(top = 8.dp),
             )
-            FilterChip(
-                selected = fechaLimite != null,
-                onClick = { mostrarSelectorFecha = true },
-                label = {
-                    Text(
-                        fechaLimite?.let { DateTimeUtils.formatearFechaLarga(DateTimeUtils.epochMillisToLocalDate(it)) }
-                            ?: "Elegir fecha",
-                    )
-                },
-            )
+        }
+        SelectorFechaRapida(
+            fechaActual = fechaLimite,
+            onFechaElegida = { fechaLimite = it },
+            modifier = Modifier.padding(top = 8.dp),
+        )
+        if (fechaLimite != null) {
+            TextButton(onClick = { fechaLimite = null; avisarAlVencer = false }, modifier = Modifier.padding(top = 4.dp)) {
+                Text("Quitar fecha límite")
+            }
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {
+                Checkbox(checked = avisarAlVencer, onCheckedChange = { avisarAlVencer = it })
+                Text("🔔 Avisarme (con sonido) cuando llegue la fecha")
+            }
         }
 
         Button(
             onClick = {
-                viewModel.guardar(nombre, comoSeMide, objetivoTexto.toDoubleOrNull() ?: 0.0, habitoVinculadoId, areaDeVidaId, fechaLimite)
+                viewModel.guardar(
+                    nombre, comoSeMide, objetivoTexto.toDoubleOrNull() ?: 0.0, habitoVinculadoId, areaDeVidaId,
+                    fechaLimite, categoria, avisarAlVencer,
+                )
             },
             modifier = Modifier.padding(top = 24.dp),
         ) {
             Text(if (viewModel.esEdicion) "Guardar cambios" else "Crear")
         }
-    }
-
-    if (mostrarSelectorFecha) {
-        val estadoFecha = rememberDatePickerState(
-            initialSelectedDateMillis = DateTimeUtils.inicioDeDiaLocalAUtcMillis(fechaLimite ?: DateTimeUtils.inicioDeHoyEpochMillis()),
-        )
-        DatePickerDialog(
-            onDismissRequest = { mostrarSelectorFecha = false },
-            confirmButton = {
-                TextButton(onClick = {
-                    estadoFecha.selectedDateMillis?.let { utcMillis -> fechaLimite = DateTimeUtils.utcMillisAInicioDeDiaLocal(utcMillis) }
-                    mostrarSelectorFecha = false
-                }) { Text("Confirmar") }
-            },
-            dismissButton = { TextButton(onClick = { mostrarSelectorFecha = false }) { Text("Cancelar") } },
-        ) { DatePicker(state = estadoFecha) }
     }
 }

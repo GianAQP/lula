@@ -59,7 +59,7 @@ class CrearMedicamentoUseCase @Inject constructor(
         // "Cantidad de dosis" y "fecha de fin" son mutuamente excluyentes en la pantalla — si
         // hay cantidad, la fecha de fin se calcula sola en vez de usar la que llegó por parámetro.
         val fechaFinFinal = if (cantidadDosisTotal != null) {
-            calcularFechaFinPorCantidadDosis(fechaInicio, horarios, cantidadDosisTotal)
+            calcularFechaFinPorCantidadDosis(fechaInicio, horarios, cantidadDosisTotal, modoFrecuencia, horaPrimeraDosis)
         } else {
             fechaFin
         }

@@ -100,3 +100,44 @@ val MIGRATION_21_22 = object : Migration(21, 22) {
         db.execSQL("CREATE INDEX IF NOT EXISTS `index_sesion_cita_fecha` ON `sesion_cita` (`fecha`)")
     }
 }
+
+/** Lista (el título, no los ítems de adentro) gana `orden` para las flechas ▲▼ — el usuario
+ * aclaró que quería reordenar los títulos de lista, no los ítems de cada lista (esos se
+ * autoordenan por marcado, ver `08-decisiones-tecnicas.md`). */
+val MIGRATION_22_23 = object : Migration(22, 23) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE lista ADD COLUMN orden INTEGER NOT NULL DEFAULT 0")
+    }
+}
+
+/** Corrige `MIGRATION_22_23`: todas las listas que ya existían quedaron empatadas en
+ * `orden = 0`, así que intercambiar el orden entre dos de ellas era un no-op — el usuario
+ * probó las flechas nuevas y encontró que la primera de la lista "no retrocedía" mientras las
+ * de más abajo sí (esas ya estaban junto a una lista creada después de la migración, con un
+ * `orden` distinto). Reparte un `orden` único por espacio, respetando el orden que ya se veía
+ * en pantalla (`fechaCreacion` DESC, como ordenaba la consulta antes de esta ronda) para que no
+ * salte nada de lugar al aplicar esta migración. Ver `08-decisiones-tecnicas.md`. */
+val MIGRATION_23_24 = object : Migration(23, 24) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            """
+            UPDATE lista SET orden = (
+                SELECT COUNT(*) FROM lista AS l2
+                WHERE l2.espacioId = lista.espacioId
+                  AND (l2.fechaCreacion > lista.fechaCreacion
+                       OR (l2.fechaCreacion = lista.fechaCreacion AND l2.id > lista.id))
+            )
+            """,
+        )
+    }
+}
+
+/** Meta gana `categoria` (a cuál de las 6 preguntas de ayuda responde, para agrupar las
+ * completadas) y `avisarAlVencer` (aviso sonoro el día que llega la fecha límite) — pedido
+ * explícito del usuario. Ver `Plan/08-decisiones-tecnicas.md`. */
+val MIGRATION_24_25 = object : Migration(24, 25) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE meta ADD COLUMN categoria TEXT DEFAULT NULL")
+        db.execSQL("ALTER TABLE meta ADD COLUMN avisarAlVencer INTEGER NOT NULL DEFAULT 0")
+    }
+}

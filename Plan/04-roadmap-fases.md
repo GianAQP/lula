@@ -31,7 +31,8 @@ Estado al 2026-07-25 (ver decisiones técnicas de la base en `08-decisiones-tecn
   movimiento, las 3 reflexiones de Cerrar mi día — vía el reconocedor de voz del sistema
   (`DictationTextField`, sin permiso de micrófono propio)
 - 🟡 Sincronización local-first: **Room local-first** ✅; falta el cliente de sync contra
-  n8n/Sheets (campo `sync_status` ya existe en el modelo, listo para conectar)
+  Firestore (campo `sync_status` ya existe en el modelo, listo para conectar — backend
+  decidido 2026-08-01: Firebase, no Sheets/n8n, ver `12-firebase-auth-y-sync.md`)
 - 🟡 Zona Privada: **configurar PIN + desbloqueo con huella/PIN** ✅, gatea la sección
   Finanzas; falta el auto-bloqueo por inactividad y extender el gate a Diario/Notas privadas
   cuando existan (ver `08-decisiones-tecnicas.md`)
@@ -53,7 +54,8 @@ usuario; no bloquea el resto):
 5. ~~Dictado de campo (SpeechRecognizer) en los campos de texto libre existentes~~ ✅
 6. ~~Zona Privada con biometría/PIN (gatea Finanzas)~~ ✅
 7. ~~Notificaciones/recordatorios para hábitos y tareas con horario~~ ✅
-8. Sync real con n8n/Sheets, cuando el workflow esté listo del lado de n8n
+8. Sync real con Firestore, cuando el usuario cree el proyecto de Firebase (ver
+   `12-firebase-auth-y-sync.md`, sección 7)
 9. Con eso completo, Fase 0.1 queda funcionalmente terminada salvo Onboarding (bloqueado por
    Firebase) — el siguiente hito real es Fase 0.5 (`Rutinas`, `Metas`, Revisión semanal,
    Hábitos progresivos, Matriz de Eisenhower)
@@ -183,6 +185,34 @@ segunda persona de verdad en otro dispositivo) pendiente de Firebase**:
 Con esto, la mitad de Fase 1.5 que no depende de un backend queda construida — ver
 `08-decisiones-tecnicas.md`, 2026-07-30, para el detalle completo de qué se construyó y por
 qué, y `10-pendientes.md` para lo que sigue bloqueado.
+
+## Extensiones posteriores a Fase 1.5 (2026-08-01 a 2026-08-07)
+
+Trabajo real construido después de las fases numeradas de arriba, que no encaja en una sola
+fase del roadmap original — detalle completo con fecha exacta de cada punto en
+`08-decisiones-tecnicas.md`:
+
+- ✅ **Mi propósito** (Misión/Visión/Propósito): 8 preguntas guiadas, editables y borrables de
+  a una, siempre del espacio Personal. Sin síntesis narrativa con IA todavía (botón
+  deshabilitado, "próximamente").
+- ✅ **Cuentas y conexiones — base local** (`11-cuentas-y-conexiones.md`): `Usuario` ampliado
+  (consentimientos, mayoría de edad), tabla `Conexion`, pantalla "Eliminar mi cuenta", textos
+  legales con pantalla para leerlos. **Decisión de backend real: Firebase** (Auth + Firestore,
+  `12-firebase-auth-y-sync.md`), bloqueada por un paso que solo el usuario puede hacer (crear
+  el proyecto en Firebase Console).
+- ✅ **Formulario compacto** (`SelectorRow` + `ModalBottomSheet`) replicado a Crear
+  Medicamento/Tarea/Hábito/Cita/Fecha importante, con protección "descartar cambios al salir"
+  en las 10 pantallas "Crear X" de la app.
+- ✅ **Citas recurrentes ("cursos")**: una Cita puede tener varias sesiones en un patrón de
+  días de la semana (radioterapia, sesiones de masaje), cada sesión reprogramable
+  individualmente. Nueva tabla `SesionCita`.
+- ✅ **Recordatorio persistente de Medicamento**: insiste cada N minutos hasta marcar la toma
+  o que termine el día, configurable por medicamento.
+- ✅ **Hábitos rediseñado**: tarjetas con ícono automático, racha propia por hábito, letras de
+  día reales, agrupado por momento del día, mensaje motivacional.
+- ✅ **Recordatorio diario configurable** ("🔥 Recordarme cerrar mi día") — primer recordatorio
+  de la app no ligado a ningún hábito/tarea/cita/medicamento en particular.
+- ✅ Resumen de ingresos/gastos/balance + rango de fechas manual en el Historial de Finanzas.
 
 ## Fase 2.0 — Asistente (voz y chat)
 

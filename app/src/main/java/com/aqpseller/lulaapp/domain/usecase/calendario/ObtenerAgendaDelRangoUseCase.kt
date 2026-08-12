@@ -1,7 +1,7 @@
 package com.aqpseller.lulaapp.domain.usecase.calendario
 
 import com.aqpseller.lulaapp.core.utils.DateTimeUtils
-import com.aqpseller.lulaapp.core.utils.indiceUltimaDosisEnDiaFinal
+import com.aqpseller.lulaapp.core.utils.horariosParaFecha
 import com.aqpseller.lulaapp.core.utils.instruccionParaHorario
 import com.aqpseller.lulaapp.core.utils.ocurreEnFecha
 import com.aqpseller.lulaapp.domain.model.ActividadDetalle
@@ -43,6 +43,10 @@ class ObtenerAgendaDelRangoUseCase @Inject constructor(
                 val epochDay = fecha.toEpochDays().toLong()
                 habitos.forEach { habito ->
                     val detalle = habito.detalle as? ActividadDetalle.Habito ?: return@forEach
+                    // Antes se mostraba en TODOS los días del rango sin importar cuándo se creó
+                    // — un hábito creado hoy aparecía como "pendiente" en días pasados, antes de
+                    // existir. Ver `Plan/08-decisiones-tecnicas.md`.
+                    if (fecha < DateTimeUtils.epochMillisToLocalDate(habito.fechaCreacion)) return@forEach
                     val estado = estadosPorFechaYActividad[epochDay to habito.id] ?: EstadoActividad.SIN_CONFIRMAR
                     agregar(
                         fecha,
@@ -60,12 +64,17 @@ class ObtenerAgendaDelRangoUseCase @Inject constructor(
             }
         }
 
-        // Tareas: aparecen solo el día de su fechaLimite.
+        // Tareas: aparecen el día de su fechaLimite mientras están pendientes; una vez
+        // completadas, se mueven al día en que de verdad se marcaron (`fechaCompletado`) — así
+        // una tarea que debía hacerse ayer pero recién se terminó hoy queda marcada en HOY, no
+        // en ayer (antes se quedaba pegada a su fecha límite para siempre, aunque se completara
+        // días después). Ver `Plan/08-decisiones-tecnicas.md`.
         actividadRepository.observarTareas(espacioId).first().forEach { tarea ->
             val detalle = tarea.detalle as? ActividadDetalle.Tarea ?: return@forEach
             val fechaLimite = detalle.fechaLimite ?: return@forEach
+            val fechaAMostrar = (if (tarea.estado == EstadoActividad.CONFIRMADO) tarea.fechaCompletado else null) ?: fechaLimite
             agregar(
-                DateTimeUtils.epochMillisToLocalDate(fechaLimite),
+                DateTimeUtils.epochMillisToLocalDate(fechaAMostrar),
                 ItemAgenda(
                     actividadId = tarea.id,
                     tipo = TipoActividad.TAREA,
@@ -135,21 +144,7 @@ class ObtenerAgendaDelRangoUseCase @Inject constructor(
                 val epochDay = fecha.toEpochDays().toLong()
                 medicamentos.forEach { medicamento ->
                     val detalle = medicamento.detalle as? ActividadDetalle.Medicamento ?: return@forEach
-                    val fechaInicioDay = DateTimeUtils.epochMillisToLocalDate(detalle.fechaInicio)
-                    val fechaFinDay = detalle.fechaFin?.let { DateTimeUtils.epochMillisToLocalDate(it) }
-                    if (fecha < fechaInicioDay || (fechaFinDay != null && fecha > fechaFinDay)) return@forEach
-                    // Mismo recorte que `ObtenerMedicamentosDeHoyUseCase` para el último día
-                    // cuando el fin se calculó por "cantidad de dosis" — si no, el Calendario
-                    // mostraba tomas de más en el día final (ver `08-decisiones-tecnicas.md`).
-                    val horariosDelDia = if (
-                        detalle.cantidadDosisTotal != null && fechaFinDay != null && fecha == fechaFinDay &&
-                        detalle.horariosCalculados.isNotEmpty()
-                    ) {
-                        val indiceCorte = indiceUltimaDosisEnDiaFinal(detalle.horariosCalculados, detalle.cantidadDosisTotal)
-                        detalle.horariosCalculados.take(indiceCorte + 1)
-                    } else {
-                        detalle.horariosCalculados
-                    }
+                    val horariosDelDia = horariosParaFecha(detalle, fecha)
                     horariosDelDia.forEachIndexed { index, horario ->
                         val estado = tomasPorClave[Triple(epochDay, medicamento.id, horario)]?.estado ?: EstadoActividad.SIN_CONFIRMAR
                         agregar(

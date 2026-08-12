@@ -12,6 +12,9 @@ interface ListaRepository {
     suspend fun agregarItem(listaId: String, texto: String, usuarioId: String)
     suspend fun marcarItem(itemId: String, marcado: Boolean, usuarioId: String)
     suspend fun eliminarItem(itemId: String, usuarioId: String)
+    /** Flechas ▲▼ para reordenar los títulos de lista (no los ítems de adentro, esos se
+     * autoordenan por marcado) — mismo patrón que Notas (`NotaRepository.actualizarOrden`). */
+    suspend fun actualizarOrdenLista(listaId: String, nuevoOrden: Int, usuarioId: String)
     /** Antes de desmarcar todo, guarda una foto de cómo quedaron los ítems — ver `observarHistorial`. */
     suspend fun reiniciar(listaId: String, usuarioId: String)
     suspend fun eliminarLista(listaId: String, usuarioId: String)

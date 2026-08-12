@@ -14,6 +14,7 @@ import com.aqpseller.lulaapp.domain.usecase.actividad.ObtenerHistorialHabitoUseC
 import com.aqpseller.lulaapp.domain.usecase.carecircle.CompartirActividadUseCase
 import com.aqpseller.lulaapp.domain.usecase.finanzas.ObtenerBalanceMesUseCase
 import com.aqpseller.lulaapp.domain.usecase.meta.AgregarProgresoMetaUseCase
+import com.aqpseller.lulaapp.domain.usecase.meta.AplazarMetaUseCase
 import com.aqpseller.lulaapp.domain.usecase.meta.EliminarMetaUseCase
 import com.aqpseller.lulaapp.domain.usecase.meta.ObtenerDetalleMetaUseCase
 import com.aqpseller.lulaapp.domain.usecase.usuario.ObtenerSesionActualUseCase
@@ -39,6 +40,7 @@ class MetaDetailViewModel @Inject constructor(
     private val obtenerBalanceMesUseCase: ObtenerBalanceMesUseCase,
     private val agregarProgresoMetaUseCase: AgregarProgresoMetaUseCase,
     private val eliminarMetaUseCase: EliminarMetaUseCase,
+    private val aplazarMetaUseCase: AplazarMetaUseCase,
     private val compartirActividadUseCase: CompartirActividadUseCase,
 ) : ViewModel() {
 
@@ -91,8 +93,16 @@ class MetaDetailViewModel @Inject constructor(
                     progreso = progreso,
                     objetivo = meta.valorObjetivo,
                     nombreHabitoVinculado = nombreHabito,
+                    fechaLimite = meta.fechaLimite,
                 )
             }
+        }
+    }
+
+    fun aplazar(nuevaFechaLimite: Long) {
+        viewModelScope.launch {
+            aplazarMetaUseCase(metaId, nuevaFechaLimite, sesionActual().usuarioId)
+            cargar()
         }
     }
 

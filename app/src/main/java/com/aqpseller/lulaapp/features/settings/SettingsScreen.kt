@@ -36,6 +36,7 @@ import com.aqpseller.lulaapp.core.utils.abrirAjustesDeOptimizacionBateria
 import com.aqpseller.lulaapp.core.utils.alarmasExactasPermitidas
 import com.aqpseller.lulaapp.core.utils.exentoDeOptimizacionBateria
 import com.aqpseller.lulaapp.core.utils.notificacionesPermitidas
+import com.aqpseller.lulaapp.domain.model.MomentoDelDia
 import com.aqpseller.lulaapp.navigation.OpcionBottomBar
 import com.aqpseller.lulaapp.ui.theme.LulaAsistenteContainerLight
 
@@ -52,6 +53,9 @@ fun SettingsScreen(
     val sonidoCheckHabilitado by viewModel.sonidoCheckHabilitado.collectAsState()
     val diaRevisionSemanal by viewModel.diaRevisionSemanal.collectAsState()
     val horaRecordatorioCierreDia by viewModel.horaRecordatorioCierreDia.collectAsState()
+    val horaRecordatorioManana by viewModel.horaRecordatorioManana.collectAsState()
+    val horaRecordatorioTarde by viewModel.horaRecordatorioTarde.collectAsState()
+    val horaRecordatorioNoche by viewModel.horaRecordatorioNoche.collectAsState()
     val bottomBarPosicion2 by viewModel.bottomBarPosicion2.collectAsState()
     val bottomBarPosicion3 by viewModel.bottomBarPosicion3.collectAsState()
     val bottomBarPosicion4 by viewModel.bottomBarPosicion4.collectAsState()
@@ -196,6 +200,37 @@ fun SettingsScreen(
         }
 
         Text(
+            text = "🔔 Recordarme revisar Lula",
+            style = MaterialTheme.typography.titleSmall,
+            modifier = Modifier.padding(top = 24.dp),
+        )
+        Text(
+            text = "Un aviso por franja del día si no entraste a revisar/marcar nada — útil " +
+                "sobre todo si tienes hábitos sin recordatorio propio. Independiente del de " +
+                "\"cerrar mi día\" de arriba.",
+            style = MaterialTheme.typography.bodySmall,
+            modifier = Modifier.padding(top = 4.dp),
+        )
+        FilaRecordatorioFranja(
+            etiqueta = "🌅 Por la mañana",
+            hora = horaRecordatorioManana,
+            horaPorDefecto = "09:00",
+            onCambiar = { viewModel.setHoraRecordatorioFranja(MomentoDelDia.MANANA, it) },
+        )
+        FilaRecordatorioFranja(
+            etiqueta = "🌤️ Por la tarde",
+            hora = horaRecordatorioTarde,
+            horaPorDefecto = "15:00",
+            onCambiar = { viewModel.setHoraRecordatorioFranja(MomentoDelDia.TARDE, it) },
+        )
+        FilaRecordatorioFranja(
+            etiqueta = "🌙 Por la noche",
+            hora = horaRecordatorioNoche,
+            horaPorDefecto = "20:00",
+            onCambiar = { viewModel.setHoraRecordatorioFranja(MomentoDelDia.NOCHE, it) },
+        )
+
+        Text(
             text = "🧭 Personalizar mi navegación",
             style = MaterialTheme.typography.titleSmall,
             modifier = Modifier.padding(top = 24.dp),
@@ -219,6 +254,25 @@ fun SettingsScreen(
             etiqueta = "Posición 4 (después del \"+\")",
             seleccionId = bottomBarPosicion4,
             onSeleccionar = viewModel::setBottomBarPosicion4,
+        )
+    }
+}
+
+@Composable
+private fun FilaRecordatorioFranja(etiqueta: String, hora: String?, horaPorDefecto: String, onCambiar: (String?) -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(text = etiqueta, modifier = Modifier.weight(1f))
+        Switch(checked = hora != null, onCheckedChange = { activado -> onCambiar(if (activado) horaPorDefecto else null) })
+    }
+    if (hora != null) {
+        HoraSelector(
+            hora = hora,
+            onHoraSeleccionada = onCambiar,
+            etiqueta = "¿A qué hora te recuerdo?",
+            modifier = Modifier.padding(top = 4.dp),
         )
     }
 }

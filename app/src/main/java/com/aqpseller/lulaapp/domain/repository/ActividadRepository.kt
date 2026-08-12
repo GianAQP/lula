@@ -16,7 +16,10 @@ interface ActividadRepository {
     suspend fun crearMedicamento(actividad: Actividad, detalle: ActividadDetalle.Medicamento, usuarioId: String)
     suspend fun crearCita(actividad: Actividad, detalle: ActividadDetalle.Cita, usuarioId: String)
     suspend fun crearFechaImportante(actividad: Actividad, detalle: ActividadDetalle.FechaImportante, usuarioId: String)
-    suspend fun marcarEstado(id: String, estado: EstadoActividad, usuarioId: String)
+    /** [fechaCompletado] solo aplica a Tarea (ver `ActividadRepositoryImpl.marcarEstado`) — permite
+     * "completado el {fecha}" con una fecha puntual en vez de siempre "ahora", para marcar desde
+     * Calendario una tarea que se hizo un día distinto al de hoy. Null (default) = ahora mismo. */
+    suspend fun marcarEstado(id: String, estado: EstadoActividad, usuarioId: String, fechaCompletado: Long? = null)
 
     suspend fun actualizarHabito(actividadId: String, nombre: String, detalle: ActividadDetalle.Habito, usuarioId: String)
     suspend fun actualizarTarea(actividadId: String, nombre: String, detalle: ActividadDetalle.Tarea, usuarioId: String)

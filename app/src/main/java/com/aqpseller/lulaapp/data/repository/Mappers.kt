@@ -31,6 +31,7 @@ import com.aqpseller.lulaapp.domain.model.AnticipacionRecordatorio
 import com.aqpseller.lulaapp.domain.model.AreaDeVida
 import com.aqpseller.lulaapp.domain.model.CanalEnvio
 import com.aqpseller.lulaapp.domain.model.ComidaRelacionada
+import com.aqpseller.lulaapp.domain.model.CategoriaMeta
 import com.aqpseller.lulaapp.domain.model.ComoSeMideMeta
 import com.aqpseller.lulaapp.domain.model.Conexion
 import com.aqpseller.lulaapp.domain.model.EntradaDiario
@@ -510,6 +511,8 @@ fun Meta.toEntity() = MetaEntity(
     valorObjetivo = valorObjetivo,
     valorActual = valorActual,
     ultimoHitoCelebrado = ultimoHitoCelebrado,
+    categoria = categoria?.name,
+    avisarAlVencer = avisarAlVencer,
 )
 
 fun MetaEntity.toDomain(actividadesVinculadasIds: List<String>) = Meta(
@@ -523,6 +526,8 @@ fun MetaEntity.toDomain(actividadesVinculadasIds: List<String>) = Meta(
     valorActual = valorActual,
     actividadesVinculadasIds = actividadesVinculadasIds,
     ultimoHitoCelebrado = ultimoHitoCelebrado,
+    categoria = categoria?.let { runCatching { CategoriaMeta.valueOf(it) }.getOrNull() },
+    avisarAlVencer = avisarAlVencer,
 )
 
 // --- Solicitud de compartir (Círculo de cuidado) ---

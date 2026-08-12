@@ -8,6 +8,7 @@ import android.os.Build
 import androidx.core.content.getSystemService
 import com.aqpseller.lulaapp.core.utils.DateTimeUtils
 import com.aqpseller.lulaapp.domain.model.AnticipacionRecordatorio
+import com.aqpseller.lulaapp.domain.model.MomentoDelDia
 import com.aqpseller.lulaapp.domain.model.NivelRecordatorio
 import com.aqpseller.lulaapp.domain.model.RecordatorioCita
 import com.aqpseller.lulaapp.domain.model.Recurrencia
@@ -272,6 +273,82 @@ class RecordatorioScheduler @Inject constructor(
     }
 
     /**
+     * Un solo aviso el día que llega la fecha límite de una Meta — no se repite (no tiene
+     * sentido recordar de nuevo al día siguiente algo que ya venció), a diferencia de Hábito/
+     * Medicamento. Hora fija 09:00 — una Meta no tiene un "horaRecordatorio" propio que elegir,
+     * a diferencia de Tarea. Ver `Plan/08-decisiones-tecnicas.md`.
+     */
+    fun programarMeta(metaId: String, nombre: String, fechaLimiteMillis: Long) {
+        val trigger = triggerParaFecha(fechaLimiteMillis, HORA_RECORDATORIO_META) ?: return
+        if (trigger <= DateTimeUtils.ahoraEpochMillis()) return
+        val manager = alarmManager ?: return
+        val intent = Intent(context, RecordatorioReceiver::class.java).apply {
+            putExtra(RecordatorioReceiver.EXTRA_META_ID, metaId)
+            putExtra(RecordatorioReceiver.EXTRA_NOMBRE, nombre)
+        }
+        val pendingIntent = PendingIntent.getBroadcast(
+            context, claveRequestCodeMeta(metaId), intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        val puedeExacta = Build.VERSION.SDK_INT < Build.VERSION_CODES.S || manager.canScheduleExactAlarms()
+        if (puedeExacta) {
+            manager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, trigger, pendingIntent)
+        } else {
+            manager.set(AlarmManager.RTC_WAKEUP, trigger, pendingIntent)
+        }
+    }
+
+    fun cancelarMeta(metaId: String) {
+        val intent = Intent(context, RecordatorioReceiver::class.java).apply {
+            putExtra(RecordatorioReceiver.EXTRA_META_ID, metaId)
+        }
+        val pendingIntent = PendingIntent.getBroadcast(
+            context, claveRequestCodeMeta(metaId), intent, PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE,
+        )
+        if (pendingIntent != null) {
+            alarmManager?.cancel(pendingIntent)
+            pendingIntent.cancel()
+        }
+    }
+
+    private fun claveRequestCodeMeta(metaId: String) = "recordatorio_meta_$metaId".hashCode()
+
+    /**
+     * Recordatorio genérico "revisa Lula" por franja del día (Mañana/Tarde/Noche) — igual que
+     * el de cierre del día, pero independiente: no depende de si el día se cerró, es solo para
+     * no perderse de entrar a la app durante esa franja. Ver `Plan/08-decisiones-tecnicas.md`.
+     */
+    fun programarRecordatorioFranja(momento: MomentoDelDia, hora: String) {
+        val trigger = proximoTrigger(hora) ?: return
+        val manager = alarmManager ?: return
+        val intent = Intent(context, RecordatorioReceiver::class.java).apply {
+            putExtra(RecordatorioReceiver.EXTRA_MOMENTO_FRANJA, momento.name)
+            putExtra(RecordatorioReceiver.EXTRA_HORA, hora)
+        }
+        val pendingIntent = PendingIntent.getBroadcast(
+            context, claveRequestCodeFranja(momento), intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        val puedeExacta = Build.VERSION.SDK_INT < Build.VERSION_CODES.S || manager.canScheduleExactAlarms()
+        if (puedeExacta) {
+            manager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, trigger, pendingIntent)
+        } else {
+            manager.set(AlarmManager.RTC_WAKEUP, trigger, pendingIntent)
+        }
+    }
+
+    fun cancelarRecordatorioFranja(momento: MomentoDelDia) {
+        val intent = Intent(context, RecordatorioReceiver::class.java)
+        val pendingIntent = PendingIntent.getBroadcast(
+            context, claveRequestCodeFranja(momento), intent, PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE,
+        )
+        if (pendingIntent != null) {
+            alarmManager?.cancel(pendingIntent)
+            pendingIntent.cancel()
+        }
+    }
+
+    private fun claveRequestCodeFranja(momento: MomentoDelDia) = "recordatorio_franja_${momento.name}".hashCode()
+
+    /**
      * Pospone el recordatorio de una actividad puntual [minutos] desde ahora, sin tocar la
      * hora fija diaria guardada en el hábito/tarea — al sonar de nuevo, si es hábito, se
      * reprograma solo para su hora habitual del día siguiente (ver `RecordatorioReceiver`).
@@ -383,6 +460,7 @@ class RecordatorioScheduler @Inject constructor(
 
     companion object {
         private val CLAVE_REQUEST_CODE_CIERRE_DIA = "recordatorio_cierre_dia".hashCode()
+        private const val HORA_RECORDATORIO_META = "09:00"
     }
 
     private fun parsearHora(horaRecordatorio: String): Pair<Int, Int>? {

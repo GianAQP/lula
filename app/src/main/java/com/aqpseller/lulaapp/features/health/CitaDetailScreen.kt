@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -23,6 +24,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
@@ -201,24 +203,50 @@ private fun FilaSesionCita(
         // vez de perderse en una lista larga donde antes todo se veía igual.
         val vencida = sesion.estado == EstadoActividad.SIN_CONFIRMAR &&
             (sesion.fecha < hoyEpochDay || (sesion.fecha == hoyEpochDay && sesion.horario < horaActual))
+        // Una sesión futura (todavía no llega su día) no tiene nada que marcar todavía — antes
+        // mostraba igual el botón "✅ Cumplida" en TODAS las sesiones sin marcar, y con un curso
+        // largo (ej. 20 sesiones de radioterapia) eso se veía como una fila de checks verdes,
+        // como si ya estuvieran hechas (confusión real reportada por el usuario). Solo se ofrece
+        // marcar hoy o atrás; una futura solo se puede reprogramar.
+        val esFutura = sesion.fecha > hoyEpochDay
+        // Antes esto era solo un emoji "⬜"/"✅" de texto al inicio de la fila — parecía un
+        // checkbox tocable (invitaba a tocarlo) pero no hacía nada; marcar de verdad requería
+        // encontrar un botón de texto aparte más abajo, confuso (reportado por el usuario). Para
+        // una sesión que sí se puede marcar (no futura, no omitida) ahora es un `Checkbox` real:
+        // tocarlo SÍ marca/desmarca. Futura (no se puede marcar todavía) y Omitida (no es un
+        // simple sí/no) siguen con el emoji fijo, sin fingir que se puede tocar. Ver
+        // `Plan/08-decisiones-tecnicas.md`.
+        val puedeUsarCheckbox = !esFutura && sesion.estado != EstadoActividad.OMITIDO
         val (emojiEstado, colorEstado) = when (sesion.estado) {
             EstadoActividad.CONFIRMADO -> "✅" to MaterialTheme.colorScheme.primary
             EstadoActividad.OMITIDO -> "⏭️" to MaterialTheme.colorScheme.onSurfaceVariant
-            EstadoActividad.SIN_CONFIRMAR -> "⬜" to if (vencida) MaterialTheme.colorScheme.error else Color.Unspecified
+            EstadoActividad.SIN_CONFIRMAR -> if (esFutura) "⬜" to Color.Unspecified else "⬜" to if (vencida) MaterialTheme.colorScheme.error else Color.Unspecified
         }
-        Text(
-            text = "$emojiEstado Sesión ${sesion.numeroSesion} — " +
-                "${DateTimeUtils.formatearFechaLarga(DateTimeUtils.epochDaysToLocalDate(sesion.fecha))} · ${sesion.horario}" +
-                (if (vencida) " ⚠️" else ""),
-            style = MaterialTheme.typography.bodyMedium,
-            color = colorEstado,
-        )
-        Row(modifier = Modifier.padding(top = 4.dp)) {
-            if (sesion.estado == EstadoActividad.SIN_CONFIRMAR) {
-                TextButton(onClick = onMarcarCumplida) { Text("✅ Cumplida") }
-                TextButton(onClick = onMarcarOmitida) { Text("⏭️ No se cumplió") }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            if (puedeUsarCheckbox) {
+                Checkbox(
+                    checked = sesion.estado == EstadoActividad.CONFIRMADO,
+                    onCheckedChange = { marcado -> if (marcado) onMarcarCumplida() else onDeshacer() },
+                )
             } else {
-                TextButton(onClick = onDeshacer) { Text("↩️ Deshacer") }
+                Text(text = emojiEstado, modifier = Modifier.padding(end = 12.dp))
+            }
+            Text(
+                text = "Sesión ${sesion.numeroSesion} — " +
+                    "${DateTimeUtils.formatearFechaLarga(DateTimeUtils.epochDaysToLocalDate(sesion.fecha))} · ${sesion.horario}" +
+                    (if (vencida) " ⚠️" else if (esFutura) " · pendiente" else ""),
+                style = MaterialTheme.typography.bodyMedium,
+                color = colorEstado,
+            )
+        }
+        Row(modifier = Modifier.padding(top = 4.dp)) {
+            when {
+                sesion.estado == EstadoActividad.SIN_CONFIRMAR && !esFutura -> {
+                    TextButton(onClick = onMarcarOmitida) { Text("⏭️ No se cumplió") }
+                }
+                sesion.estado == EstadoActividad.OMITIDO -> {
+                    TextButton(onClick = onDeshacer) { Text("↩️ Deshacer") }
+                }
             }
             TextButton(onClick = onReprogramar) { Text("📅 Reprogramar") }
         }

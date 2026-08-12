@@ -10,6 +10,9 @@ import com.aqpseller.lulaapp.core.database.MIGRATION_18_19
 import com.aqpseller.lulaapp.core.database.MIGRATION_19_20
 import com.aqpseller.lulaapp.core.database.MIGRATION_20_21
 import com.aqpseller.lulaapp.core.database.MIGRATION_21_22
+import com.aqpseller.lulaapp.core.database.MIGRATION_22_23
+import com.aqpseller.lulaapp.core.database.MIGRATION_23_24
+import com.aqpseller.lulaapp.core.database.MIGRATION_24_25
 import com.aqpseller.lulaapp.data.local.dao.AreaDeVidaDao
 import com.aqpseller.lulaapp.data.local.dao.ActividadDao
 import com.aqpseller.lulaapp.data.local.dao.CitaDetalleDao
@@ -53,7 +56,7 @@ object DatabaseModule {
     @Singleton
     fun provideLulaDatabase(@ApplicationContext context: Context): LulaDatabase =
         Room.databaseBuilder(context, LulaDatabase::class.java, LulaDatabase.NOMBRE_BD)
-            .addMigrations(MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22)
+            .addMigrations(MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25)
             // Solo permite borrar y recrear si alguien tiene una versión de pruebas vieja
             // (1-14, ninguna con datos reales de un usuario de verdad) — de la 15 en adelante
             // ya hay migraciones reales registradas arriba, así que un cambio de esquema sin

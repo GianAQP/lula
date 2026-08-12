@@ -27,7 +27,8 @@ class ListaRepositoryImpl @Inject constructor(
 
     override suspend fun crear(espacioId: String, nombre: String, itemsTexto: List<String>, usuarioId: String): String {
         val listaId = IdGenerator.newId()
-        val entity = ListaEntity(id = listaId, espacioId = espacioId, nombre = nombre, fechaCreacion = DateTimeUtils.ahoraEpochMillis())
+        val siguienteOrden = listaDao.obtenerMayorOrden(espacioId) + 1
+        val entity = ListaEntity(id = listaId, espacioId = espacioId, nombre = nombre, fechaCreacion = DateTimeUtils.ahoraEpochMillis(), orden = siguienteOrden)
         listaDao.upsert(entity)
         itemsTexto.forEachIndexed { index, texto ->
             listaItemDao.upsert(ListaItemEntity(id = IdGenerator.newId(), listaId = listaId, texto = texto, marcado = false, orden = index))
@@ -44,12 +45,16 @@ class ListaRepositoryImpl @Inject constructor(
 
     override fun observarResumenPorEspacio(espacioId: String): Flow<List<ListaResumen>> =
         listaDao.observarConConteo(espacioId).map { filas ->
-            filas.map { ListaResumen(id = it.id, nombre = it.nombre, total = it.total, marcados = it.marcados) }
+            filas.map { ListaResumen(id = it.id, nombre = it.nombre, total = it.total, marcados = it.marcados, orden = it.orden) }
         }
 
     override fun observarConItems(listaId: String): Flow<ListaConItems?> =
         combine(listaDao.observarPorId(listaId), listaItemDao.observarPorLista(listaId)) { lista, items ->
-            lista?.let { ListaConItems(id = it.id, nombre = it.nombre, items = items.map { item -> item.toDomain() }) }
+            // Autoordenado: los no marcados van adelante, los marcados atrás (a diferencia del
+            // orden manual de los títulos de lista) — así lo pendiente siempre queda arriba sin
+            // que el usuario tenga que reordenar nada a mano. Ver `08-decisiones-tecnicas.md`.
+            val ordenados = items.sortedWith(compareBy({ it.marcado }, { it.orden }))
+            lista?.let { ListaConItems(id = it.id, nombre = it.nombre, items = ordenados.map { item -> item.toDomain() }) }
         }
 
     override suspend fun agregarItem(listaId: String, texto: String, usuarioId: String) {
@@ -75,6 +80,19 @@ class ListaRepositoryImpl @Inject constructor(
             accion = AccionAuditoria.ACTUALIZAR,
             antes = actual,
             despues = actualizado,
+            usuarioId = usuarioId,
+        )
+    }
+
+    override suspend fun actualizarOrdenLista(listaId: String, nuevoOrden: Int, usuarioId: String) {
+        val actual = listaDao.obtenerPorId(listaId) ?: return
+        listaDao.actualizarOrden(listaId, nuevoOrden)
+        auditLogger.registrar<ListaEntity>(
+            entidad = "lista",
+            entidadId = listaId,
+            accion = AccionAuditoria.ACTUALIZAR,
+            antes = actual,
+            despues = actual.copy(orden = nuevoOrden),
             usuarioId = usuarioId,
         )
     }

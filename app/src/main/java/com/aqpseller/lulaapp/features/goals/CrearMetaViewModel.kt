@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aqpseller.lulaapp.domain.model.Actividad
 import com.aqpseller.lulaapp.domain.model.AreaDeVida
+import com.aqpseller.lulaapp.domain.model.CategoriaMeta
 import com.aqpseller.lulaapp.domain.model.ComoSeMideMeta
 import com.aqpseller.lulaapp.domain.model.Meta
 import com.aqpseller.lulaapp.domain.model.SesionActual
@@ -73,6 +74,8 @@ class CrearMetaViewModel @Inject constructor(
         actividadVinculadaId: String?,
         areaDeVidaId: String?,
         fechaLimite: Long?,
+        categoria: CategoriaMeta? = null,
+        avisarAlVencer: Boolean = false,
     ) {
         if (nombre.isBlank() || valorObjetivo <= 0) return
         viewModelScope.launch {
@@ -91,6 +94,8 @@ class CrearMetaViewModel @Inject constructor(
                     actividadVinculadaId = actividadVinculadaId,
                     areaDeVidaId = areaDeVidaId,
                     fechaLimite = fechaLimite,
+                    categoria = categoria,
+                    avisarAlVencer = avisarAlVencer,
                 )
             } else {
                 crearMetaUseCase(
@@ -102,6 +107,8 @@ class CrearMetaViewModel @Inject constructor(
                     actividadVinculadaId = actividadVinculadaId,
                     areaDeVidaId = areaDeVidaId,
                     fechaLimite = fechaLimite,
+                    categoria = categoria,
+                    avisarAlVencer = avisarAlVencer,
                 )
             }
             _guardado.value = true

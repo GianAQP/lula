@@ -148,7 +148,7 @@ fun LulaNavHost(
         ) {
             composable(LulaDestinations.HOY) {
                 HomeScreen(
-                    onCerrarDia = { navController.navigate(LulaDestinations.CERRAR_DIA) },
+                    onCerrarDia = { navController.navigate(LulaDestinations.cerrarDia()) },
                     onAgregarAlgo = { mostrarMenuAgregar = true },
                     onVerTareas = { navController.navigate(LulaDestinations.TAREAS) },
                     onVerMetas = { navController.navigate(LulaDestinations.METAS) },
@@ -201,7 +201,10 @@ fun LulaNavHost(
                     onVerFinanzas = { navController.navigate(LulaDestinations.FINANZAS) },
                 )
             }
-            composable(LulaDestinations.CERRAR_DIA) {
+            composable(
+                route = LulaDestinations.CERRAR_DIA,
+                arguments = listOf(navArgument("fecha") { type = NavType.StringType; nullable = true; defaultValue = null }),
+            ) {
                 CerrarDiaScreen(
                     onVolverAHoy = {
                         navController.navigate(LulaDestinations.HOY) {
@@ -566,6 +569,7 @@ fun LulaNavHost(
                             TipoActividad.RUTINA -> navController.navigate(LulaDestinations.rutinaDetalle(item.actividadId))
                         }
                     },
+                    onCerrarDia = { fechaEpochDay -> navController.navigate(LulaDestinations.cerrarDia(fechaEpochDay)) },
                 )
             }
         }

@@ -7,6 +7,7 @@ import com.aqpseller.lulaapp.core.utils.DateTimeUtils
 import com.aqpseller.lulaapp.core.utils.instruccionParaHorario
 import com.aqpseller.lulaapp.domain.model.ActividadDetalle
 import com.aqpseller.lulaapp.domain.model.EstadoActividad
+import com.aqpseller.lulaapp.domain.model.MomentoDelDia
 import com.aqpseller.lulaapp.domain.repository.ActividadRepository
 import com.aqpseller.lulaapp.domain.repository.AjustesRepository
 import com.aqpseller.lulaapp.domain.usecase.usuario.ObtenerSesionActualUseCase
@@ -47,6 +48,11 @@ class BootReceiver : BroadcastReceiver() {
 
         ajustesRepository.observarHoraRecordatorioCierreDia().first()?.let { hora ->
             recordatorioScheduler.programarRecordatorioCierreDia(hora)
+        }
+        MomentoDelDia.entries.forEach { momento ->
+            ajustesRepository.observarHoraRecordatorioFranja(momento).first()?.let { hora ->
+                recordatorioScheduler.programarRecordatorioFranja(momento, hora)
+            }
         }
 
         actividadRepository.observarHabitos(sesion.espacioId).first().forEach { habito ->

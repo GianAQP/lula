@@ -31,6 +31,13 @@ Mantener estos nombres al nombrar entidades, clases y campos en Kotlin.
 | **Reto familiar** | Actividad colectiva dentro de un espacio familiar, con objetivo, participantes y recompensa definida libremente por la familia (la app no la sugiere ni la impone). |
 | **Local-first** | Principio de arquitectura: todo dato se guarda primero en el dispositivo y funciona sin conexión; se sincroniza a la nube en segundo plano cuando hay internet. |
 | **Premium feature** | Campo booleano en cualquier elemento que indica si pertenece al nivel gratuito o de pago, permitiendo activar/desactivar el freemium sin reestructurar datos. |
+| **Curso (de Cita)** | Una Cita con varias sesiones repetidas en un patrón de días de la semana (ej. radioterapia, sesiones de masaje), en vez de una cita puntual. `ActividadDetalle.Cita.esCurso`. Agregado 2026-08-06. |
+| **Sesión (de curso)** | Una ocurrencia puntual dentro de un curso de Cita — tiene su propio estado y fecha, reprogramable individualmente sin afectar al resto del curso. Entidad `SesionCita`. |
+| **Recordatorio persistente** | Opción de un Medicamento: además de sonar una vez, sigue insistiendo cada N minutos hasta que la toma se marque o termine el día. No confundir con el nivel "Alarma" (que suena en loop una sola vez hasta apagarla) — el recordatorio persistente vuelve a sonar cada cierto tiempo. |
+| **Vencido/a** | Un ítem con hora de recordatorio (tarea, hábito, cita, medicamento) que ya pasó su hora y sigue `SIN_CONFIRMAR` — se resalta en rojo con ⚠️ en toda la app, nunca se oculta ni se mueve de lugar. |
+| **Racha por hábito** | Racha calculada del historial de un hábito puntual (`calcularRacha`), distinta de la racha global de la app (que cuenta días con "Cerrar mi día" hecho). Se ve en cada tarjeta de la lista de Hábitos. |
+| **Descartar cambios al salir** | Confirmación que aparece al intentar salir de una pantalla "Crear X" con contenido sin guardar (creando o editando) — evita perder texto ya escrito por tocar atrás sin querer. `core/ui/DescartarCambiosAlSalir.kt`. |
+| **Formulario compacto** | Patrón de UI: un bloque de configuración se muestra como una fila colapsada con resumen ("🔔 Recordatorio — Cada 8h desde 08:00 ›") que abre un `ModalBottomSheet` al tocarla, en vez de estar siempre desplegado. `core/ui/SelectorRow.kt`. |
 
 ## Nombres de los asistentes del ecosistema (contexto, no parte de Lula en sí)
 

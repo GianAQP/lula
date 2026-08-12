@@ -4,10 +4,12 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -17,10 +19,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.aqpseller.lulaapp.core.ui.DictationTextField
 import com.aqpseller.lulaapp.core.ui.StatPill
+import com.aqpseller.lulaapp.core.utils.DateTimeUtils
 import com.aqpseller.lulaapp.ui.theme.LulaRachaContainerLight
 
 @Composable
@@ -66,14 +70,47 @@ fun CerrarDiaScreen(
             return
         }
 
+        val fechaTexto = uiState.fecha?.let { DateTimeUtils.formatearFechaLarga(it) }
         Text(
-            text = if (uiState.yaExistiaRegistro) "Actualiza el cierre de hoy" else "Cerremos tu día",
+            text = when {
+                uiState.esHoy && uiState.yaExistiaRegistro -> "Actualiza el cierre de hoy"
+                uiState.esHoy -> "Cerremos tu día"
+                uiState.yaExistiaRegistro -> "Actualiza el cierre del $fechaTexto"
+                else -> "Cerremos el $fechaTexto"
+            },
             style = MaterialTheme.typography.titleLarge,
         )
-        Text(
-            text = "Actividades: ${uiState.actividadesCompletadas} de ${uiState.actividadesTotales}",
-            modifier = Modifier.padding(top = 8.dp),
-        )
+
+        if (uiState.esHoy) {
+            Text(
+                text = "Actividades: ${uiState.actividadesCompletadas} de ${uiState.actividadesTotales}",
+                modifier = Modifier.padding(top = 8.dp),
+            )
+        } else {
+            // Un día anterior no se puede recalcular en vivo de forma confiable — se escribe a
+            // mano, con lo ya guardado como punto de partida si ese día ya se había cerrado.
+            Text(
+                text = "Lula no puede recalcular ese día solo — escribe cuántas completaste.",
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(top = 8.dp),
+            )
+            Row(modifier = Modifier.padding(top = 8.dp)) {
+                OutlinedTextField(
+                    value = uiState.actividadesCompletadas.toString(),
+                    onValueChange = { nuevo -> nuevo.toIntOrNull()?.let { viewModel.actualizarActividadesCompletadas(it) } },
+                    label = { Text("Completadas") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.weight(1f).padding(end = 8.dp),
+                )
+                OutlinedTextField(
+                    value = uiState.actividadesTotales.toString(),
+                    onValueChange = { nuevo -> nuevo.toIntOrNull()?.let { viewModel.actualizarActividadesTotales(it) } },
+                    label = { Text("Totales") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
 
         DictationTextField(
             value = queLogre,

@@ -1,14 +1,17 @@
 package com.aqpseller.lulaapp.features.lists
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -49,21 +52,32 @@ fun ListsScreen(
             Text(text = "Tus listas", style = MaterialTheme.typography.titleLarge)
 
             LazyColumn(modifier = Modifier.padding(top = 8.dp)) {
-                items(uiState.listas, key = { it.id }) { lista ->
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { onListaClick(lista.id) }
-                            .padding(vertical = 12.dp),
+                itemsIndexed(uiState.listas, key = { _, lista -> lista.id }) { index, lista ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
-                        Text(text = lista.nombre, style = MaterialTheme.typography.bodyLarge)
-                        val progreso = if (lista.total > 0) lista.marcados.toFloat() / lista.total else 0f
-                        LulaProgressBar(progreso = progreso, modifier = Modifier.padding(top = 6.dp))
-                        Text(
-                            text = "${lista.marcados} de ${lista.total}",
-                            style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.padding(top = 4.dp),
-                        )
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clickable { onListaClick(lista.id) }
+                                .padding(vertical = 12.dp),
+                        ) {
+                            Text(text = lista.nombre, style = MaterialTheme.typography.bodyLarge)
+                            val progreso = if (lista.total > 0) lista.marcados.toFloat() / lista.total else 0f
+                            LulaProgressBar(progreso = progreso, modifier = Modifier.padding(top = 6.dp))
+                            Text(
+                                text = "${lista.marcados} de ${lista.total}",
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.padding(top = 4.dp),
+                            )
+                        }
+                        IconButton(onClick = { viewModel.moverArriba(lista.id) }, enabled = index > 0) {
+                            Text("▲")
+                        }
+                        IconButton(onClick = { viewModel.moverAbajo(lista.id) }, enabled = index < uiState.listas.lastIndex) {
+                            Text("▼")
+                        }
                     }
                     HorizontalDivider()
                 }

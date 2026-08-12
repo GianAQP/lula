@@ -14,6 +14,11 @@ data class ActividadUi(
     /** Formato "HH:mm", null si no tiene hora de recordatorio — usado para pintar en rojo si ya
      * pasó la hora y sigue `SIN_CONFIRMAR` (mismo criterio que Cita/Fecha importante/Medicamento). */
     val horaRecordatorio: String? = null,
+    /** Solo Tarea — epoch millis de la fecha límite, null si no tiene. Una Tarea vencida por
+     * DÍA (de ayer o antes) debe pintarse en rojo aunque no tenga `horaRecordatorio` configurado
+     * — antes solo se miraba la hora, así que una tarea vencida de hace días sin hora de aviso
+     * nunca se veía en rojo (ver `Plan/08-decisiones-tecnicas.md`). */
+    val fechaLimite: Long? = null,
 )
 
 /** Tarjeta "¿Aumentamos?" de un Hábito progresivo — ver `Plan/02-pantallas.md`. */
@@ -70,10 +75,11 @@ data class HomeUiState(
     val hitosMetaPendientes: List<MetaConProgreso>
         get() = metasActivas.filter { it.hayHitoNuevo }
 
-    /** Sin las ya completadas — una vez al 100%, seguir mostrándola en Hoy todos los días no
-     * aporta nada (la celebración de hito ya avisó una vez, ver `hitosMetaPendientes`). Con
-     * muchas metas, además, esto evita que las ya logradas ensucien la lista de las que siguen
-     * en curso. */
+    /** Sin las ya completadas, y solo las urgentes (últimos 7 días o ya vencida,
+     * `MetaConProgreso.esUrgente`) — antes se mostraban TODAS las metas en progreso sin
+     * filtrar, así que con muchas metas (ej. 100) Hoy se llenaba de una lista larga que no
+     * aporta nada día a día. Las que no son urgentes todavía solo viven en la pestaña Metas.
+     * Pedido explícito del usuario, ver `Plan/08-decisiones-tecnicas.md`. */
     val metasEnProgreso: List<MetaConProgreso>
-        get() = metasActivas.filter { it.fraccion < 1f }
+        get() = metasActivas.filter { it.fraccion < 1f && it.esUrgente }
 }

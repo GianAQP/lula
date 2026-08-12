@@ -73,6 +73,19 @@ class MetaRepositoryImpl @Inject constructor(
         )
     }
 
+    override suspend fun aplazarFechaLimite(metaId: String, fechaLimite: Long?, usuarioId: String) {
+        val actual = metaDao.obtenerPorId(metaId) ?: return
+        metaDao.actualizarFechaLimite(metaId, fechaLimite)
+        auditLogger.registrar<MetaEntity>(
+            entidad = "meta",
+            entidadId = metaId,
+            accion = AccionAuditoria.ACTUALIZAR,
+            antes = actual,
+            despues = actual.copy(fechaLimite = fechaLimite),
+            usuarioId = usuarioId,
+        )
+    }
+
     override suspend fun obtenerConVinculo(metaId: String): Meta? {
         val entity = metaDao.obtenerPorId(metaId) ?: return null
         val vinculo = metaDao.obtenerActividadVinculada(metaId)

@@ -10,9 +10,10 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import com.aqpseller.lulaapp.MainActivity
 import com.aqpseller.lulaapp.core.utils.DateTimeUtils
-import com.aqpseller.lulaapp.core.utils.indiceUltimaDosisEnDiaFinal
+import com.aqpseller.lulaapp.core.utils.horariosParaFecha
 import com.aqpseller.lulaapp.domain.model.ActividadDetalle
 import com.aqpseller.lulaapp.domain.model.EstadoActividad
+import com.aqpseller.lulaapp.domain.model.MomentoDelDia
 import com.aqpseller.lulaapp.domain.model.NivelRecordatorio
 import com.aqpseller.lulaapp.domain.model.Recurrencia
 import com.aqpseller.lulaapp.domain.model.TipoActividad
@@ -49,6 +50,15 @@ class RecordatorioReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.getBooleanExtra(EXTRA_ES_RECORDATORIO_CIERRE_DIA, false)) {
             manejarRecordatorioCierreDia(context, intent.getStringExtra(EXTRA_HORA) ?: "20:00")
+            return
+        }
+        intent.getStringExtra(EXTRA_MOMENTO_FRANJA)?.let { momentoNombre ->
+            val momento = runCatching { MomentoDelDia.valueOf(momentoNombre) }.getOrNull() ?: return
+            manejarRecordatorioFranja(context, momento, intent.getStringExtra(EXTRA_HORA) ?: "09:00")
+            return
+        }
+        intent.getStringExtra(EXTRA_META_ID)?.let { metaId ->
+            mostrarNotificacionMeta(context, metaId, intent.getStringExtra(EXTRA_NOMBRE).orEmpty())
             return
         }
         val actividadId = intent.getStringExtra(EXTRA_ACTIVIDAD_ID) ?: return
@@ -119,11 +129,78 @@ class RecordatorioReceiver : BroadcastReceiver() {
         }
     }
 
+    /**
+     * Recordatorio genérico "revisa Lula" por franja del día — a diferencia del de cierre del
+     * día, no depende de ningún registro: solo avisa a la hora elegida, todos los días, mismo
+     * patrón de auto-reprogramación que un Hábito.
+     */
+    private fun manejarRecordatorioFranja(context: Context, momento: MomentoDelDia, hora: String) {
+        mostrarNotificacionFranja(context, momento)
+        recordatorioScheduler.programarRecordatorioFranja(momento, hora)
+    }
+
+    private fun mostrarNotificacionFranja(context: Context, momento: MomentoDelDia) {
+        val claveNotificacion = "recordatorio_franja_${momento.name}".hashCode()
+        val intentContenido = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            putExtra(MainActivity.EXTRA_DESTINO, LulaDestinations.HOY)
+        }
+        val pendingIntentContenido = PendingIntent.getActivity(
+            context, claveNotificacion, intentContenido, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        val etiquetaMomento = when (momento) {
+            MomentoDelDia.MANANA -> "la mañana"
+            MomentoDelDia.TARDE -> "la tarde"
+            MomentoDelDia.NOCHE -> "la noche"
+        }
+        val builder = NotificationCompat.Builder(context, NotificationChannels.RECORDATORIOS_SONIDO)
+            .setSmallIcon(android.R.drawable.ic_popup_reminder)
+            .setContentTitle("🔔 ¿Revisaste Lula esta $etiquetaMomento?")
+            .setContentText("Dale un vistazo a lo que tienes pendiente hoy.")
+            .setAutoCancel(true)
+            .setContentIntent(pendingIntentContenido)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+        runCatching {
+            NotificationManagerCompat.from(context).notify(claveNotificacion, builder.build())
+        }.onFailure { error ->
+            Log.e("RecordatorioReceiver", "No se pudo mostrar el recordatorio de franja ($momento)", error)
+        }
+    }
+
+    /**
+     * Meta vive en una tabla completamente aparte de `Actividad` — no pasa por el camino normal
+     * de `mostrarNotificacion` (que espera un `TipoActividad` real) ni se reprograma sola, la
+     * fecha límite de una meta no se repite. Un solo disparo, mismo patrón que el recordatorio
+     * de franja. Ver `Plan/08-decisiones-tecnicas.md`.
+     */
+    private fun mostrarNotificacionMeta(context: Context, metaId: String, nombre: String) {
+        val claveNotificacion = "recordatorio_meta_$metaId".hashCode()
+        val intentContenido = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            putExtra(MainActivity.EXTRA_DESTINO, LulaDestinations.metaDetalle(metaId))
+        }
+        val pendingIntentContenido = PendingIntent.getActivity(
+            context, claveNotificacion, intentContenido, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        val builder = NotificationCompat.Builder(context, NotificationChannels.RECORDATORIOS_SONIDO)
+            .setSmallIcon(android.R.drawable.ic_popup_reminder)
+            .setContentTitle("🎯 ¡Hoy vence tu meta!")
+            .setContentText(nombre.ifBlank { "Tienes una meta pendiente en Lula" })
+            .setAutoCancel(true)
+            .setContentIntent(pendingIntentContenido)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+        runCatching {
+            NotificationManagerCompat.from(context).notify(claveNotificacion, builder.build())
+        }.onFailure { error ->
+            Log.e("RecordatorioReceiver", "No se pudo mostrar el recordatorio de meta (metaId=$metaId)", error)
+        }
+    }
+
     private fun mostrarNotificacionCierreDia(context: Context) {
         val claveNotificacion = "cierre_dia".hashCode()
         val intentContenido = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            putExtra(MainActivity.EXTRA_DESTINO, LulaDestinations.CERRAR_DIA)
+            putExtra(MainActivity.EXTRA_DESTINO, LulaDestinations.cerrarDia())
         }
         val pendingIntentContenido = PendingIntent.getActivity(
             context, claveNotificacion, intentContenido, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
@@ -193,15 +270,8 @@ class RecordatorioReceiver : BroadcastReceiver() {
     }
 
     private fun medicamentoSigueVigenteManana(detalle: ActividadDetalle.Medicamento, horario: String): Boolean {
-        val fechaFinDay = detalle.fechaFin?.let { DateTimeUtils.epochMillisToLocalDate(it).toEpochDays().toLong() } ?: return true
-        val mananaDay = DateTimeUtils.hoy().plus(DatePeriod(days = 1)).toEpochDays().toLong()
-        if (mananaDay > fechaFinDay) return false
-        if (mananaDay == fechaFinDay && detalle.cantidadDosisTotal != null && detalle.horariosCalculados.isNotEmpty()) {
-            val indiceCorte = indiceUltimaDosisEnDiaFinal(detalle.horariosCalculados, detalle.cantidadDosisTotal)
-            val indiceHorario = detalle.horariosCalculados.indexOf(horario)
-            return indiceHorario in 0..indiceCorte
-        }
-        return true
+        val manana = DateTimeUtils.hoy().plus(DatePeriod(days = 1))
+        return horario in horariosParaFecha(detalle, manana)
     }
 
     /**
@@ -303,18 +373,45 @@ class RecordatorioReceiver : BroadcastReceiver() {
                     AlarmaSonidoService.intentDetener(context, claveNotificacion),
                     PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
                 )
+                // El `fullScreenIntent` lo dispara ANDROID SOLO para mostrar la alerta sobre la
+                // pantalla bloqueada — no es una acción real de la persona, así que a propósito
+                // NO lleva `EXTRA_DETENER_ALARMA` (a diferencia de `pendingIntentContenido`, que
+                // sí lo lleva porque tocar la notificación SÍ es una acción real). Antes ambos
+                // reusaban el mismo `PendingIntent`: apenas el teléfono estaba bloqueado/inactivo,
+                // Android abría `MainActivity` solo para mostrar la alerta, y esa apertura
+                // automática cortaba la alarma casi al instante — exactamente "suena un poco y
+                // se corta", y solo con el teléfono inactivo porque activo el sistema no dispara
+                // el full-screen intent (ver `Plan/08-decisiones-tecnicas.md`).
+                val intentPantallaCompleta = Intent(context, MainActivity::class.java).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                    putExtra(MainActivity.EXTRA_DESTINO, destino)
+                    putExtra(MainActivity.EXTRA_MOSTRAR_SOBRE_BLOQUEO, true)
+                }
+                val pendingIntentPantallaCompleta = PendingIntent.getActivity(
+                    context,
+                    "$claveNotificacion:pantallaCompleta".hashCode(),
+                    intentPantallaCompleta,
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+                )
                 builder
                     .setPriority(NotificationCompat.PRIORITY_HIGH)
                     .setCategory(NotificationCompat.CATEGORY_ALARM)
-                    .setFullScreenIntent(pendingIntentContenido, true)
+                    .setFullScreenIntent(pendingIntentPantallaCompleta, true)
                     .setOngoing(true)
                     .addAction(0, "🔕 Detener alarma", pendingIntentDetener)
                     .setDeleteIntent(pendingIntentDetener)
             }
         }
 
+        // Sin permiso POST_NOTIFICATIONS (Android 13+), esto no lanza excepción — el sistema
+        // simplemente descarta la notificación en silencio, sin sonido ni aviso visible en
+        // ningún lado (bug real reportado por el usuario: "no sonó nada, ni sonido ni alarma").
+        // El log de acá es la única pista posible; el aviso real para el usuario vive en Hoy
+        // (banner "🔕 Sin permiso de notificaciones") — ver `Plan/08-decisiones-tecnicas.md`.
         runCatching {
             NotificationManagerCompat.from(context).notify(claveNotificacion, builder.build())
+        }.onFailure { error ->
+            Log.e("RecordatorioReceiver", "No se pudo mostrar la notificación (actividadId=$actividadId)", error)
         }
 
         // El canal Alarma no lleva sonido propio (ver `NotificationChannels`) — este Service
@@ -345,5 +442,7 @@ class RecordatorioReceiver : BroadcastReceiver() {
         const val EXTRA_INTERVALO_PERSISTENCIA_MIN = "intervaloPersistenciaMin"
         const val EXTRA_FECHA_ORIGINAL_EPOCH_DAY = "fechaOriginalEpochDay"
         const val EXTRA_ES_RECORDATORIO_CIERRE_DIA = "esRecordatorioCierreDia"
+        const val EXTRA_MOMENTO_FRANJA = "momentoFranja"
+        const val EXTRA_META_ID = "metaId"
     }
 }

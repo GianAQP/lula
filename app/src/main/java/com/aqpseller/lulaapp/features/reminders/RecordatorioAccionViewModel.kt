@@ -1,10 +1,10 @@
 package com.aqpseller.lulaapp.features.reminders
 
 import android.content.Context
-import androidx.core.app.NotificationManagerCompat
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.aqpseller.lulaapp.core.notifications.AlarmaSonidoService
 import com.aqpseller.lulaapp.core.notifications.RecordatorioScheduler
 import com.aqpseller.lulaapp.domain.model.ActividadDetalle
 import com.aqpseller.lulaapp.domain.model.EstadoActividad
@@ -48,13 +48,11 @@ class RecordatorioAccionViewModel @Inject constructor(
     private var nivelRecordatorio: NivelRecordatorio = NivelRecordatorio.SONIDO
 
     init {
-        // Al abrirse esta pantalla (por toque o por el fullScreenIntent de Alarma), la
-        // notificación ya cumplió su función — cancelarla apaga su sonido/vibración. Sin esto
-        // el sonido seguía sonando aunque el usuario ya hubiera tocado una acción, porque el
-        // fullScreenIntent no pasa por el flujo normal de "tocar la notificación" que dispara
-        // `setAutoCancel`.
-        NotificationManagerCompat.from(context).cancel(actividadId.hashCode())
-
+        // A propósito NO se detiene la Alarma acá — el `fullScreenIntent` abre esta pantalla
+        // SOLO, sin que la persona haga nada, así que detener acá era el mismo bug que se acaba
+        // de corregir (la app se apagaba la propia alarma apenas se abría la pantalla, antes de
+        // que la persona llegara a verla). La Alarma se detiene recién cuando la persona toca
+        // una acción real de acá abajo — ver `detenerAlarmaSiSonando`, `08-decisiones-tecnicas.md`.
         viewModelScope.launch {
             sesion = obtenerSesionActualUseCase()
             val actividad = obtenerDetalleActividadUseCase(actividadId)
@@ -84,6 +82,7 @@ class RecordatorioAccionViewModel @Inject constructor(
     }
 
     fun marcarHecho() {
+        detenerAlarmaSiSonando()
         viewModelScope.launch {
             marcarActividadUseCase(actividadId, EstadoActividad.CONFIRMADO, sesionActual().usuarioId)
             _uiState.update { it.copy(listo = true) }
@@ -93,12 +92,23 @@ class RecordatorioAccionViewModel @Inject constructor(
     private suspend fun sesionActual(): SesionActual = sesion ?: obtenerSesionActualUseCase().also { sesion = it }
 
     fun posponer(minutos: Int = 15) {
+        detenerAlarmaSiSonando()
         val hora = horaRecordatorio ?: run { _uiState.update { it.copy(listo = true) }; return }
         recordatorioScheduler.posponer(actividadId, _uiState.value.nombre, _uiState.value.esHabito, hora, nivelRecordatorio, minutos)
         _uiState.update { it.copy(listo = true) }
     }
 
     fun irAHoy() {
+        detenerAlarmaSiSonando()
         _uiState.update { it.copy(listo = true) }
+    }
+
+    /** Tocar cualquiera de las 3 acciones de esta pantalla SÍ es una acción real de la persona
+     * (a diferencia de que Android abra la pantalla sola por el `fullScreenIntent`) — ahí
+     * corresponde cortar la Alarma si estaba sonando. Cancela también la notificación de
+     * recordatorio; no pasa nada si no había ninguna Alarma sonando (`AlarmaSonidoService` no
+     * hace nada si no tiene nada que detener). */
+    private fun detenerAlarmaSiSonando() {
+        context.startService(AlarmaSonidoService.intentDetener(context, actividadId.hashCode()))
     }
 }

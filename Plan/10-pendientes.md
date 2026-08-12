@@ -26,7 +26,8 @@ falta activar en cuanto exista:
   hacer: crear el proyecto en Firebase Console y pasar el `google-services.json` (pasos exactos
   en la sección 7 de ese documento) — hasta que eso llegue, no se puede escribir el código de
   conexión real.
-- **Sync a n8n/Sheets** (`syncStatus` ya existe en el modelo, sin cliente de red todavía).
+- **Sync a Firestore** (`syncStatus` ya existe en el modelo, sin cliente de red todavía — el
+  backend real decidido es Firebase, no Sheets/n8n, ver `12-firebase-auth-y-sync.md`).
 - **Invitación a personas sin la app instalada** (deep link + onboarding especial).
 - **Aceptar/rechazar una `SOLICITUD_COMPARTIR`** — solo tiene sentido cuando la otra persona
   tiene cuenta propia.
@@ -84,6 +85,33 @@ falta activar en cuanto exista:
   "personales" arman Misión y Visión juntas + 1 pregunta nueva directa de Propósito; las 6
   preguntas de "objetivos" que estaban mal puestas ahí se movieron a Crear Meta, como ayuda de
   referencia.)
+
+- **"Citas históricas" en Mi salud**: hoy la pantalla solo tiene "Próximas citas" (incluye
+  sesiones pendientes de un curso) — no existe ninguna sección para ver citas puntuales ya
+  pasadas/cumplidas ni el historial completo de sesiones de un curso ya terminado (el detalle
+  de la Cita sí muestra todas sus sesiones, pero no hay una vista agregada de "citas pasadas"
+  como lista). Mencionado por el usuario 2026-08-07, quedó fuera de alcance esa ronda porque
+  el arreglo urgente era que un curso en progreso no desapareciera de la lista, no un
+  historial completo nuevo.
+- **Ícono/mascota de estado del día** (🙂/✅/⏳/💤, descrito en `01-arquitectura.md`) — sigue sin
+  implementarse en ninguna pantalla.
+- **Distinción visual de actividad propia/de apoyo/compartida en Hoy** — el modelo lo soporta
+  (`propietario`/`responsables[]`) pero no hay ningún ícono/indicador en la UI todavía; solo
+  tiene sentido real con una segunda persona (bloqueado por backend, ver sección 1).
+- **Método FODA (Fortalezas/Oportunidades/Debilidades/Amenazas + Aspiraciones/Resultados)** —
+  propuesto por el usuario 2026-08-10 como algo para llenar de a poco, con la duda de si
+  ayudaría a las personas. Decisión (a confirmar recién cuando se construya): **sí, pero como
+  extensión de "Mi propósito"**, mismo patrón de preguntas guiadas (`respuestas: Map<String,
+  String>`), no como módulo nuevo separado. F/O/D/A encajan directo ahí. "Aspiraciones y
+  Resultados" **no** necesita un sistema de medición propio — una Aspiración se convierte en
+  una `Meta` (ya existe en Lula) y el Resultado es el progreso que Metas ya calcula solo
+  (`comoSeMide`/`valorActual`/`valorObjetivo`); construir algo aparte solo duplicaría esa
+  lógica. Riesgo a tener en cuenta si se construye: un FODA completo es una herramienta de
+  "sentarse a pensar" más pesada que el ritmo diario de Lula — sin conectarlo de vuelta a algo
+  accionable (crear un hábito/tarea/meta desde ahí), corre el riesgo de ser un formulario que
+  se llena una vez y nunca se vuelve a abrir. El usuario lo pidió explícitamente como algo para
+  "después", pensado para alguien ya más metido en la app (no para el onboarding ni las
+  primeras sesiones de uso) — no construir sin que lo pida de nuevo explícitamente.
 
 ## 3. Fases o funciones enteras sin empezar
 

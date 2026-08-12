@@ -10,6 +10,7 @@ import kotlinx.serialization.Serializable
 data class Lista(
     val id: String,
     val nombre: String,
+    val orden: Int,
 )
 
 data class ListaItem(
@@ -31,6 +32,7 @@ data class ListaResumen(
     val nombre: String,
     val total: Int,
     val marcados: Int,
+    val orden: Int,
 )
 
 /** Foto de un ítem al momento de "Reiniciar lista" — para el historial de usos pasados. */
