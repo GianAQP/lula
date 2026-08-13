@@ -27,18 +27,18 @@ Hábitos, tareas, finanzas y cuidado no son módulos sueltos: son piezas que ali
 - **Inyección de dependencias**: Hilt
 - **Backend real decidido (2026-08-01)**: Firebase (Auth + Firestore) — reemplaza el plan
   original de Google Sheets vía n8n para sincronización de datos. Ver
-  `docs/12-firebase-auth-y-sync.md`. n8n se mantiene como plan solo para el webhook del
+  `Plan/12-firebase-auth-y-sync.md`. n8n se mantiene como plan solo para el webhook del
   asistente conversacional / "armar con IA" de Mi propósito (Fase 2.0), no para sync de datos.
   **Sin ningún cliente de red construido todavía** — bloqueado por que el usuario cree el
   proyecto en Firebase Console.
 - **Autenticación**: Firebase Authentication (Google Sign-In + enlace mágico por correo,
   sin contraseñas clásicas) — diseñado, no construido; hoy la app usa un usuario semilla local.
 - **Modelo de datos**: local-first, sincronización a la nube en segundo plano (solo espacios
-  Familia/Conexiones — los espacios Personales nunca suben, ver `docs/12-firebase-auth-y-sync.md`)
+  Familia/Conexiones — los espacios Personales nunca suben, ver `Plan/12-firebase-auth-y-sync.md`)
 
 ## Regla de diseño no negociable
 
-Existe una entidad genérica `Actividad` (ver `docs/01-arquitectura.md`) que representa
+Existe una entidad genérica `Actividad` (ver `Plan/01-arquitectura.md`) que representa
 hábito, tarea, rutina, medicamento, cita, evento y fecha importante. **Todo módulo nuevo debe
 reutilizar esta estructura — nunca crear una tabla paralela.** Esto es lo que permite que el
 proyecto escale de personal → cuidado de familiares → familia/equipo sin reconstruir la base
@@ -50,33 +50,33 @@ Este documento es un resumen de entrada. El detalle completo está separado por 
 
 | Archivo | Contenido |
 |---|---|
-| `docs/01-arquitectura.md` | Modelo de datos completo, capas de la app, lógica de sincronización, reglas de privacidad |
-| `docs/02-pantallas.md` | Especificación de cada pantalla: contenido exacto, estados, navegación |
-| `docs/03-vocabulario.md` | Glosario de términos del dominio (Actividad, Espacio, Constancia, etc.) |
-| `docs/04-roadmap-fases.md` | Las 6 fases del proyecto, qué incluye cada una y en qué orden construir |
-| `docs/05-modelo-negocio.md` | Freemium: qué es gratis, qué es premium, estrategia de lanzamiento |
-| `docs/06-onboarding.md` | Flujo completo de registro, preguntas, casos especiales (invitación) |
-| `docs/07-asistente-voz.md` | Asistente conversacional: 4 modos, arquitectura, reglas de comportamiento |
-| `docs/08-decisiones-tecnicas.md` | Decisiones de implementación del núcleo técnico (Room, lecciones de MayiaApp aplicadas, usuario semilla) |
-| `docs/09-guia-visual.md` | Paleta de marca, componentes reutilizables (`StatPill`, `LulaProgressBar`, `EmptyState`) y qué mecánicas de gamificación evitar (leaderboards, rojo de alerta) |
-| `docs/10-pendientes.md` | Lista viva de qué falta y por qué — bloqueado por backend, piezas de UI que quedaron afuera de una fase "completa", fases sin empezar. Revisar antes de preguntar "¿qué falta?" |
-| `docs/11-cuentas-y-conexiones.md` | Diseño de "usuarios pendientes": datos personales + consentimientos legales, tabla `Conexion` (cómo se conectan familia/amigos), preguntas de onboarding vs. Mi propósito, checklist de Play Store |
-| `docs/12-firebase-auth-y-sync.md` | Diseño de login real (Google + correo mágico), recuperación de cuenta, y qué sincroniza con Firestore vs. qué se queda 100% local (el límite es `Espacio.tipo`) |
+| `Plan/01-arquitectura.md` | Modelo de datos completo, capas de la app, lógica de sincronización, reglas de privacidad |
+| `Plan/02-pantallas.md` | Especificación de cada pantalla: contenido exacto, estados, navegación |
+| `Plan/03-vocabulario.md` | Glosario de términos del dominio (Actividad, Espacio, Constancia, etc.) |
+| `Plan/04-roadmap-fases.md` | Las 6 fases del proyecto, qué incluye cada una y en qué orden construir |
+| `Plan/05-modelo-negocio.md` | Freemium: qué es gratis, qué es premium, estrategia de lanzamiento |
+| `Plan/06-onboarding.md` | Flujo completo de registro, preguntas, casos especiales (invitación) |
+| `Plan/07-asistente-voz.md` | Asistente conversacional: 4 modos, arquitectura, reglas de comportamiento |
+| `Plan/08-decisiones-tecnicas.md` | Decisiones de implementación del núcleo técnico (Room, lecciones de MayiaApp aplicadas, usuario semilla) |
+| `Plan/09-guia-visual.md` | Paleta de marca, componentes reutilizables (`StatPill`, `LulaProgressBar`, `EmptyState`) y qué mecánicas de gamificación evitar (leaderboards, rojo de alerta) |
+| `Plan/10-pendientes.md` | Lista viva de qué falta y por qué — bloqueado por backend, piezas de UI que quedaron afuera de una fase "completa", fases sin empezar. Revisar antes de preguntar "¿qué falta?" |
+| `Plan/11-cuentas-y-conexiones.md` | Diseño de "usuarios pendientes": datos personales + consentimientos legales, tabla `Conexion` (cómo se conectan familia/amigos), preguntas de onboarding vs. Mi propósito, checklist de Play Store |
+| `Plan/12-firebase-auth-y-sync.md` | Diseño de login real (Google + correo mágico), recuperación de cuenta, y qué sincroniza con Firestore vs. qué se queda 100% local (el límite es `Espacio.tipo`) |
 
 ## Orden de construcción recomendado
 
-Se construye por fases (ver `docs/04-roadmap-fases.md`), empezando por **Fase 0.1 — Núcleo
+Se construye por fases (ver `Plan/04-roadmap-fases.md`), empezando por **Fase 0.1 — Núcleo
 personal**. No avanzar a la fase siguiente hasta que la anterior esté funcional y usable por
 Giancarlo como primer usuario real.
 
 **Antes de escribir código de una pantalla o función nueva**, revisar:
-1. `docs/03-vocabulario.md` — para usar los nombres correctos de entidades y campos
-2. `docs/01-arquitectura.md` — para confirmar que el dato encaja en el modelo existente
-3. `docs/02-pantallas.md` — para el contenido y comportamiento exacto esperado
+1. `Plan/03-vocabulario.md` — para usar los nombres correctos de entidades y campos
+2. `Plan/01-arquitectura.md` — para confirmar que el dato encaja en el modelo existente
+3. `Plan/02-pantallas.md` — para el contenido y comportamiento exacto esperado
 
 ## Convenciones de código
 
-- Nombrar entidades y campos en el código igual que en `docs/03-vocabulario.md` (en español,
+- Nombrar entidades y campos en el código igual que en `Plan/03-vocabulario.md` (en español,
   consistente con el dominio del producto), salvo convenciones técnicas propias de Kotlin/Android
   que exijan inglés (nombres de clases base, interfaces del framework, etc.)
 - Cada tipo de `Actividad` (hábito, tarea, medicamento...) se maneja mediante el mismo modelo
@@ -88,7 +88,7 @@ Giancarlo como primer usuario real.
 ## Estado actual del proyecto
 
 Fase de diseño conceptual completada. En implementación: **Fase 0.1 — Núcleo personal**
-(ver progreso detallado en `docs/04-roadmap-fases.md`, que lista ✅ hecho / ⬜ pendiente
+(ver progreso detallado en `Plan/04-roadmap-fases.md`, que lista ✅ hecho / ⬜ pendiente
 ítem por ítem — esa es la referencia para seguir y revisar el avance).
 
 **Base técnica construida** (2026-07-25): arquitectura Clean Architecture completa
@@ -97,12 +97,12 @@ modelo de datos y sus índices/FKs, Hilt, usuario semilla local (sin Firebase to
 auditoría (`HistorialCambios`) conectada desde el primer commit, navegación con bottom bar
 y menú `+`, y las pantallas Hoy / Crear hábito / Crear tarea / Registrar movimiento / Cerrar
 mi día funcionando de punta a punta sobre datos reales. Decisiones técnicas y lecciones de
-MayiaApp aplicadas están en `docs/08-decisiones-tecnicas.md`. Sin sync a n8n/Sheets todavía
+MayiaApp aplicadas están en `Plan/08-decisiones-tecnicas.md`. Sin sync a n8n/Sheets todavía
 (Room 100% local).
 
 **Hábitos y Tareas completos** (2026-07-25): lista/detalle/editar/pausar/eliminar para
 Hábitos (con tracker semanal y racha por hábito, vía la nueva tabla `registro_actividad` —
-ver `docs/08-decisiones-tecnicas.md`) y lista/detalle/editar/completar/eliminar para Tareas.
+ver `Plan/08-decisiones-tecnicas.md`) y lista/detalle/editar/completar/eliminar para Tareas.
 
 **Finanzas completa** (2026-07-26): pantalla Finanzas (balance del mes, gastos de hoy),
 historial del mes con edición/eliminación al tocar cada movimiento — accesible desde el
@@ -114,7 +114,7 @@ bottom nav con íconos a color por sección, componentes reutilizables `StatPill
 Duolingo y Me+ pero sin sus mecánicas de presión (sin leaderboard, sin rojo de alerta). Se
 corrigió además un bug de contraste (texto invisible sobre fondo claro fijo en modo oscuro) y
 se agregaron íconos a color en el menú `+`. Detalle completo, la lección de contraste y qué
-falta vestir todavía en `docs/09-guia-visual.md`.
+falta vestir todavía en `Plan/09-guia-visual.md`.
 
 **Historial simple** (2026-07-26): pantalla con los días cerrados (fecha, puntos, actividades
 cumplidas, las 3 respuestas de reflexión) — se accede tocando la insignia 🔥 de racha en Hoy o
@@ -124,15 +124,15 @@ con "Ver mi historial" al cerrar el día.
 (`DictationTextField`) en todo campo de texto libre existente; Zona Privada con PIN (hash
 SHA-256, nunca texto plano) + biometría (`BiometricPrompt`, requirió pasar `MainActivity` a
 `FragmentActivity`) gateando la sección Finanzas. Auto-bloqueo por inactividad queda
-pendiente. Detalle en `docs/08-decisiones-tecnicas.md`.
+pendiente. Detalle en `Plan/08-decisiones-tecnicas.md`.
 
 **Notificaciones/recordatorios** (2026-07-27): hora opcional al crear/editar Hábito o Tarea
 con fecha, programada con `AlarmManager` (`RecordatorioScheduler`). Los hábitos se
 reprograman solos día a día; un `BootReceiver` los vuelve a programar todos tras reiniciar el
 teléfono (si no, dejarían de sonar en silencio). Pide permiso de notificaciones una vez al
-abrir la app (Android 13+). Detalle en `docs/08-decisiones-tecnicas.md`.
+abrir la app (Android 13+). Detalle en `Plan/08-decisiones-tecnicas.md`.
 
-Con esto, los pasos 1, 2, 3, 5, 6 y 7 del roadmap de Fase 0.1 (`docs/04-roadmap-fases.md`)
+Con esto, los pasos 1, 2, 3, 5, 6 y 7 del roadmap de Fase 0.1 (`Plan/04-roadmap-fases.md`)
 están completos — el 4 (Onboarding) se saltó a propósito porque requiere que el usuario
 configure un proyecto de Firebase (`google-services.json`); no bloqueó el resto del avance.
 Solo queda pendiente en Fase 0.1: Onboarding (bloqueado por Firebase) y Sync con n8n/Sheets
@@ -140,7 +140,7 @@ Solo queda pendiente en Fase 0.1: Onboarding (bloqueado por Firebase) y Sync con
 
 **Fix + pulido a pedido del usuario** (2026-07-27): se corrigió un bug real (el checkbox de
 un hábito en Hoy no se actualizaba en vivo — el `Flow` de Room no escuchaba la tabla
-`registro_actividad`, ver la lección en `docs/08-decisiones-tecnicas.md`). Se reemplazaron
+`registro_actividad`, ver la lección en `Plan/08-decisiones-tecnicas.md`). Se reemplazaron
 los chips de hora/fecha fijos por un `TimePicker`/`DatePicker` reales. Se agregaron
 categorías predefinidas en Finanzas con encaje automático de categorías dictadas por voz
 ("comida"/"Comida"/"comidas" caen en la misma), y un `StatPill` de "Ahorro" destacado cuando
@@ -150,7 +150,7 @@ el usuario ahorra en el mes. Bottom nav con íconos más grandes (36dp → 44dp)
 detalle con progreso, agregar progreso manual, eliminar — accesible desde "Ver mis metas" en
 Hoy. El progreso "por hábito" se calcula solo desde el historial del hábito vinculado,
 reusando la misma lógica del tracker de Hábitos. Falta **editar** una meta ya creada, área de
-vida y fecha límite — ver `docs/08-decisiones-tecnicas.md`.
+vida y fecha límite — ver `Plan/08-decisiones-tecnicas.md`.
 
 **Fix de notificación + 3 niveles de intensidad** (2026-07-27): se corrigió un bug real
 (tocar una notificación de recordatorio no abría la app, faltaba `.setContentIntent(...)` en
@@ -160,7 +160,7 @@ a pedido del usuario, cada recordatorio ahora elige su propio nivel de insistenc
 (Android no permite cambiar el sonido de un canal ya creado por código) y un acceso directo
 "🔊 Sonido de mis recordatorios" en Hoy que abre los Ajustes del sistema para personalizar cada
 canal. Detalle completo y el trade-off del nivel "Alarma" (single-shot, no un despertador con
-loop) en `docs/08-decisiones-tecnicas.md`.
+loop) en `Plan/08-decisiones-tecnicas.md`.
 
 **Rutinas** (2026-07-27): tercera pieza de Fase 0.5. Agrupan Hábitos/Tareas ya existentes por
 referencia (ej. "Rutina de mañana") — lista/detalle con checklist y un botón "Marcar rutina
@@ -168,7 +168,7 @@ completa" que marca todos los ítems incluidos de una vez. El estado de "complet
 en vivo (cuántos ítems están `CONFIRMADO` ahora), nunca se guarda aparte — misma filosofía de
 una sola fuente de verdad que el progreso "por hábito" de Metas. Accesible desde "🧩 Ver mis
 rutinas" en Hoy y desde el menú `+`; a propósito no aparece mezclada dentro de la lista de Hoy
-(ver el porqué en `docs/08-decisiones-tecnicas.md`).
+(ver el porqué en `Plan/08-decisiones-tecnicas.md`).
 
 **Revisión semanal** (2026-07-27): cuarta pieza de Fase 0.5. Resumen de la semana en curso
 (cumplimiento general, racha máxima de la semana, hábito que mejor/peor le fue) más las 3
@@ -177,7 +177,7 @@ revisión semanal" en Hoy, sin el gating al domingo que especifica el documento 
 revisar la semana en cualquier momento, se guarda igual sobre el mismo registro de esa
 semana). Nota técnica: se evitó `LocalDate.dayOfWeek` de kotlinx-datetime porque delega en
 `java.time.DayOfWeek`, que necesita API 26+ y el proyecto no tiene desugaring — se calculó el
-día ISO con aritmética propia en su lugar. Detalle en `docs/08-decisiones-tecnicas.md`. De
+día ISO con aritmética propia en su lugar. Detalle en `Plan/08-decisiones-tecnicas.md`. De
 Fase 0.5 quedan pendientes: pantalla "Progreso"/Constancia, Hábitos progresivos, Matriz de
 Eisenhower.
 
@@ -193,7 +193,7 @@ de mis recordatorios" se movió a una pantalla Ajustes nueva detrás de un menú
 no vive en el flujo diario); "Ver mis metas"/"Ver mis rutinas" en Hoy solo aparecen si ya hay
 al menos una (se agregó "Meta" al menú `+` para no perder el descubrimiento); y se aclaró con
 texto explicativo la confusión entre Metas "por hábito" y la diferencia Rutina/Hábito. Detalle
-completo en `docs/08-decisiones-tecnicas.md`.
+completo en `Plan/08-decisiones-tecnicas.md`.
 
 **Segunda ronda de feedback en dispositivo real** (2026-07-28): 8 puntos más, resueltos en
 conjunto. Notificación de Alarma: ya no se queda sonando después de que el usuario toca una
@@ -208,7 +208,7 @@ reutilizables** (viaje, compras): nueva entidad `Lista`/`ListaItem` fuera del mo
 `Actividad` (mismo precedente que Meta) — plantilla de ítems que se "reinicia" (desmarca) para
 la próxima vez, sin duplicar. Revisión semanal: ahora precarga y permite editar lo ya guardado
 de la semana en curso (antes siempre arrancaba en blanco). Detalle completo de las 8 en
-`docs/08-decisiones-tecnicas.md`.
+`Plan/08-decisiones-tecnicas.md`.
 
 **Tercera ronda de feedback en dispositivo real** (2026-07-28): todas las pantallas de
 formulario/detalle (13 archivos) ganaron `verticalScroll` — ninguna tenía, así que con
@@ -218,7 +218,7 @@ porque estaba anclado a un `Row` de ancho completo en vez de al ícono — corre
 ícono+menú en su propio `Box`. Nuevo acceso rápido "Ver todas mis tareas/hábitos" desde
 Crear Tarea/Hábito. Corregido un bug real en `TasksListScreen`: el `Checkbox` estaba dentro
 de la misma fila clickeable que navegaba al detalle, y los dos gestos competían — el check no
-se veía marcar. Detalle completo en `docs/08-decisiones-tecnicas.md`.
+se veía marcar. Detalle completo en `Plan/08-decisiones-tecnicas.md`.
 
 **Cuarta ronda de feedback en dispositivo real** (2026-07-28): quedaba un segundo bug real
 detrás de "el check no cambia" — 12 ViewModels compartían un patrón de sesión cacheada que
@@ -226,13 +226,13 @@ podía descartar la acción en silencio si se tocaba muy rápido apenas se abrí
 (condición de carrera, no relacionada con el bug de `TasksListScreen` de la ronda anterior).
 Corregido en los 12 con un helper `sesionActual()` resuelto dentro de la propia corrutina —
 ahora es una regla general para todo ViewModel nuevo (ver
-`docs/08-decisiones-tecnicas.md`). También de esa ronda: sonido de check + tachado
+`Plan/08-decisiones-tecnicas.md`). También de esa ronda: sonido de check + tachado
 extendido a Tareas/Rutina/Lista (antes solo Hoy); confirmación obligatoria antes de eliminar
 en las 7 acciones de eliminar de la app (`ConfirmarEliminarDialog`); accesos rápidos "Ver ya
 creados" en las 4 pantallas de Crear que faltaban; y una pantalla nueva "📜 Ver semanas
 anteriores" para leer las revisiones semanales guardadas (nunca se borraban, solo faltaba
 dónde leerlas). Se agregó una sección de convenciones de UI de cumplimiento obligatorio para
-toda pantalla nueva en `docs/08-decisiones-tecnicas.md` — léela antes de construir la
+toda pantalla nueva en `Plan/08-decisiones-tecnicas.md` — léela antes de construir la
 siguiente pantalla.
 
 **Fase 0.5 completa** (2026-07-28): las 3 piezas que quedaban. **Constancia** (% de días
@@ -247,7 +247,7 @@ Cuando toca revisar, aparece una tarjeta en Hoy ("Completaste X de Y días... ¿
 con 3 botones (Subir/Mantener/Recordarme después) — Lula pregunta, nunca decide sola. Detalle
 técnico completo (incluida la decisión de no extender la reactividad de Hoy a
 `habito_detalle`, y la lección de auditoría aplicada preventivamente esta vez) en
-`docs/08-decisiones-tecnicas.md`. Fase 0.5 queda funcionalmente completa salvo la pantalla
+`Plan/08-decisiones-tecnicas.md`. Fase 0.5 queda funcionalmente completa salvo la pantalla
 "Progreso" unificada de `02-pantallas.md` (sus piezas ya existen, repartidas).
 
 **Fase 0.8 completa** (2026-07-28): `Actividad` se extendió a Medicamento y Cita, todavía
@@ -265,7 +265,7 @@ el usuario indicó, nunca sugiere cambiar dosis ni horarios — se muestra expl�
 pantalla de crear medicamento. De paso se corrigió un bug real: eliminar un medicamento con
 varias tomas diarias no cancelaba todas sus alarmas (`EliminarActividadUseCase` solo conocía
 la clave simple, no la compuesta por horario). Detalle técnico completo en
-`docs/08-decisiones-tecnicas.md`.
+`Plan/08-decisiones-tecnicas.md`.
 
 **Feedback de Fase 0.8 en dispositivo real** (2026-07-28): 6 correcciones (`version = 9`).
 Menú "⋮" se movió al `Scaffold` del `NavHost` para que aparezca en toda la app, no solo en
@@ -281,7 +281,7 @@ variante "Light") quedaban con texto invisible en modo oscuro — nuevo helper
 **varios recordatorios, cada uno a su propia hora** (antes solo un offset a la misma hora de
 la cita) — mismo patrón de alarma compuesta por recordatorio que ya usaba Medicamento, y se
 corrigió el mismo bug de alarmas huérfanas al eliminar/editar. Detalle técnico completo en
-`docs/08-decisiones-tecnicas.md`.
+`Plan/08-decisiones-tecnicas.md`.
 
 **Segunda vuelta de feedback sobre Fase 0.8** (2026-07-28): "Presiono Crear y no pasa nada."
 Causa real: `CrearMedicamentoViewModel`/`CrearCitaViewModel` tenían validaciones (nombre
@@ -304,7 +304,7 @@ círculo de cuidado" (menú "⋮") con la sección "Quién me acompaña a mí" t
 (listar, cancelar, revocar) y "Personas que acompaño" como estado vacío honesto en vez de
 datos simulados, porque eso sí necesita los datos de otra persona sincronizados a este
 dispositivo. Detalle técnico completo, incluida la corrección de un bug de mayúsculas/
-minúsculas en una query que llevaba desde Fase 0.1 sin usarse, en `docs/08-decisiones-tecnicas.md`.
+minúsculas en una query que llevaba desde Fase 0.1 sin usarse, en `Plan/08-decisiones-tecnicas.md`.
 
 **Quinta ronda de feedback en dispositivo real** (2026-07-29), 7 puntos. La más importante:
 **el menú "⋮" que se movió al `Scaffold` la ronda anterior había quedado invisible en toda la
@@ -320,7 +320,7 @@ el historial de Finanzas ahora muestra fecha y día de la semana; "Mañana" (mom
 se aclaró a "Por la mañana" porque sonaba a "día siguiente"; la flecha "→" de `SectionLinkRow`
 se agrandó (afecta a todas las filas "Ver mis X"); y el campo "Objetivo" de una Meta en modo
 Manual ahora explica que siempre es un número. Detalle técnico completo en
-`docs/08-decisiones-tecnicas.md`.
+`Plan/08-decisiones-tecnicas.md`.
 
 **Compartir "moderno" + stats globales** (2026-07-29): el usuario pidió modernizar cómo se
 comparte (QR, WhatsApp/Telegram, buscar usuarios existentes) y mover racha/gastos de Hoy al
@@ -334,12 +334,12 @@ el `Toast` que había en los 3 flujos de "Compartir seguimiento". Racha/gastos d
 movieron a `LulaTopBar` (`TopBarStatsViewModel` nuevo) — visibles en toda la app, no solo Hoy
 — y el ícono 💰 ahora sí navega a Finanzas. Se agregó también un aviso "📩" de invitación
 pendiente, conectado a una query que ya existía desde Fase 0.1 pero que va a estar en 0 hasta
-que haya backend. Detalle técnico completo en `docs/08-decisiones-tecnicas.md`.
+que haya backend. Detalle técnico completo en `Plan/08-decisiones-tecnicas.md`.
 
 **Reordenamiento de documentación** (2026-07-29): `08-decisiones-tecnicas.md` ya pasó las
 1000 líneas — a pedido del usuario, se sacó todo lo que era "lista de qué falta" (estaba
 mezclado entre las decisiones técnicas, difícil de escanear) a un documento nuevo,
-`docs/10-pendientes.md`, organizado en 4 categorías: bloqueado por backend, piezas de UI
+`Plan/10-pendientes.md`, organizado en 4 categorías: bloqueado por backend, piezas de UI
 que quedaron afuera de una fase "completa", fases sin empezar, y deuda técnica. Cuando algo
 de esa lista se construye, se borra de ahí — el "por qué se hizo así" sigue registrándose en
 `08-decisiones-tecnicas.md` como siempre.
@@ -350,14 +350,14 @@ la base de Fase 0.1 — se completó repositorio, casos de uso, notificaciones y
 siguiendo el mismo patrón de Medicamento/Cita. Novedad técnica: primera actividad con
 recurrencia semanal/anual (no diaria) — `RecordatorioScheduler` nunca muta `fechaBase`,
 siempre recalcula la próxima ocurrencia desde el original. Detalle completo en
-`docs/08-decisiones-tecnicas.md`.
+`Plan/08-decisiones-tecnicas.md`.
 
 **Notas construido completo** (2026-07-29): última de las 3 opciones del menú `+` sin flujo
 real. Escribir/sobrescribir, copiar y compartir (WhatsApp u otro) para notas de texto libre.
 Por ahora solo texto — el usuario preguntó por un modo de dibujo tipo pizarra/Paint y se
-decidió dejarlo como función futura aparte (ver `docs/10-pendientes.md`), en vez de meterlo
+decidió dejarlo como función futura aparte (ver `Plan/10-pendientes.md`), en vez de meterlo
 en esta ronda. `LulaDatabase` sube a versión 10. Detalle completo en
-`docs/08-decisiones-tecnicas.md`.
+`Plan/08-decisiones-tecnicas.md`.
 
 **Calendario construido completo** (2026-07-29): vista Día/Semana/Mes intercambiable "tipo
 Google Calendar" (a pedido explícito del usuario, que rechazó la alternativa más simple de
@@ -365,26 +365,26 @@ una sola vista de Agenda), con grilla mensual completa y navegación ◀/▶/Hoy
 programado — Hábitos, Tareas, Medicamentos, Citas, Fechas importantes — en un solo lugar,
 agregando cada tipo una sola vez por rango visible (no una consulta por día). Entrada desde
 Hoy siempre visible (a diferencia de otros enlaces "Ver mis X", que solo aparecen si ya hay
-algo). Detalle completo en `docs/08-decisiones-tecnicas.md`.
+algo). Detalle completo en `Plan/08-decisiones-tecnicas.md`.
 
 **Diario construido completo** (2026-07-29): última función entera que quedaba en
-`docs/10-pendientes.md`. A diferencia de Notas, vive detrás de Zona Privada (PIN/biometría) —
+`Plan/10-pendientes.md`. A diferencia de Notas, vive detrás de Zona Privada (PIN/biometría) —
 nueva entrada "📓 Diario" en el menú "⋮". Formulario con título opcional, selector de área de
 vida (primera pantalla que expone esa tabla, sembrada con 7 áreas desde el primer arranque),
 fecha editable con el mismo `DatePicker` de Fecha importante/Cita, y texto libre con dictado.
 Sin fotos por ahora (el campo ya existe en el modelo, falta la UI de cámara/galería — ver
-`docs/10-pendientes.md`). `LulaDatabase` sube a versión 11. Detalle completo en
-`docs/08-decisiones-tecnicas.md`.
+`Plan/10-pendientes.md`). `LulaDatabase` sube a versión 11. Detalle completo en
+`Plan/08-decisiones-tecnicas.md`.
 
 **Lote de 6 pendientes de la sección 2** (2026-07-29): a elección del usuario, de la lista de
-`docs/10-pendientes.md`. (1) Notas ahora vive detrás de Zona Privada, igual que Diario/
+`Plan/10-pendientes.md`. (1) Notas ahora vive detrás de Zona Privada, igual que Diario/
 Finanzas. (2) Tarea puntual muestra "Completada el {fecha}" (columna nueva
 `fechaCompletado`, `LulaDatabase` sube a versión 12). (3) Botón "🤝 Compartir seguimiento" en
 Rutina y Meta (ya estaba en Hábito/Tarea/Medicamento). (4) Revisión semanal solo se activa el
 día configurado en Ajustes (por defecto domingo) — antes se podía editar cualquier día. (5)
 Zona Privada se re-bloquea sola tras ~3 min en segundo plano (nueva dependencia
 `lifecycle-process`). (6) Metas ahora se pueden editar (nombre, área de vida, fecha límite) —
-`comoSeMide` queda fijo una vez creada. Detalle completo en `docs/08-decisiones-tecnicas.md`.
+`comoSeMide` queda fijo una vez creada. Detalle completo en `Plan/08-decisiones-tecnicas.md`.
 
 **Diario: orden, calendario y "+"** (2026-07-29): 3 ajustes a pedido del usuario tras probar
 Diario. Ya ordenaba por fecha (no por cuándo se guardó), se agregó desempate estable para el
@@ -392,7 +392,7 @@ mismo día. Nueva pantalla `DiaryCalendarScreen` — grilla mensual propia del D
 comparte con el Calendario general), marca días con entrada (📝) vs vacíos, tocar un día
 abre esa entrada o crea una nueva ya fechada ese día. "📓 Diario" ahora también está en el
 menú "+" (antes solo en "⋮"), pero sigue pidiendo la clave de Zona Privada igual que siempre.
-Detalle completo en `docs/08-decisiones-tecnicas.md`.
+Detalle completo en `Plan/08-decisiones-tecnicas.md`.
 
 **4 pendientes más de la sección 2** (2026-07-29): (1) Finanzas ahora tiene historial
 navegable mes a mes (nuevo `FinancesHistoryViewModel`; "Este mes" en la pantalla principal
@@ -401,14 +401,14 @@ exactas, con atajo directo a Ajustes del sistema. (3) Metas "por monto" ahora se
 solas sumando lo registrado en Finanzas con categoría "Ahorro" (ya no hay que agregarlo a
 mano). (4) Listas ahora guarda una foto de cada uso al tocar "Reiniciar lista" — nueva
 pantalla "📜 Ver historial de usos anteriores", `LulaDatabase` sube a versión 13. Detalle
-completo en `docs/08-decisiones-tecnicas.md`.
+completo en `Plan/08-decisiones-tecnicas.md`.
 
 **Sonidos propios de Lula** (2026-07-29): los recordatorios de nivel Sonido y Alarma ahora
 suenan con dos `.wav` propios del usuario (`res/raw/lula_mensaje`,
 `res/raw/lula_alarma_gorrion_habla_ventana`) en vez del tono del sistema. Los canales de
 notificación llevan sufijo `_v2` para que dispositivos que ya habían creado los canales viejos
 (con tono de sistema) reciban el sonido nuevo — Android nunca deja cambiar el sonido de un
-canal ya creado. Detalle completo en `docs/08-decisiones-tecnicas.md`.
+canal ya creado. Detalle completo en `Plan/08-decisiones-tecnicas.md`.
 
 **Nivel Alarma en loop** (2026-07-29): a pedido del usuario ("es alarma no mensaje nomás"), la
 alarma ahora suena en loop hasta detenerla, no un disparo único. Nuevo `AlarmaSonidoService`
@@ -416,7 +416,7 @@ alarma ahora suena en loop hasta detenerla, no un disparo único. Nuevo `AlarmaS
 reproducir su sonido una vez) — se corta con el botón "🔕 Detener alarma", tocando la
 notificación para abrir la app, o deslizándola. Nuevo permiso
 `FOREGROUND_SERVICE_MEDIA_PLAYBACK` en el manifiesto. Detalle completo en
-`docs/08-decisiones-tecnicas.md`.
+`Plan/08-decisiones-tecnicas.md`.
 
 **Últimos 4 de la sección 2** (2026-07-30): (1) Cita ahora tiene su propia pantalla de
 detalle (editar/eliminar/🤝 Compartir seguimiento), igual que Medicamento/Tarea/Rutina/Meta.
@@ -425,7 +425,7 @@ opciones de `02-pantallas.md`. (3) Nueva pantalla "📊 Progreso" (Cumplimiento,
 Constancia 30 días, Puntos esta semana + acceso a la Revisión semanal completa) — nueva puerta
 de entrada, Historial y Revisión semanal siguen intactas. (4) Diario permitió adjuntar fotos
 por unas horas — **revertido el mismo día** (ver siguiente entrada). Detalle completo en
-`docs/08-decisiones-tecnicas.md`.
+`Plan/08-decisiones-tecnicas.md`.
 
 **Enfoque del producto: solo texto y tablas, sin multimedia** (2026-07-30): el usuario se
 tomó una pausa para pensar el rumbo general y decidió que Lula no necesita fotos ni dibujo —
@@ -435,9 +435,9 @@ la nube, imágenes complican mucho más el almacenamiento/administración que te
 por completo "Diario: adjuntar fotos" (Coil afuera, `ImagenUtils.kt` borrado, las 2 pantallas y
 2 casos de uso vuelven a su forma sin `fotos`) — el campo `fotos`/`fotosJson` del modelo queda
 igual que antes de esa ronda (siempre vacío, sin UI que lo llene). Esta es una decisión de
-producto duradera, no solo del día: al evaluar qué construir de `docs/10-pendientes.md` de acá
+producto duradera, no solo del día: al evaluar qué construir de `Plan/10-pendientes.md` de acá
 en adelante, priorizar lo que refuerza hábitos/ahorro/metas, no multimedia. Detalle completo en
-`docs/08-decisiones-tecnicas.md`.
+`Plan/08-decisiones-tecnicas.md`.
 
 **Mi perfil — horarios de comida** (2026-07-30): nueva pantalla dedicada (menú "⋮" → "🧑 Mi
 perfil", sección CUENTA de `02-pantallas.md`) para editar Desayuno/Almuerzo/Cena fuera del
@@ -476,7 +476,7 @@ Hoy muestra "👨‍👩‍👧 Hoy en {espacio}" cuando el espacio activo no es
 bloqueado, igual que "Personas que acompaño" en Círculo de cuidado: invitar a alguien de
 verdad, que aparezca un segundo miembro real, roles admin/miembro con sentido, y progreso de
 un reto con más de un participante real — todo eso necesita cuentas/sync que todavía no
-existen. `LulaDatabase` versión 14→15. Detalle completo en `docs/08-decisiones-tecnicas.md`.
+existen. `LulaDatabase` versión 14→15. Detalle completo en `Plan/08-decisiones-tecnicas.md`.
 
 **Ronda de feedback tras probar Fase 1.5 en dispositivo real** (2026-07-30), 7 puntos:
 (1) el espacio activo ahora vive solo en memoria (antes en disco) — cerrar y abrir la app
@@ -494,7 +494,7 @@ Metas — antes solo se veía dentro del formulario de editar. (7) Hoy ahora mue
 Fechas importantes programadas para hoy (reusando `ObtenerAgendaDelRangoUseCase`, el mismo
 motor del Calendario) — antes no aparecían ahí aunque fueran justo ese día. Aparte: Revisión
 semanal vuelve sola a la pantalla anterior al guardar, en vez de quedarse sin ningún aviso de
-que se guardó. Detalle completo en `docs/08-decisiones-tecnicas.md`.
+que se guardó. Detalle completo en `Plan/08-decisiones-tecnicas.md`.
 
 **Roadmap actualizado + Notas con título/orden + deuda técnica + Mi propósito** (2026-07-30):
 (1) `04-roadmap-fases.md` ya reflejaba Fase 1.5 con su spec original sin actualizar — se
@@ -510,7 +510,7 @@ perfil): 13 preguntas guiadas para armar Misión/Visión/Propósito de a poco, e
 ("Mi propósito" con 7 preguntas de reflexión, "Mi visión" con 6 más el consejo de redactar en
 presente/afirmativo/"yo") — cada una editable por separado, sin necesidad de completarlas
 todas de una vez. `LulaDatabase` versión 15→17 (16: Notas, 17: `proposito_personal`). Detalle
-completo en `docs/08-decisiones-tecnicas.md`.
+completo en `Plan/08-decisiones-tecnicas.md`.
 
 **Bug real: la app no abría después de las migraciones** (2026-08-01): el usuario reportó
 pantalla en blanco y cierre inmediato al abrir, incluso reinstalando desde cero. Diagnosticado
@@ -546,9 +546,9 @@ pasó de lista con viñetas a una tabla comparativa Gratis/Premium Individual/Pr
 con un límite pensado específicamente para el costo de IA: "armar y presentar con IA" da 1-2
 usos gratis y después pide Premium (a diferencia del resto de "Mi propósito", que es solo
 texto guardado, sin costo, y sigue ilimitado gratis). Detalle completo en
-`docs/08-decisiones-tecnicas.md`.
+`Plan/08-decisiones-tecnicas.md`.
 
-**Cuentas y conexiones — documento de diseño** (2026-08-01): nuevo `docs/11-cuentas-y-
+**Cuentas y conexiones — documento de diseño** (2026-08-01): nuevo `Plan/11-cuentas-y-
 conexiones.md`, lo que el usuario llamó "usuarios pendientes" — pidió específicamente diseñar
 esto antes de tocar código, con Claude aportando mirada de programador, Play Store, marketing y
 psicología. Cubre: qué datos personales agrega `Usuario` (mayoría de edad vía checkbox, no
@@ -563,7 +563,7 @@ Define el orden de implementación: ampliar `Usuario` → tabla `Conexion` → p
 cuenta" → borradores de política/términos → recién ahí evaluar Firebase real.
 
 **Cuentas y conexiones — pasos 1 a 3 construidos y verificados en dispositivo real** (2026-08-01):
-siguiendo el orden de `docs/11-cuentas-y-conexiones.md`, se construyó toda la parte local-first
+siguiendo el orden de `Plan/11-cuentas-y-conexiones.md`, se construyó toda la parte local-first
 de ese documento. `Usuario` ganó `confirmoMayorDe13`/`terminosAceptadosEn`/
 `consentimientoDatosSaludEn` (`MIGRATION_17_18`, versión 18); tabla `Conexion` nueva (sin FK a
 `usuario` a propósito, `usuarioB` va a ser casi siempre otra persona); `ProfileScreen` ganó una
@@ -574,8 +574,8 @@ Verificado con `installDebug` + `adb logcat` sin crash, y los 3 consentimientos 
 persistentes tras `am force-stop` + relanzar. El flujo de borrado en sí se probó solo hasta el
 diálogo de confirmación (se canceló a propósito para no perder datos reales del dispositivo de
 prueba) — pendiente probarlo de punta a punta con datos descartables. Quedan pendientes los
-pasos 4-5 del documento (textos legales, evaluar Firebase), ver `docs/10-pendientes.md`. Detalle
-completo en `docs/08-decisiones-tecnicas.md`.
+pasos 4-5 del documento (textos legales, evaluar Firebase), ver `Plan/10-pendientes.md`. Detalle
+completo en `Plan/08-decisiones-tecnicas.md`.
 
 **Cuentas y conexiones — paso 4: textos legales redactados y con pantalla propia** (2026-08-01):
 `domain/legal/TextosLegales.kt` nuevo, con el borrador completo de Política de Privacidad,
@@ -589,11 +589,11 @@ atajo que aceptaba sin mostrar texto que se había construido antes — ese ataj
 navega a leer el documento ("Leer y aceptar →" / "Ver →"). Compiló e instaló sin errores; la
 verificación visual completa en el dispositivo quedó a medias porque el celular de prueba pasó a
 uso normal a mitad de la sesión — sin riesgo grande porque no hay migración de Room de por medio
-(la versión de la base se quedó en 18). Detalle completo en `docs/08-decisiones-tecnicas.md`.
+(la versión de la base se quedó en 18). Detalle completo en `Plan/08-decisiones-tecnicas.md`.
 
 **Firebase Auth + sync — documento de diseño, paso 5** (2026-08-01): el usuario confirmó seguir
 con login real, recuperación de cuenta y que Familia/Círculo de Cuidado funcionen entre personas
-de verdad, usando **Firebase (Auth + Firestore)** — nuevo `docs/12-firebase-auth-y-sync.md`.
+de verdad, usando **Firebase (Auth + Firestore)** — nuevo `Plan/12-firebase-auth-y-sync.md`.
 Decisión clave: el límite de qué sincroniza es `Espacio.tipo` — los Espacios `PERSONAL` (diario,
 Mi propósito, finanzas, hábitos) nunca tocan Firestore, solo `Conexion`/`SolicitudCompartir` y
 el contenido de Espacios `FAMILIA` suben, porque son justamente lo que necesita más de un
@@ -620,7 +620,7 @@ optimización de batería del fabricante (hipótesis más probable para el patr�
 Motorola) — pero **no se pudo confirmar la causa exacta con un `logcat` en vivo** porque no
 coincidió ningún recordatorio real disparándose durante la sesión; queda pendiente repetir la
 prueba la próxima vez que suene un recordatorio de verdad. Detalle completo en
-`docs/08-decisiones-tecnicas.md`.
+`Plan/08-decisiones-tecnicas.md`.
 
 **Segunda ronda de feedback de uso real — 6 puntos** (2026-08-05): incluyó un bug real de
 pérdida de datos — "Cerrar día" nunca cargaba las respuestas ya guardadas de hoy al reabrirlo,
@@ -634,7 +634,7 @@ estaban divergiendo entre pantallas: qué cuenta para "Progreso de hoy"/"Cerrar 
 calcula el progreso de una Meta (`ObtenerMetasConProgresoUseCase`, usado por Hoy y por "Tus
 metas"). Citas ganaron un botón para marcarse cumplidas (reutilizando `MarcarActividadUseCase`,
 ya existía para Hábito/Tarea). Metas ahora se ven en Hoy con su barra de progreso, antes solo
-había un enlace sin números. Detalle completo en `docs/08-decisiones-tecnicas.md`.
+había un enlace sin números. Detalle completo en `Plan/08-decisiones-tecnicas.md`.
 
 **Metas — urgencia por fecha límite + reconocimiento de hitos** (2026-08-05): a pedido del
 usuario ("con criterio de experto en hábitos, cómo hacemos que esto motive de verdad"), se
@@ -644,7 +644,7 @@ para no volverla presión constante; (2) al cruzar 25/50/75/100% del objetivo, u
 y positiva ("🎉 ¡Vas al 50%!") con un botón "Genial" — nuevo campo `Meta.ultimoHitoCelebrado`
 (`MIGRATION_19_20`, versión 20) para que no se repita. Se cuidó que editar una meta no resetee
 el hito ya celebrado (`ActualizarMetaUseCase` ahora preserva ese valor en vez de reconstruir la
-`Meta` desde cero). Detalle completo en `docs/08-decisiones-tecnicas.md`.
+`Meta` desde cero). Detalle completo en `Plan/08-decisiones-tecnicas.md`.
 
 **Tercera ronda de feedback de uso real — 7 puntos** (2026-08-06): otro bug real confirmado —
 una Tarea sin fecha límite, una vez completada, se quedaba apareciendo como "hecha hoy" para
@@ -657,7 +657,7 @@ Citas/Fechas importantes vencidos sin marcar se resaltan en rojo. El usuario mos
 otra app con un patrón de formulario más compacto (filas colapsadas que se expanden al tocar) —
 se le dio opinión honesta de que es mejor pero es un rediseño grande, no se construyó nada
 todavía, queda pendiente elegir una pantalla piloto. Detalle completo en
-`docs/08-decisiones-tecnicas.md`.
+`Plan/08-decisiones-tecnicas.md`.
 
 **Piloto de formulario compacto — Crear Medicamento construido y verificado** (2026-08-06): el
 usuario eligió empezar el rediseño de formularios (punto anterior) por Crear Medicamento. Los
@@ -667,7 +667,7 @@ al tocarlas — mismo componente que ya usaba `AddMenuSheet` para el menú "+". 
 dispositivo real (no solo compilado): se instaló, se abrió la pantalla, se probó el sheet de
 Frecuencia con su `TimePicker` anidado, y se confirmó que la fila colapsada se actualiza en vivo
 sin cerrar el sheet. Queda a decidir con el usuario si se replica en Crear Tarea/Hábito/Cita.
-Detalle completo en `docs/08-decisiones-tecnicas.md`.
+Detalle completo en `Plan/08-decisiones-tecnicas.md`.
 
 **Formulario compacto replicado a Tarea, Hábito, Cita, Fecha importante** (2026-08-06): el
 usuario confirmó que le gustó el piloto de Medicamento y pidió aplicarlo a todas. Se replicó el
@@ -678,7 +678,7 @@ Deliberadamente no se tocó Lista/Rutina/Meta/Movimiento — son pantallas simpl
 no aporta. Verificado visualmente en 3 de las 4 (Tarea, Hábito, Cita); Fecha importante quedó
 sin captura porque el celular pasó a uso normal a mitad de la verificación, pero comparte
 exactamente el mismo código y compiló sin errores. Detalle completo en
-`docs/08-decisiones-tecnicas.md`.
+`Plan/08-decisiones-tecnicas.md`.
 
 **Cuarta ronda de feedback — recordatorio persistente de Medicamentos + Citas recurrentes**
 (2026-08-06): el usuario reportó, con un caso real ("son las 17:00 y esa toma debió ser a las
@@ -701,7 +701,7 @@ usuario tenga que volver a tocarlo. `LulaDatabase` sube a versión 22. Compiló 
 (`compileDebugKotlin`, `EXIT_CODE=0`); no se alcanzó a verificar visualmente en dispositivo real
 porque no había ningún celular conectado (`adb devices` vacío) al terminar esta sesión — queda
 pendiente instalar y probar el flujo completo (crear un curso, marcar/reprogramar sesiones) en
-cuanto el dispositivo esté disponible. Detalle completo en `docs/08-decisiones-tecnicas.md`.
+cuanto el dispositivo esté disponible. Detalle completo en `Plan/08-decisiones-tecnicas.md`.
 
 **Quinta ronda — rediseño de Hábitos, vencidos en Hoy, protección "salir sin guardar"**
 (2026-08-06): el usuario trajo una propuesta de rediseño de Hábitos armada con otro chat de
@@ -721,7 +721,7 @@ sheet (que solo cierra el sheet) y salió pensando que ya había guardado — se
 `core/ui/DescartarCambiosAlSalir.kt` (primer uso de `BackHandler` en todo el código) y se
 replicó, a pedido explícito, en las 10 pantallas "Crear X" de la app. Compiló sin errores
 (`compileDebugKotlin`, `EXIT_CODE=0`); no se alcanzó a instalar en dispositivo real por falta
-de conexión (`adb devices` vacío). Detalle completo en `docs/08-decisiones-tecnicas.md`.
+de conexión (`adb devices` vacío). Detalle completo en `Plan/08-decisiones-tecnicas.md`.
 
 **Sexta ronda — 7 puntos de uso real** (2026-08-07): teclado tapando el campo "¿Cuántas
 sesiones?" en varios sheets largos (faltaba scroll + `imePadding`); una Cita de curso
@@ -740,7 +740,7 @@ de fechas manual; y se agregó logging alrededor del arranque del servicio de al
 diagnosticar la próxima vez que "suene un segundo y se corte" (sospecha: exención de batería no
 concedida en ese celular). Compiló sin errores (`compileDebugKotlin`, `EXIT_CODE=0`); no se
 alcanzó a instalar en dispositivo real por falta de conexión. Detalle completo en
-`docs/08-decisiones-tecnicas.md`.
+`Plan/08-decisiones-tecnicas.md`.
 
 **Séptima ronda — diagnóstico real de alarmas + 6 puntos más** (2026-08-10): con el
 dispositivo conectado, se diagnosticó a fondo (con `adb`/Logcat, no adivinando) por qué una
@@ -759,7 +759,7 @@ extensión de Mi propósito (documentado, no construido). Compiló sin errores
 (`compileDebugKotlin`, `EXIT_CODE=0`); el intento de instalar en el dispositivo real falló
 porque el teléfono pasó a estado offline a mitad de la instalación — queda pendiente
 confirmar visualmente esta ronda en cuanto el dispositivo vuelva a estar disponible. Detalle
-completo en `docs/08-decisiones-tecnicas.md`.
+completo en `Plan/08-decisiones-tecnicas.md`.
 
 **Octava ronda — corrección de Listas + etiqueta "Hoy" en Calendario** (2026-08-10): las
 flechas de reordenar que se agregaron a Listas en la ronda anterior quedaron en el lugar
@@ -776,7 +776,7 @@ puntual: la primera lista de la pantalla no se reordenaba con la flecha ▲, mie
 más abajo sí — la migración que agregó `orden` a Lista le puso 0 a todas las listas viejas por
 igual, así que quedaron empatadas (intercambiar 0 con 0 no cambia nada). Arreglado con una
 migración nueva que reparte un `orden` único respetando el orden que ya se veía. Instalado y
-confirmado en la ronda siguiente. Detalle completo en `docs/08-decisiones-tecnicas.md`.
+confirmado en la ronda siguiente. Detalle completo en `Plan/08-decisiones-tecnicas.md`.
 
 **Novena ronda — alarma, medicamento y tareas vencidas/completadas (2026-08-11)**: 6 puntos de
 uso real más. El sonido del nivel Alarma se cortaba a menos de un segundo con el teléfono
@@ -799,7 +799,7 @@ explícito del usuario, y solo para Tarea (Hábito sigue siendo estrictamente "p
 original de un Medicamento después de una toma atrasada, sin recorrerlo — que es el criterio
 médico correcto; no hizo falta ningún cambio ahí. Compiló sin errores y se instaló en el
 dispositivo real (moto g(9) plus, sin uso activo al momento de instalar). Detalle completo en
-`docs/08-decisiones-tecnicas.md`.
+`Plan/08-decisiones-tecnicas.md`.
 
 **Causa real del sonido de Alarma cortado, encontrada con `logcat` en vivo** (2026-08-11, mismo
 día): el WakeLock/banner de la Novena ronda no arreglaron el problema — el usuario lo confirmó
@@ -813,7 +813,7 @@ Android dispara esa apertura automática (con el teléfono en uso no la dispara,
 sonaba bien). Nada que ver con batería, Doze, ni con el sonido personalizado — un bug de lógica
 propio. Arreglado dándole al `fullScreenIntent` su propio `PendingIntent`, sin la instrucción de
 detener. Compiló e instaló en el dispositivo real; falta que el usuario confirme con la misma
-prueba de antes. Detalle completo en `docs/08-decisiones-tecnicas.md`.
+prueba de antes. Detalle completo en `Plan/08-decisiones-tecnicas.md`.
 
 **Segundo hallazgo encadenado, mismo día**: con ese arreglo instalado, la Alarma ya no se
 cortaba sola, pero ahora sonaba sin parar — ni los botones de la pantalla ni la tecla de
@@ -826,7 +826,7 @@ Arreglado: se movió el corte de la Alarma a cada una de las 6 acciones reales (
 pantalla, eso sería volver al bug anterior). Cita queda afuera a propósito por ahora — no tiene
 pantalla de acción dedicada, solo el botón de la notificación, documentado como decisión de
 alcance, no bug. Compiló e instaló en el dispositivo real. Detalle completo en
-`docs/08-decisiones-tecnicas.md`.
+`Plan/08-decisiones-tecnicas.md`.
 
 **Cuarta ronda del día** (2026-08-11): el reporte de que el medicamento de 6 tomas seguía sin
 mostrar nada el día 13 resultó ser un dato viejo, no un bug — se confirmó sacando una copia real
@@ -841,7 +841,7 @@ Metas para que Hoy no se llene si hay muchas — se le mostró que gran parte de
 existe (fecha límite opcional, orden por fecha, sección de completadas) y se propuso: filtrar
 Hoy a solo metas urgentes, atajos rápidos de fecha, aplazar sin entrar a editar, y contador en
 "Completadas". Queda pendiente de que el usuario confirme antes de construir nada de Metas.
-Detalle completo en `docs/08-decisiones-tecnicas.md`.
+Detalle completo en `Plan/08-decisiones-tecnicas.md`.
 
 **Construcción completa de Metas** (2026-08-11, mismo día): el usuario confirmó el alcance
 completo (a diferencia del resto de la ronda, esto sí se pidió construir, no solo opinar) y se
@@ -857,4 +857,19 @@ recordatorio usa el mismo patrón "bypass" ya usado para cierre de día/franja, 
 normal de Hábito/Tarea). Y Hoy ya no muestra todas las metas en progreso sin filtrar — solo las
 urgentes (últimos 7 días o vencidas); el resto vive solo en la pestaña Metas, para que no se
 llene si hay muchas. Compiló sin errores y se instaló en el dispositivo real (moto g(9) plus,
-sin uso activo al momento de instalar). Detalle completo en `docs/08-decisiones-tecnicas.md`.
+sin uso activo al momento de instalar). Detalle completo en `Plan/08-decisiones-tecnicas.md`.
+
+**Rutinas/Tareas sin filtrar + rediseño completo de Metas** (2026-08-12): dos bugs de
+crecimiento sin límite — el selector "¿Qué actividades agrupa?" al crear una Rutina traía TODAS
+las tareas y hábitos alguna vez creados sin filtrar las ya completadas, y "✅ HECHAS" en Tareas
+(además de la vista Matriz, que no filtraba nada) acumulaba el historial entero en vez de solo
+lo vigente. Ambos arreglados con filtros por estado/fecha de completado. Aparte, rediseño grande
+de Metas a pedido detallado del usuario: Crear Meta pasó de un formulario largo a filas
+compactas tipo Medicamento (Categoría es ahora el primer paso obligatorio, fecha límite dejó de
+ser opcional, y el aviso pasó de un simple sí/no a nivel completo Silencioso/Sonido/Alarma,
+reutilizando la misma lógica de Alarma que el resto de la app); "Ver mis metas" ahora agrupa
+TODO por categoría desde el principio (antes eran dos listas separadas) con un contador
+"(1/3)" en vez de la barra de progreso, que el usuario dijo que no llamaba la atención; y en Hoy
+las metas urgentes ganaron el mismo estilo compacto más un botón directo "🔜 Reprogramar".
+Compiló sin errores a la primera pese al tamaño del cambio; pendiente instalar en el dispositivo
+real, que se desconectó justo antes. Detalle completo en `Plan/08-decisiones-tecnicas.md`.

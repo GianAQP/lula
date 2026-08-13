@@ -1,7 +1,9 @@
 package com.aqpseller.lulaapp.features.goals
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -15,11 +17,12 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.aqpseller.lulaapp.core.ui.EmptyState
-import com.aqpseller.lulaapp.core.ui.LulaProgressBar
 import com.aqpseller.lulaapp.core.utils.DateTimeUtils
 import com.aqpseller.lulaapp.domain.model.CategoriaMeta
 
@@ -48,7 +51,7 @@ fun GoalsListScreen(
             FloatingActionButton(onClick = onNuevaMeta) { Text("+") }
         },
     ) { innerPadding ->
-        if (!uiState.cargando && uiState.metasEnProgreso.isEmpty() && uiState.gruposCompletadas.isEmpty()) {
+        if (!uiState.cargando && uiState.totalMetas == 0) {
             EmptyState(
                 emoji = "🎯",
                 titulo = "Todavía no tienes metas.",
@@ -59,32 +62,27 @@ fun GoalsListScreen(
         }
         Column(modifier = Modifier.padding(innerPadding).padding(16.dp)) {
             Text(text = "Tus metas", style = MaterialTheme.typography.titleLarge)
+            if (uiState.totalMetas > 0) {
+                Text(
+                    text = "✅ ${uiState.totalCompletadas} de ${uiState.totalMetas} completadas",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
+            }
 
             LazyColumn(modifier = Modifier.padding(top = 8.dp)) {
-                items(uiState.metasEnProgreso, key = { it.id }) { meta ->
-                    FilaMeta(meta, onClick = { onMetaClick(meta.id) })
-                    HorizontalDivider()
-                }
-                if (uiState.gruposCompletadas.isNotEmpty()) {
+                uiState.grupos.forEach { grupo ->
                     item {
                         Text(
-                            text = "✅ Completadas (${uiState.totalCompletadas})",
+                            text = "${etiquetaCategoria(grupo.categoria)} (${grupo.metas.size})",
                             style = MaterialTheme.typography.titleSmall,
                             modifier = Modifier.padding(top = 16.dp, bottom = 4.dp),
                         )
                     }
-                    uiState.gruposCompletadas.forEach { grupo ->
-                        item {
-                            Text(
-                                text = "${etiquetaCategoria(grupo.categoria)} (${grupo.metas.size})",
-                                style = MaterialTheme.typography.labelLarge,
-                                modifier = Modifier.padding(top = 12.dp, bottom = 4.dp),
-                            )
-                        }
-                        items(grupo.metas, key = { it.id }) { meta ->
-                            FilaMeta(meta, onClick = { onMetaClick(meta.id) })
-                            HorizontalDivider()
-                        }
+                    items(grupo.metas, key = { it.id }) { meta ->
+                        FilaMeta(meta, onClick = { onMetaClick(meta.id) })
+                        HorizontalDivider()
                     }
                 }
             }
@@ -92,29 +90,48 @@ fun GoalsListScreen(
     }
 }
 
+/**
+ * Fila compacta, pensada para repasar varias metas seguidas de un vistazo — antes tenía una
+ * barra de progreso que "no llamaba la atención" (reportado por el usuario); ahora es un
+ * contador tipo "(1/3)" a la derecha, junto a la fecha, bien separado del nombre. Ver
+ * `Plan/08-decisiones-tecnicas.md`.
+ */
 @Composable
 private fun FilaMeta(meta: MetaListItemUi, onClick: () -> Unit) {
-    Column(
+    val completada = meta.fraccionProgreso >= 1f
+    Row(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
             .padding(vertical = 12.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(text = meta.nombre, style = MaterialTheme.typography.bodyLarge)
-        LulaProgressBar(progreso = meta.fraccionProgreso, modifier = Modifier.padding(top = 6.dp))
-        Text(
-            text = "${meta.progreso.toInt()} de ${meta.objetivo.toInt()}",
-            style = MaterialTheme.typography.bodySmall,
-            modifier = Modifier.padding(top = 4.dp),
-        )
-        meta.nombreHabitoVinculado?.let {
-            Text(text = "Hábito vinculado: $it", style = MaterialTheme.typography.bodySmall)
-        }
-        meta.fechaLimite?.let { fechaLimite ->
+        Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
             Text(
-                text = "📅 ${DateTimeUtils.formatearFechaLarga(DateTimeUtils.epochMillisToLocalDate(fechaLimite))}",
-                style = MaterialTheme.typography.bodySmall,
+                text = meta.nombre,
+                style = MaterialTheme.typography.bodyLarge,
+                textDecoration = if (completada) TextDecoration.LineThrough else null,
+                color = if (completada) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
             )
+            meta.nombreHabitoVinculado?.let {
+                Text(text = "Hábito: $it", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        Column(horizontalAlignment = Alignment.End) {
+            Text(
+                text = (if (completada) "✅ " else "") + "(${meta.progreso.toInt()}/${meta.objetivo.toInt()})",
+                style = MaterialTheme.typography.titleSmall,
+                color = if (completada) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+            )
+            meta.fechaLimite?.let { fechaLimite ->
+                Text(
+                    text = DateTimeUtils.formatearFechaLarga(DateTimeUtils.epochMillisToLocalDate(fechaLimite)),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 2.dp),
+                )
+            }
         }
     }
 }

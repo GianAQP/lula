@@ -84,9 +84,17 @@ fun TasksListScreen(
                     // Antes era una sola lista sin orden (más nueva creada primero) donde
                     // hechas y pendientes se mezclaban — a pedido del usuario, ahora las
                     // pendientes van primero (vencidas y con fecha próxima arriba) y las hechas
-                    // quedan aparte, debajo de su propio encabezado.
+                    // quedan aparte, debajo de su propio encabezado. "Hechas" solo muestra lo
+                    // completado HOY — sin este corte, esta sección crecía para siempre con años
+                    // de tareas ya hechas, dejando de ser "lo vigente" (reportado por el usuario,
+                    // ver `08-decisiones-tecnicas.md`); lo completado otro día sigue viéndose en
+                    // Calendario, en el día en que se hizo.
                     val pendientes = uiState.tareas.pendientesOrdenadas()
-                    val hechas = uiState.tareas.filter { it.estado == EstadoActividad.CONFIRMADO }
+                    val hoy = DateTimeUtils.hoy()
+                    val hechas = uiState.tareas.filter {
+                        it.estado == EstadoActividad.CONFIRMADO &&
+                            it.fechaCompletado?.let { f -> DateTimeUtils.epochMillisToLocalDate(f) == hoy } == true
+                    }
                     if (pendientes.isNotEmpty()) {
                         item {
                             Text(text = "PENDIENTES", style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(bottom = 4.dp))
@@ -106,30 +114,34 @@ fun TasksListScreen(
                         }
                     }
                 } else {
+                    // La Matriz es para decidir qué hacer — una tarea ya completada no aporta
+                    // nada ahí (y sin este filtro se quedaba para siempre en su cuadrante,
+                    // creciendo sin límite). Ver `08-decisiones-tecnicas.md`.
+                    val pendientesMatriz = uiState.tareas.filter { it.estado != EstadoActividad.CONFIRMADO }
                     seccionMatriz(
                         titulo = "🔥 HACER (urgente + importante)",
-                        tareas = uiState.tareas.filter { it.urgente && it.importante },
+                        tareas = pendientesMatriz.filter { it.urgente && it.importante },
                         onTareaClick = onTareaClick,
                         sonidoCheckHabilitado = sonidoCheckHabilitado,
                         viewModel = viewModel,
                     )
                     seccionMatriz(
                         titulo = "🗓️ PROGRAMAR (importante, no urgente)",
-                        tareas = uiState.tareas.filter { !it.urgente && it.importante },
+                        tareas = pendientesMatriz.filter { !it.urgente && it.importante },
                         onTareaClick = onTareaClick,
                         sonidoCheckHabilitado = sonidoCheckHabilitado,
                         viewModel = viewModel,
                     )
                     seccionMatriz(
                         titulo = "🤝 DELEGAR (urgente, no importante)",
-                        tareas = uiState.tareas.filter { it.urgente && !it.importante },
+                        tareas = pendientesMatriz.filter { it.urgente && !it.importante },
                         onTareaClick = onTareaClick,
                         sonidoCheckHabilitado = sonidoCheckHabilitado,
                         viewModel = viewModel,
                     )
                     seccionMatriz(
                         titulo = "🗑️ POSPONER (ninguna)",
-                        tareas = uiState.tareas.filter { !it.urgente && !it.importante },
+                        tareas = pendientesMatriz.filter { !it.urgente && !it.importante },
                         onTareaClick = onTareaClick,
                         sonidoCheckHabilitado = sonidoCheckHabilitado,
                         viewModel = viewModel,

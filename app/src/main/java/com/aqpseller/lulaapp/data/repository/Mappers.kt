@@ -512,7 +512,7 @@ fun Meta.toEntity() = MetaEntity(
     valorActual = valorActual,
     ultimoHitoCelebrado = ultimoHitoCelebrado,
     categoria = categoria?.name,
-    avisarAlVencer = avisarAlVencer,
+    nivelRecordatorio = nivelRecordatorio.name,
 )
 
 fun MetaEntity.toDomain(actividadesVinculadasIds: List<String>) = Meta(
@@ -527,7 +527,7 @@ fun MetaEntity.toDomain(actividadesVinculadasIds: List<String>) = Meta(
     actividadesVinculadasIds = actividadesVinculadasIds,
     ultimoHitoCelebrado = ultimoHitoCelebrado,
     categoria = categoria?.let { runCatching { CategoriaMeta.valueOf(it) }.getOrNull() },
-    avisarAlVencer = avisarAlVencer,
+    nivelRecordatorio = runCatching { NivelRecordatorio.valueOf(nivelRecordatorio) }.getOrDefault(NivelRecordatorio.SONIDO),
 )
 
 // --- Solicitud de compartir (Círculo de cuidado) ---

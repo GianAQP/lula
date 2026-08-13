@@ -14,13 +14,14 @@ data class Meta(
     val actividadesVinculadasIds: List<String>,
     /** Último hito (0/25/50/75/100) ya celebrado en Hoy — ver `ObtenerMetasConProgresoUseCase`. */
     val ultimoHitoCelebrado: Int = 0,
-    /** A cuál de las 6 preguntas de ayuda responde esta meta (opcional) — permite agrupar las
-     * metas completadas por categoría en vez de solo una lista plana. Ver `CategoriaMeta`,
-     * `Plan/08-decisiones-tecnicas.md`. */
+    /** A cuál de las 6 preguntas de ayuda responde esta meta — el primer paso al crearla
+     * (`CrearMetaScreen`), permite agrupar las metas por categoría tanto en progreso como
+     * completadas. Ver `CategoriaMeta`, `Plan/08-decisiones-tecnicas.md`. */
     val categoria: CategoriaMeta? = null,
-    /** Si además de mostrarse en Metas, debe sonar un aviso el día que llega `fechaLimite` —
-     * ignorado si `fechaLimite` es null. */
-    val avisarAlVencer: Boolean = false,
+    /** Qué tan insistente es el aviso el día que llega `fechaLimite` — igual que Hábito/Tarea/
+     * Medicamento/Cita, siempre tiene un nivel (nunca "apagado": Silencioso ya es la opción de
+     * bajo perfil). Ignorado si `fechaLimite` es null. */
+    val nivelRecordatorio: NivelRecordatorio = NivelRecordatorio.SONIDO,
 )
 
 /**

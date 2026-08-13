@@ -9,6 +9,7 @@ data class TareaListItemUi(
     val estado: EstadoActividad,
     val importante: Boolean,
     val urgente: Boolean,
+    val fechaCompletado: Long?,
 )
 
 data class TasksListUiState(

@@ -5,6 +5,7 @@ import com.aqpseller.lulaapp.core.utils.IdGenerator
 import com.aqpseller.lulaapp.domain.model.CategoriaMeta
 import com.aqpseller.lulaapp.domain.model.ComoSeMideMeta
 import com.aqpseller.lulaapp.domain.model.Meta
+import com.aqpseller.lulaapp.domain.model.NivelRecordatorio
 import com.aqpseller.lulaapp.domain.repository.MetaRepository
 import javax.inject.Inject
 
@@ -22,7 +23,7 @@ class CrearMetaUseCase @Inject constructor(
         areaDeVidaId: String? = null,
         fechaLimite: Long? = null,
         categoria: CategoriaMeta? = null,
-        avisarAlVencer: Boolean = false,
+        nivelRecordatorio: NivelRecordatorio = NivelRecordatorio.SONIDO,
     ) {
         val meta = Meta(
             id = IdGenerator.newId(),
@@ -35,11 +36,11 @@ class CrearMetaUseCase @Inject constructor(
             valorActual = 0.0,
             actividadesVinculadasIds = listOfNotNull(actividadVinculadaId),
             categoria = categoria,
-            avisarAlVencer = avisarAlVencer,
+            nivelRecordatorio = nivelRecordatorio,
         )
         metaRepository.crear(meta, usuarioId)
-        if (avisarAlVencer && fechaLimite != null) {
-            recordatorioScheduler.programarMeta(meta.id, nombre, fechaLimite)
+        if (fechaLimite != null) {
+            recordatorioScheduler.programarMeta(meta.id, nombre, fechaLimite, nivelRecordatorio)
         }
     }
 }

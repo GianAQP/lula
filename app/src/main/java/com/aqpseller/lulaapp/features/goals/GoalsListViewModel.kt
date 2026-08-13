@@ -32,19 +32,25 @@ class GoalsListViewModel @Inject constructor(
             obtenerMetasConProgresoUseCase(sesion.espacioId)
                 .map { metas -> metas.map { it.aUi() } }
                 .collect { metas ->
-                    val enProgreso = metas.filter { it.fraccionProgreso < 1f }
-                        .sortedBy { it.fechaLimite ?: Long.MAX_VALUE }
-                    // Agrupadas por categoría — ver de un vistazo "8 metas cumplidas" (por
-                    // categoría) motiva más que una sola lista plana (pedido del usuario). Las
-                    // sin categoría van al final, como su propio grupo.
-                    val completadas = metas.filter { it.fraccionProgreso >= 1f }
+                    // Agrupadas por categoría (las 6 preguntas de ayuda), en progreso y
+                    // completadas juntas — antes eran dos listas separadas (pendientes arriba,
+                    // completadas agrupadas al final); el usuario pidió que todo se organice
+                    // por categoría desde el principio, para repasar las metas rápido y
+                    // seguidas. Dentro de cada grupo, pendientes primero (fecha más próxima
+                    // arriba), completadas al final del mismo grupo.
                     val categoriasOrdenadas = CategoriaMeta.entries + listOf(null)
                     val grupos = categoriasOrdenadas.mapNotNull { cat ->
-                        completadas.filter { it.categoria == cat }
+                        metas.filter { it.categoria == cat }
+                            .sortedWith(compareBy({ it.fraccionProgreso >= 1f }, { it.fechaLimite ?: Long.MAX_VALUE }))
                             .takeIf { it.isNotEmpty() }
-                            ?.let { GrupoMetasCompletadasUi(cat, it) }
+                            ?.let { GrupoMetasUi(cat, it) }
                     }
-                    _uiState.value = GoalsListUiState(cargando = false, metasEnProgreso = enProgreso, gruposCompletadas = grupos)
+                    _uiState.value = GoalsListUiState(
+                        cargando = false,
+                        totalMetas = metas.size,
+                        totalCompletadas = metas.count { it.fraccionProgreso >= 1f },
+                        grupos = grupos,
+                    )
                 }
         }
     }

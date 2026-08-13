@@ -17,8 +17,6 @@ class AplazarMetaUseCase @Inject constructor(
         val meta = metaRepository.obtenerConVinculo(metaId) ?: return
         metaRepository.aplazarFechaLimite(metaId, nuevaFechaLimite, usuarioId)
         recordatorioScheduler.cancelarMeta(metaId)
-        if (meta.avisarAlVencer) {
-            recordatorioScheduler.programarMeta(metaId, meta.nombre, nuevaFechaLimite)
-        }
+        recordatorioScheduler.programarMeta(metaId, meta.nombre, nuevaFechaLimite, meta.nivelRecordatorio)
     }
 }

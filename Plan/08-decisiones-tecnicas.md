@@ -3035,3 +3035,69 @@ FODA, pero acá sí se pidió construirlo). Seis partes:
 
 Compilado y verificado (`compileDebugKotlin`, `EXIT_CODE=0`) e instalado en el dispositivo real
 (moto g(9) plus, sin uso activo al momento de instalar).
+
+## Rutinas/Tareas sin filtrar (crecimiento sin límite) + rediseño completo de Metas (2026-08-12)
+
+1. **Selector de "¿Qué actividades agrupa?" en Rutina crecía sin límite**: `CrearRutinaViewModel`
+   traía TODOS los hábitos y tareas alguna vez creados (`ObtenerHabitosUseCase` +
+   `ObtenerTareasUseCase`, sin ningún filtro) para elegir qué agrupar en una rutina nueva —
+   con el tiempo, cada tarea ya completada seguía apareciendo ahí para siempre. Arreglado:
+   se excluyen las Tareas con `estado == CONFIRMADO` (Hábito no se filtra, es recurrente —
+   "ya se cumplió hoy" no lo descalifica de una rutina que se repite mañana).
+
+2. **"HECHAS" en Tareas crecía sin límite, y la vista Matriz nunca filtraba nada**: la lista de
+   Tareas ya separaba pendientes/hechas (de una ronda anterior), pero "✅ HECHAS" acumulaba TODO
+   el historial de tareas completadas, sin importar hace cuánto — dejaba de sentirse "lo
+   vigente". Ahora "HECHAS" solo muestra lo completado HOY (`Actividad.fechaCompletado`); lo
+   completado otro día se sigue viendo en Calendario, en su propio día. La vista Matriz (🗂️,
+   Eisenhower) tampoco filtraba nada — mostraba tareas completadas hace meses ocupando un
+   cuadrante para siempre; ahora excluye cualquier tarea ya completada (no aporta a decidir qué
+   hacer, sin importar el día).
+
+3. **Rediseño completo de Crear Meta — formulario compacto tipo Medicamento**: a pedido
+   detallado del usuario, se reemplazó el formulario largo (todo visible, scroll) por filas
+   compactas que abren un `ModalBottomSheet` al tocarlas (mismo patrón `SelectorRow` ya usado en
+   Crear Medicamento):
+   - **Categoría** es ahora el primer paso obligatorio del flujo — nada más se muestra hasta
+     elegir una de las 6 preguntas (antes era una ayuda opcional colapsable). Al elegirla, la
+     hoja muestra la pregunta con sus ejemplos y consejos de redacción.
+   - Elegida la categoría, aparece la pregunta como título y el campo "Nombre" (con dictado)
+     justo debajo, para responderla.
+   - Filas: "¿Cómo la vas a medir?" (con el objetivo movido adentro de esa hoja, junto al
+     selector de hábito si aplica), "Área de vida", "Fecha límite", "Recordatorio".
+   - **Fecha límite dejó de ser opcional**: siempre arranca con un valor por defecto (+1 mes
+     desde hoy) en vez de forzar a elegir uno antes de poder seguir — el usuario explicó que
+     "uno debe ponerse una fecha límite". La hoja de fecha reutiliza `SelectorFechaRapida`
+     (semana/mes/3 meses/año + calendario).
+   - **Recordatorio pasó de un simple booleano ("avisar sí/no") a nivel completo Silencioso/
+     Sonido/Alarma**, igual que Hábito/Tarea/Medicamento/Cita (`NivelRecordatorioSelector`
+     reutilizado). `Meta.avisarAlVencer` → `Meta.nivelRecordatorio: NivelRecordatorio`,
+     `MIGRATION_25_26` agrega la columna nueva (la vieja se deja sin usar, no vale la pena
+     reconstruir la tabla por una columna huérfana). Como el nivel Alarma necesita el mismo
+     tratamiento especial que el resto de la app (pantalla completa + `AlarmaSonidoService`),
+     se extrajo esa lógica a una función compartida nueva,
+     `RecordatorioReceiver.mostrarNotificacionConNivel`, usada tanto por el camino normal
+     (`TipoActividad`) como por el de Meta — evita tener una segunda copia de la rama de Alarma
+     que se pudiera volver a desalinear (ya pasó una vez hoy con el bug del `fullScreenIntent`
+     compartido). `MetaDetailViewModel` también gana el mismo corte de Alarma en sus acciones
+     reales (aplazar/agregar progreso/eliminar) que ya tienen Hábito/Tarea/Medicamento, por el
+     mismo motivo de esta mañana.
+
+4. **Rediseño completo de "Ver mis metas"**: antes eran dos listas separadas (pendientes con
+   barra de progreso, completadas agrupadas por categoría al final); ahora TODO se agrupa por
+   categoría desde el principio (pendientes y completadas juntas dentro de cada grupo, pendientes
+   primero), para repasar las metas rápido y seguidas como pidió el usuario. Cada fila reemplaza
+   la barra de progreso (reportada como que "no llama la atención") por un contador compacto
+   tipo "(1/3)" — con ✅ y en el color primario cuando llega a completarse — ubicado a la derecha
+   junto a la fecha límite, bien separado del nombre a la izquierda. Arriba de todo, un resumen
+   "✅ N de M completadas" da la sensación de avance de un vistazo.
+
+5. **Metas urgentes en Hoy, mismo estilo compacto + atajo directo a reprogramar**: la sección de
+   Hoy tenía su propia barra de progreso distinta a la de la lista completa; ahora usa el mismo
+   contador "(x/y)". El aviso "⏳ Faltan N día(s)"/"Venció hace N día(s)" ahora viene acompañado
+   de un botón "🔜 Reprogramar" a su lado (lleva al detalle de la meta, donde ya vive "🔜
+   Aplazar" desde la ronda anterior) — antes solo era texto, sin ninguna acción directa desde
+   Hoy cuando una meta se está por vencer.
+
+Compilado y verificado (`compileDebugKotlin`, `EXIT_CODE=0`). Pendiente: instalar en el
+dispositivo real — se desconectó de `adb` justo antes de instalar.

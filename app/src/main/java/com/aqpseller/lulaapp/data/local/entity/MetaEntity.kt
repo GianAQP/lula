@@ -40,7 +40,11 @@ data class MetaEntity(
      * felicitación cada vez que se recompone. */
     val ultimoHitoCelebrado: Int = 0,
     val categoria: String? = null,
+    /** Ya no se usa (reemplazado por `nivelRecordatorio`) — se deja la columna para no romper
+     * filas ya guardadas por una versión anterior de la app; Room la sigue escribiendo con su
+     * valor por defecto. */
     val avisarAlVencer: Boolean = false,
+    val nivelRecordatorio: String = "SONIDO",
 )
 
 @Entity(

@@ -8,6 +8,7 @@ import com.aqpseller.lulaapp.domain.model.AreaDeVida
 import com.aqpseller.lulaapp.domain.model.CategoriaMeta
 import com.aqpseller.lulaapp.domain.model.ComoSeMideMeta
 import com.aqpseller.lulaapp.domain.model.Meta
+import com.aqpseller.lulaapp.domain.model.NivelRecordatorio
 import com.aqpseller.lulaapp.domain.model.SesionActual
 import com.aqpseller.lulaapp.domain.repository.EspacioRepository
 import com.aqpseller.lulaapp.domain.usecase.actividad.ObtenerHabitosUseCase
@@ -75,7 +76,7 @@ class CrearMetaViewModel @Inject constructor(
         areaDeVidaId: String?,
         fechaLimite: Long?,
         categoria: CategoriaMeta? = null,
-        avisarAlVencer: Boolean = false,
+        nivelRecordatorio: NivelRecordatorio = NivelRecordatorio.SONIDO,
     ) {
         if (nombre.isBlank() || valorObjetivo <= 0) return
         viewModelScope.launch {
@@ -95,7 +96,7 @@ class CrearMetaViewModel @Inject constructor(
                     areaDeVidaId = areaDeVidaId,
                     fechaLimite = fechaLimite,
                     categoria = categoria,
-                    avisarAlVencer = avisarAlVencer,
+                    nivelRecordatorio = nivelRecordatorio,
                 )
             } else {
                 crearMetaUseCase(
@@ -108,7 +109,7 @@ class CrearMetaViewModel @Inject constructor(
                     areaDeVidaId = areaDeVidaId,
                     fechaLimite = fechaLimite,
                     categoria = categoria,
-                    avisarAlVencer = avisarAlVencer,
+                    nivelRecordatorio = nivelRecordatorio,
                 )
             }
             _guardado.value = true

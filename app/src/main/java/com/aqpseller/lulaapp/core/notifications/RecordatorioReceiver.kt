@@ -58,7 +58,9 @@ class RecordatorioReceiver : BroadcastReceiver() {
             return
         }
         intent.getStringExtra(EXTRA_META_ID)?.let { metaId ->
-            mostrarNotificacionMeta(context, metaId, intent.getStringExtra(EXTRA_NOMBRE).orEmpty())
+            val nivelMeta = intent.getStringExtra(EXTRA_NIVEL)?.let { runCatching { NivelRecordatorio.valueOf(it) }.getOrNull() }
+                ?: NivelRecordatorio.SONIDO
+            mostrarNotificacionMeta(context, metaId, intent.getStringExtra(EXTRA_NOMBRE).orEmpty(), nivelMeta)
             return
         }
         val actividadId = intent.getStringExtra(EXTRA_ACTIVIDAD_ID) ?: return
@@ -170,30 +172,16 @@ class RecordatorioReceiver : BroadcastReceiver() {
     /**
      * Meta vive en una tabla completamente aparte de `Actividad` — no pasa por el camino normal
      * de `mostrarNotificacion` (que espera un `TipoActividad` real) ni se reprograma sola, la
-     * fecha límite de una meta no se repite. Un solo disparo, mismo patrón que el recordatorio
-     * de franja. Ver `Plan/08-decisiones-tecnicas.md`.
+     * fecha límite de una meta no se repite. Un solo disparo, pero SÍ respeta el nivel elegido
+     * (Silencioso/Sonido/Alarma, igual que el resto de la app) vía `mostrarNotificacionConNivel`.
+     * Ver `Plan/08-decisiones-tecnicas.md`.
      */
-    private fun mostrarNotificacionMeta(context: Context, metaId: String, nombre: String) {
+    private fun mostrarNotificacionMeta(context: Context, metaId: String, nombre: String, nivel: NivelRecordatorio) {
         val claveNotificacion = "recordatorio_meta_$metaId".hashCode()
-        val intentContenido = Intent(context, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            putExtra(MainActivity.EXTRA_DESTINO, LulaDestinations.metaDetalle(metaId))
-        }
-        val pendingIntentContenido = PendingIntent.getActivity(
-            context, claveNotificacion, intentContenido, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        val cuerpo = nombre.ifBlank { "Tienes una meta pendiente en Lula" }
+        mostrarNotificacionConNivel(
+            context, claveNotificacion, LulaDestinations.metaDetalle(metaId), "🎯 ¡Hoy vence tu meta!", cuerpo, nivel, "metaId=$metaId",
         )
-        val builder = NotificationCompat.Builder(context, NotificationChannels.RECORDATORIOS_SONIDO)
-            .setSmallIcon(android.R.drawable.ic_popup_reminder)
-            .setContentTitle("🎯 ¡Hoy vence tu meta!")
-            .setContentText(nombre.ifBlank { "Tienes una meta pendiente en Lula" })
-            .setAutoCancel(true)
-            .setContentIntent(pendingIntentContenido)
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-        runCatching {
-            NotificationManagerCompat.from(context).notify(claveNotificacion, builder.build())
-        }.onFailure { error ->
-            Log.e("RecordatorioReceiver", "No se pudo mostrar el recordatorio de meta (metaId=$metaId)", error)
-        }
     }
 
     private fun mostrarNotificacionCierreDia(context: Context) {
@@ -313,21 +301,6 @@ class RecordatorioReceiver : BroadcastReceiver() {
             else -> LulaDestinations.recordatorioAccion(actividadId)
         }
         val claveNotificacion = (if (horario != null) "$actividadId:$horario" else actividadId).hashCode()
-        val intentContenido = Intent(context, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            putExtra(MainActivity.EXTRA_DESTINO, destino)
-            if (nivel == NivelRecordatorio.ALARMA) {
-                putExtra(MainActivity.EXTRA_MOSTRAR_SOBRE_BLOQUEO, true)
-                putExtra(MainActivity.EXTRA_DETENER_ALARMA, claveNotificacion)
-            }
-        }
-        val pendingIntentContenido = PendingIntent.getActivity(
-            context,
-            claveNotificacion,
-            intentContenido,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-        )
-
         val emoji = when (tipo) {
             TipoActividad.HABITO -> "✅"
             TipoActividad.TAREA -> "📝"
@@ -351,9 +324,46 @@ class RecordatorioReceiver : BroadcastReceiver() {
         } else {
             nombre.ifBlank { "Tienes algo pendiente en Lula" }
         }
+        mostrarNotificacionConNivel(
+            context, claveNotificacion, destino, "$emoji ¡Hora de tu $tipoTexto!", cuerpo, nivel, "actividadId=$actividadId",
+        )
+    }
+
+    /**
+     * Arma y muestra la notificación según el nivel elegido — compartido por
+     * `mostrarNotificacion` (Hábito/Tarea/Medicamento/Cita/Fecha importante, con `TipoActividad`
+     * real) y `mostrarNotificacionMeta` (Meta, que vive en su tabla aparte). Antes de que existiera
+     * esto, cada camino tenía su propia copia de la rama de Alarma (pantalla completa +
+     * `AlarmaSonidoService`) — un solo lugar evita que se vuelvan a desalinear, como ya pasó una
+     * vez con el bug del `fullScreenIntent` compartido. Ver `Plan/08-decisiones-tecnicas.md`.
+     */
+    private fun mostrarNotificacionConNivel(
+        context: Context,
+        claveNotificacion: Int,
+        destino: String,
+        titulo: String,
+        cuerpo: String,
+        nivel: NivelRecordatorio,
+        logTag: String,
+    ) {
+        val intentContenido = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            putExtra(MainActivity.EXTRA_DESTINO, destino)
+            if (nivel == NivelRecordatorio.ALARMA) {
+                putExtra(MainActivity.EXTRA_MOSTRAR_SOBRE_BLOQUEO, true)
+                putExtra(MainActivity.EXTRA_DETENER_ALARMA, claveNotificacion)
+            }
+        }
+        val pendingIntentContenido = PendingIntent.getActivity(
+            context,
+            claveNotificacion,
+            intentContenido,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+
         val builder = NotificationCompat.Builder(context, NotificationChannels.canalPara(nivel))
             .setSmallIcon(android.R.drawable.ic_popup_reminder)
-            .setContentTitle("$emoji ¡Hora de tu $tipoTexto!")
+            .setContentTitle(titulo)
             .setContentText(cuerpo)
             .setStyle(NotificationCompat.BigTextStyle().bigText(cuerpo))
             .setAutoCancel(true)
@@ -411,7 +421,7 @@ class RecordatorioReceiver : BroadcastReceiver() {
         runCatching {
             NotificationManagerCompat.from(context).notify(claveNotificacion, builder.build())
         }.onFailure { error ->
-            Log.e("RecordatorioReceiver", "No se pudo mostrar la notificación (actividadId=$actividadId)", error)
+            Log.e("RecordatorioReceiver", "No se pudo mostrar la notificación ($logTag)", error)
         }
 
         // El canal Alarma no lleva sonido propio (ver `NotificationChannels`) — este Service

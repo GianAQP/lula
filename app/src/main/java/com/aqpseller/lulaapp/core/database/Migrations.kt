@@ -141,3 +141,14 @@ val MIGRATION_24_25 = object : Migration(24, 25) {
         db.execSQL("ALTER TABLE meta ADD COLUMN avisarAlVencer INTEGER NOT NULL DEFAULT 0")
     }
 }
+
+/** Reemplaza el aviso booleano (`avisarAlVencer`) por un nivel completo de recordatorio
+ * (Silencioso/Sonido/Alarma), igual que Hábito/Tarea/Medicamento/Cita — pedido explícito del
+ * usuario para que Metas se sienta "ordenado tipo medicamentos". La columna vieja se deja sin
+ * usar (Room no la borra en una migración simple de `ALTER TABLE`, y no vale la pena reconstruir
+ * la tabla por una columna huérfana e inofensiva). Ver `Plan/08-decisiones-tecnicas.md`. */
+val MIGRATION_25_26 = object : Migration(25, 26) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE meta ADD COLUMN nivelRecordatorio TEXT NOT NULL DEFAULT 'SONIDO'")
+    }
+}

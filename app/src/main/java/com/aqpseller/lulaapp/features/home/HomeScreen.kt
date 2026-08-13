@@ -2,6 +2,7 @@ package com.aqpseller.lulaapp.features.home
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -421,32 +422,41 @@ private fun androidx.compose.foundation.lazy.LazyListScope.seccionMetas(
 ) {
     if (metas.isEmpty()) return
     item {
-        Text(text = "🎯 TUS METAS", style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(top = 8.dp))
+        Text(text = "🎯 TUS METAS POR VENCER", style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(top = 8.dp))
     }
+    // Mismo estilo compacto de "Ver mis metas" (nombre a la izquierda, contador a la derecha,
+    // sin barra de progreso) — antes tenía su propia barra, distinta a la de la lista completa,
+    // y el usuario pidió que se vea "bonito" acá también. El aviso de días restantes ahora es un
+    // atajo directo a reprogramar (aplazar), no solo texto — ver `Plan/08-decisiones-tecnicas.md`.
     items(metas, key = { it.meta.id }) { metaConProgreso ->
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .clickable { onMetaClick(metaConProgreso.meta.id) }
-                .padding(vertical = 6.dp),
+                .padding(vertical = 8.dp),
         ) {
-            Text(text = metaConProgreso.meta.nombre, style = MaterialTheme.typography.bodyMedium)
-            LulaProgressBar(progreso = metaConProgreso.fraccion, modifier = Modifier.padding(top = 4.dp))
-            Text(
-                text = "${metaConProgreso.progreso.toInt()} de ${metaConProgreso.meta.valorObjetivo.toInt()}",
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.padding(top = 2.dp),
-            )
+            Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                Text(text = metaConProgreso.meta.nombre, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f).padding(end = 8.dp))
+                Text(
+                    text = "(${metaConProgreso.progreso.toInt()}/${metaConProgreso.meta.valorObjetivo.toInt()})",
+                    style = MaterialTheme.typography.titleSmall,
+                )
+            }
             // Solo se resalta en los últimos 7 días (o ya vencida) — la fecha límite no debe
             // sentirse como presión constante desde el día 1, ver `08-decisiones-tecnicas.md`.
             if (metaConProgreso.esUrgente) {
                 val dias = metaConProgreso.diasRestantes ?: 0
-                Text(
-                    text = if (dias >= 0) "⏳ Faltan $dias día(s)" else "⏳ Venció hace ${-dias} día(s)",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.padding(top = 2.dp),
-                )
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 4.dp)) {
+                    Text(
+                        text = if (dias >= 0) "⏳ Faltan $dias día(s)" else "⏳ Venció hace ${-dias} día(s)",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.weight(1f),
+                    )
+                    TextButton(onClick = { onMetaClick(metaConProgreso.meta.id) }) {
+                        Text("🔜 Reprogramar")
+                    }
+                }
             }
         }
     }

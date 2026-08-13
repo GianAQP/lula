@@ -1,8 +1,10 @@
 package com.aqpseller.lulaapp.features.goals
 
+import android.content.Context
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.aqpseller.lulaapp.core.notifications.AlarmaSonidoService
 import com.aqpseller.lulaapp.core.utils.DateTimeUtils
 import com.aqpseller.lulaapp.domain.model.ComoSeMideMeta
 import com.aqpseller.lulaapp.domain.model.EstadoActividad
@@ -19,6 +21,7 @@ import com.aqpseller.lulaapp.domain.usecase.meta.EliminarMetaUseCase
 import com.aqpseller.lulaapp.domain.usecase.meta.ObtenerDetalleMetaUseCase
 import com.aqpseller.lulaapp.domain.usecase.usuario.ObtenerSesionActualUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -33,6 +36,7 @@ private const val CATEGORIA_AHORRO = "Ahorro"
 @HiltViewModel
 class MetaDetailViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
+    @ApplicationContext private val context: Context,
     private val obtenerSesionActualUseCase: ObtenerSesionActualUseCase,
     private val obtenerDetalleMetaUseCase: ObtenerDetalleMetaUseCase,
     private val obtenerHistorialHabitoUseCase: ObtenerHistorialHabitoUseCase,
@@ -100,6 +104,7 @@ class MetaDetailViewModel @Inject constructor(
     }
 
     fun aplazar(nuevaFechaLimite: Long) {
+        detenerAlarmaSiSonando()
         viewModelScope.launch {
             aplazarMetaUseCase(metaId, nuevaFechaLimite, sesionActual().usuarioId)
             cargar()
@@ -108,6 +113,7 @@ class MetaDetailViewModel @Inject constructor(
 
     fun agregarProgreso(incremento: Double) {
         if (incremento <= 0) return
+        detenerAlarmaSiSonando()
         viewModelScope.launch {
             agregarProgresoMetaUseCase(metaId, incremento, sesionActual().usuarioId)
             cargar()
@@ -115,10 +121,20 @@ class MetaDetailViewModel @Inject constructor(
     }
 
     fun eliminar() {
+        detenerAlarmaSiSonando()
         viewModelScope.launch {
             eliminarMetaUseCase(metaId, sesionActual().usuarioId)
             _uiState.update { it.copy(eliminada = true) }
         }
+    }
+
+    /** Igual que en las pantallas de acción de Hábito/Tarea/Medicamento: esta pantalla también
+     * puede abrirse sola por el `fullScreenIntent` de una Alarma, así que a propósito NO se
+     * detiene al abrir — recién cuando la persona hace algo real acá (aplazar, agregar
+     * progreso, eliminar) tiene sentido cortarla. Ver `Plan/08-decisiones-tecnicas.md`. */
+    private fun detenerAlarmaSiSonando() {
+        val claveNotificacion = "recordatorio_meta_$metaId".hashCode()
+        context.startService(AlarmaSonidoService.intentDetener(context, claveNotificacion))
     }
 
     fun compartir(contacto: String, permiso: PermisoCompartir) {

@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aqpseller.lulaapp.domain.model.Actividad
 import com.aqpseller.lulaapp.domain.model.ActividadDetalle
+import com.aqpseller.lulaapp.domain.model.EstadoActividad
 import com.aqpseller.lulaapp.domain.model.MomentoDelDia
 import com.aqpseller.lulaapp.domain.model.SesionActual
 import com.aqpseller.lulaapp.domain.usecase.actividad.ActualizarRutinaUseCase
@@ -58,7 +59,12 @@ class CrearRutinaViewModel @Inject constructor(
             sesion = sesionActual
 
             combine(obtenerHabitosUseCase(sesionActual.espacioId), obtenerTareasUseCase(sesionActual.espacioId)) { habitos, tareas ->
-                habitos + tareas
+                // Una Tarea ya completada no tiene sentido agruparla en una rutina hacia
+                // adelante — sin este filtro, esta lista de selección crecía para siempre con
+                // cada tarea alguna vez creada, hecha o no (reportado por el usuario, ver
+                // `08-decisiones-tecnicas.md`). Hábito no se filtra: es recurrente, "ya se
+                // cumplió hoy" no lo descalifica de una rutina que se repite mañana.
+                habitos + tareas.filter { it.estado != EstadoActividad.CONFIRMADO }
             }.collect { disponibles -> _actividadesDisponibles.value = disponibles }
         }
         val id = actividadId

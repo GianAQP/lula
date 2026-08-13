@@ -278,13 +278,14 @@ class RecordatorioScheduler @Inject constructor(
      * Medicamento. Hora fija 09:00 — una Meta no tiene un "horaRecordatorio" propio que elegir,
      * a diferencia de Tarea. Ver `Plan/08-decisiones-tecnicas.md`.
      */
-    fun programarMeta(metaId: String, nombre: String, fechaLimiteMillis: Long) {
+    fun programarMeta(metaId: String, nombre: String, fechaLimiteMillis: Long, nivel: NivelRecordatorio) {
         val trigger = triggerParaFecha(fechaLimiteMillis, HORA_RECORDATORIO_META) ?: return
         if (trigger <= DateTimeUtils.ahoraEpochMillis()) return
         val manager = alarmManager ?: return
         val intent = Intent(context, RecordatorioReceiver::class.java).apply {
             putExtra(RecordatorioReceiver.EXTRA_META_ID, metaId)
             putExtra(RecordatorioReceiver.EXTRA_NOMBRE, nombre)
+            putExtra(RecordatorioReceiver.EXTRA_NIVEL, nivel.name)
         }
         val pendingIntent = PendingIntent.getBroadcast(
             context, claveRequestCodeMeta(metaId), intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,

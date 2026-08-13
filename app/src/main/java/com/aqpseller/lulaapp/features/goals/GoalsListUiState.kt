@@ -15,19 +15,18 @@ data class MetaListItemUi(
         get() = if (objetivo > 0) (progreso / objetivo).toFloat().coerceIn(0f, 1f) else 0f
 }
 
-/** Un grupo de metas ya completadas, todas de la misma categoría — ver una a una cuántas se
- * lograron por categoría refuerza la sensación de avance más que una sola lista plana (pedido
- * explícito del usuario). `categoria = null` agrupa las que no se etiquetaron. Ver
- * `Plan/08-decisiones-tecnicas.md`. */
-data class GrupoMetasCompletadasUi(
+/** Un grupo de metas de la misma categoría (una de las 6 preguntas de ayuda), en progreso y
+ * completadas juntas — a pedido del usuario, para que se puedan repasar todas las metas de un
+ * vistazo agrupadas como se pensaron desde el principio, no separadas en dos listas. `categoria
+ * = null` agrupa las que no se etiquetaron, siempre al final. Ver `Plan/08-decisiones-tecnicas.md`. */
+data class GrupoMetasUi(
     val categoria: CategoriaMeta?,
     val metas: List<MetaListItemUi>,
 )
 
 data class GoalsListUiState(
     val cargando: Boolean = true,
-    val metasEnProgreso: List<MetaListItemUi> = emptyList(),
-    val gruposCompletadas: List<GrupoMetasCompletadasUi> = emptyList(),
-) {
-    val totalCompletadas: Int get() = gruposCompletadas.sumOf { it.metas.size }
-}
+    val totalMetas: Int = 0,
+    val totalCompletadas: Int = 0,
+    val grupos: List<GrupoMetasUi> = emptyList(),
+)

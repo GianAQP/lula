@@ -43,6 +43,7 @@ class TasksListViewModel @Inject constructor(
                             estado = tarea.estado,
                             importante = detalle?.importante ?: false,
                             urgente = detalle?.urgente ?: false,
+                            fechaCompletado = tarea.fechaCompletado,
                         )
                     }
                 }
