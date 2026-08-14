@@ -873,3 +873,20 @@ TODO por categoría desde el principio (antes eran dos listas separadas) con un 
 las metas urgentes ganaron el mismo estilo compacto más un botón directo "🔜 Reprogramar".
 Compiló sin errores a la primera pese al tamaño del cambio; pendiente instalar en el dispositivo
 real, que se desconectó justo antes. Detalle completo en `Plan/08-decisiones-tecnicas.md`.
+
+**Causa real de "los recordatorios no suenan al día siguiente"** (2026-08-13): el usuario
+reportó que TODOS los tipos de recordatorio dejaban de sonar después de varias horas. Se
+diagnosticó en vivo con el dispositivo conectado (no adivinando): las alarmas SÍ estaban bien
+programadas en `AlarmManager`, el teléfono llevaba 20 días sin reiniciarse, la app no estaba
+"detenida" ni restringida por batería — y una prueba controlada (forzar el modo de reposo más
+profundo de Android con `adb` justo antes de la hora de una alarma real) mostró que suena
+perfecto incluso en el peor caso de inactividad. El dato que resolvió el caso: el usuario aclaró
+que las fallas reales pasan "usando el celular", no con la pantalla dormida. Causa real:
+Motorola (confirmado en el dispositivo de prueba) puede "forzar detener" la app en segundo
+plano para ahorrar batería, lo que cancela TODAS las alarmas pendientes — igual que un reinicio,
+pero sin disparar `BOOT_COMPLETED`, así que `BootReceiver` (la única reparación que existía)
+nunca se enteraba. Arreglado: la lógica de "reprogramar todo" se sacó a un caso de uso
+compartido nuevo y ahora también se llama cada vez que se abre la app (antes solo al reiniciar
+el teléfono) — de paso se encontró que Meta nunca se reprogramaba en absoluto, ya corregido
+también. Compiló e instaló en el dispositivo real. Detalle completo en
+`Plan/08-decisiones-tecnicas.md`.

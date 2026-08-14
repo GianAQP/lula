@@ -3099,5 +3099,57 @@ Compilado y verificado (`compileDebugKotlin`, `EXIT_CODE=0`) e instalado en el d
    Aplazar" desde la ronda anterior) — antes solo era texto, sin ninguna acción directa desde
    Hoy cuando una meta se está por vencer.
 
-Compilado y verificado (`compileDebugKotlin`, `EXIT_CODE=0`). Pendiente: instalar en el
-dispositivo real — se desconectó de `adb` justo antes de instalar.
+Compilado y verificado (`compileDebugKotlin`, `EXIT_CODE=0`) e instalado en el dispositivo real
+(moto g(9) plus) en la siguiente ronda, una vez reconectado.
+
+## Causa real de "los recordatorios no suenan al día siguiente" — diagnosticado en vivo, no adivinado (2026-08-13)
+
+El usuario reportó que TODOS los tipos de recordatorio (Hábito, Tarea, Cita, Medicamento,
+franjas del día) sonaban bien al probarlos en el momento, pero dejaban de sonar "al día
+siguiente" — sin mensaje, sin sonido, nada. Su propia sospecha: "parece que pasara a segundo
+plano y se queda dormido". Se armó una batería de pruebas reales con el dispositivo conectado,
+sin asumir nada:
+
+1. `adb shell dumpsys alarm | grep aqpseller` — confirmó que las alarmas SÍ estaban bien
+   programadas en el sistema (ej. una para el día siguiente a la hora exacta configurada,
+   `whenElapsed=+23h45m...`). Esto ya descartaba "el código nunca programa nada para más
+   adelante".
+2. `adb shell uptime` — el teléfono llevaba **20 días sin reiniciarse**. Descarta "se reinició
+   de noche y `BootReceiver` no alcanzó a reprogramar nada".
+3. `adb shell dumpsys package com.aqpseller.lulaapp` — `stopped=false` (la app NO estaba en
+   estado "detenida" en ese momento) y `am get-standby-bucket` devolvió `5` (EXEMPTED, el mejor
+   bucket posible). `dumpsys deviceidle whitelist` confirmó a Lula en la lista blanca de
+   optimización de batería.
+4. **Prueba controlada de reposo forzado**: se programó una Alarma real de prueba (Hábito, hoy
+   21:07) y, apenas antes de la hora, se forzó el modo de reposo más profundo de Android
+   (`adb shell dumpsys deviceidle force-idle`) mientras se capturaba `logcat` en vivo. La alarma
+   sonó exactamente a las 21:07:00.070 (proceso arrancado por el sistema específicamente para
+   entregar la alarma, `Start proc ... for broadcast RecordatorioReceiver`), con sonido, aviso y
+   pantalla completa — todo funcionando perfecto incluso en el reposo más agresivo que existe en
+   Android. Revisando `dumpsys alarm` de nuevo después, la MISMA alarma ya se había vuelto a
+   programar sola para el día siguiente a la misma hora (`2026-08-14 21:07:00`) — confirma que la
+   cadena de "reprogramarse a sí misma" (usada por Hábito, Medicamento y franjas) también
+   funciona bien en el código.
+5. Con el "Doze" estándar de Android descartado (funciona incluso forzado), el usuario aclaró el
+   dato que resolvió el caso: las fallas reales pasan "usando el celular, no está durmiendo" —
+   o sea, ni siquiera hace falta que el teléfono esté inactivo para que falle. Esto apunta a algo
+   que canceló las alarmas ANTES, en algún momento entre que se programaron y que debían sonar,
+   no a un problema de entrega en el momento exacto.
+
+**Causa raíz**: algunos fabricantes (Motorola confirmado en el dispositivo de prueba) "fuerzan
+detener" apps en segundo plano para ahorrar batería de forma más agresiva que el Android
+estándar — esto cancela TODAS las alarmas pendientes de `AlarmManager`, exactamente igual que un
+reinicio del teléfono, pero **sin disparar `BOOT_COMPLETED`**. Como `BootReceiver` (la única
+reparación que existía) solo se activa con un reinicio real, un "forzar detener" silencioso
+dejaba todos los recordatorios rotos para siempre — ni volver a abrir la app los reparaba, porque
+nada dentro de la app revisaba/reprogramaba nada al abrirse, solo al recibir `BOOT_COMPLETED`.
+
+**Arreglado**: se sacó la lógica de "reprogramar todo" de `BootReceiver` a un nuevo caso de uso
+compartido, `ReprogramarTodosLosRecordatoriosUseCase` (de paso, se le sumó Meta, que
+`BootReceiver` nunca reprogramaba — hueco encontrado al mover el código a un solo lugar). Ahora
+se llama tanto desde `BootReceiver` (reinicio real) como desde `AppViewModel.init` (cada vez que
+se abre la app, sin bloquear `isReady`) — así que con solo volver a abrir Lula alcanza para
+reparar todos los recordatorios, sin depender de que el usuario reinicie el teléfono.
+
+Compilado y verificado (`compileDebugKotlin`, `EXIT_CODE=0`) e instalado en el dispositivo real
+(moto g(9) plus).

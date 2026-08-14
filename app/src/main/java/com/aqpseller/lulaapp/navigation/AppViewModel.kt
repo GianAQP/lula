@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aqpseller.lulaapp.core.security.SesionPrivadaState
 import com.aqpseller.lulaapp.domain.repository.AjustesRepository
+import com.aqpseller.lulaapp.domain.usecase.notificaciones.ReprogramarTodosLosRecordatoriosUseCase
 import com.aqpseller.lulaapp.domain.usecase.usuario.AsegurarDatosSemillaUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -22,6 +23,7 @@ import javax.inject.Inject
 @HiltViewModel
 class AppViewModel @Inject constructor(
     private val asegurarDatosSemillaUseCase: AsegurarDatosSemillaUseCase,
+    private val reprogramarTodosLosRecordatoriosUseCase: ReprogramarTodosLosRecordatoriosUseCase,
     sesionPrivadaState: SesionPrivadaState,
     ajustesRepository: AjustesRepository,
 ) : ViewModel() {
@@ -44,6 +46,15 @@ class AppViewModel @Inject constructor(
         viewModelScope.launch {
             asegurarDatosSemillaUseCase()
             _isReady.value = true
+        }
+        // Aparte, sin bloquear `isReady` — algunos fabricantes (Motorola incluido) "fuerzan
+        // detener" la app en segundo plano para ahorrar batería, lo que cancela todas las
+        // alarmas pendientes sin pasar por un reinicio del teléfono (que es el único momento en
+        // que `BootReceiver` las repara). Reprogramar todo cada vez que se abre la app es la
+        // forma de que "abrir Lula de nuevo" alcance para reparar los recordatorios, sin
+        // esperar a un reinicio real. Ver `Plan/08-decisiones-tecnicas.md`.
+        viewModelScope.launch {
+            runCatching { reprogramarTodosLosRecordatoriosUseCase() }
         }
     }
 }
