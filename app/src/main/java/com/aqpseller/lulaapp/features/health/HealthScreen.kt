@@ -62,7 +62,7 @@ fun HealthScreen(
         LazyColumn(modifier = Modifier.weight(1f).padding(horizontal = 16.dp)) {
             item {
                 SectionLinkRow(emoji = "💊", color = LulaAsistenteContainerLight, texto = "Nuevo medicamento", onClick = onNuevoMedicamento)
-                SectionLinkRow(emoji = "📅", color = LulaPrimaryContainerLight, texto = "Nueva cita", onClick = onNuevaCita)
+                SectionLinkRow(emoji = "🩺", color = LulaPrimaryContainerLight, texto = "Nueva cita", onClick = onNuevaCita)
                 HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
             }
 

@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -29,6 +30,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.aqpseller.lulaapp.core.ui.HoraSelector
 import com.aqpseller.lulaapp.core.ui.SectionLinkRow
+import com.aqpseller.lulaapp.core.ui.TarjetaSeccion
 import com.aqpseller.lulaapp.core.utils.DateTimeUtils
 import com.aqpseller.lulaapp.core.utils.abrirAjustesDeAlarmasExactas
 import com.aqpseller.lulaapp.core.utils.abrirAjustesDeNotificaciones
@@ -42,7 +44,12 @@ import com.aqpseller.lulaapp.ui.theme.LulaAsistenteContainerLight
 
 private val LETRAS_DIA_ISO = listOf("L", "M", "M", "J", "V", "S", "D")
 
-/** Ajustes personales — accesible desde el menú "⋮" en Hoy, no mezclado con el contenido diario. */
+/**
+ * Ajustes personales — accesible desde el menú "⋮" en Hoy, no mezclado con el contenido diario.
+ * Agrupado en tarjetas por tema (antes era un solo scroll largo sin ninguna separación visual
+ * entre secciones) — pedido explícito del usuario mostrando capturas de otras apps como
+ * referencia. Ver `Plan/08-decisiones-tecnicas.md`.
+ */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun SettingsScreen(
@@ -82,180 +89,171 @@ fun SettingsScreen(
     Column(modifier = modifier.padding(16.dp).verticalScroll(rememberScrollState())) {
         Text(text = "Ajustes", style = MaterialTheme.typography.titleLarge)
 
-        if (!notificacionesPermitidas) {
+        TarjetaSeccion(titulo = "🔔 Recordatorios y permisos") {
+            if (!notificacionesPermitidas) {
+                FilaPermiso(
+                    emoji = "🔕",
+                    texto = "Permitir notificaciones",
+                    explicacion = "Sin este permiso, Lula no puede avisarte de tus recordatorios.",
+                    onClick = { abrirAjustesDeNotificaciones(context) },
+                )
+            }
+            if (!alarmasExactasPermitidas) {
+                FilaPermiso(
+                    emoji = "⏰",
+                    texto = "Permitir alarmas exactas",
+                    explicacion = "Sin esto, tus recordatorios pueden sonar varios minutos tarde.",
+                    onClick = { abrirAjustesDeAlarmasExactas(context) },
+                )
+            }
+            if (!exentoDeOptimizacionBateria) {
+                FilaPermiso(
+                    emoji = "🔋",
+                    texto = "Permitir que Lula funcione siempre",
+                    explicacion = "Algunos celulares (sobre todo Motorola, Xiaomi, Huawei) apagan Lula en " +
+                        "segundo plano para ahorrar batería — eso puede cortar el sonido de una alarma a " +
+                        "la mitad o que no llegue el recordatorio. Esto lo saca de esa lista.",
+                    onClick = { abrirAjustesDeOptimizacionBateria(context) },
+                )
+            }
             SectionLinkRow(
-                emoji = "🔕",
+                emoji = "🔊",
                 color = LulaAsistenteContainerLight,
-                texto = "Permitir notificaciones",
+                texto = "Sonido de mis recordatorios",
                 onClick = { abrirAjustesDeNotificaciones(context) },
-                modifier = Modifier.padding(top = 16.dp),
+                modifier = Modifier.padding(top = 12.dp),
             )
             Text(
-                text = "Sin este permiso, Lula no puede avisarte de tus recordatorios.",
+                text = "Vas a entrar a los ajustes del sistema Android, no de Lula — ahí puedes " +
+                    "cambiar el sonido de cada canal (Silencioso/Sonido/Alarma). El texto que " +
+                    "dice \"aproximadamente N notificaciones por día/semana\" también lo escribe " +
+                    "Android: es su propio cálculo estimado según tu uso, no algo que Lula controle.",
                 style = MaterialTheme.typography.bodySmall,
-            )
-        }
-        if (!alarmasExactasPermitidas) {
-            SectionLinkRow(
-                emoji = "⏰",
-                color = LulaAsistenteContainerLight,
-                texto = "Permitir alarmas exactas",
-                onClick = { abrirAjustesDeAlarmasExactas(context) },
-                modifier = Modifier.padding(top = 16.dp),
-            )
-            Text(
-                text = "Sin esto, tus recordatorios pueden sonar varios minutos tarde.",
-                style = MaterialTheme.typography.bodySmall,
-            )
-        }
-        if (!exentoDeOptimizacionBateria) {
-            SectionLinkRow(
-                emoji = "🔋",
-                color = LulaAsistenteContainerLight,
-                texto = "Permitir que Lula funcione siempre",
-                onClick = { abrirAjustesDeOptimizacionBateria(context) },
-                modifier = Modifier.padding(top = 16.dp),
-            )
-            Text(
-                text = "Algunos celulares (sobre todo Motorola, Xiaomi, Huawei) apagan Lula en " +
-                    "segundo plano para ahorrar batería — eso puede cortar el sonido de una " +
-                    "alarma a la mitad o que no llegue el recordatorio. Esto lo saca de esa lista.",
-                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(top = 4.dp),
             )
         }
 
-        SectionLinkRow(
-            emoji = "🔊",
-            color = LulaAsistenteContainerLight,
-            texto = "Sonido de mis recordatorios",
-            onClick = { abrirAjustesDeNotificaciones(context) },
-            modifier = Modifier.padding(top = 16.dp),
-        )
-        Text(
-            text = "Vas a entrar a los ajustes del sistema Android, no de Lula — ahí puedes " +
-                "cambiar el sonido de cada canal (Silencioso/Sonido/Alarma). El texto que " +
-                "dice \"aproximadamente N notificaciones por día/semana\" también lo escribe " +
-                "Android: es su propio cálculo estimado según tu uso, no algo que Lula controle.",
-            style = MaterialTheme.typography.bodySmall,
-            modifier = Modifier.padding(top = 4.dp),
-        )
+        TarjetaSeccion(titulo = "🗓️ Revisión y cierre del día") {
+            Text(text = "Día en que se activa Revisión semanal", modifier = Modifier.padding(top = 8.dp))
+            Row(modifier = Modifier.padding(top = 8.dp)) {
+                LETRAS_DIA_ISO.forEachIndexed { index, letra ->
+                    val diaIso = index + 1
+                    FilterChip(
+                        selected = diaRevisionSemanal == diaIso,
+                        onClick = { viewModel.setDiaRevisionSemanal(diaIso) },
+                        label = { Text(letra) },
+                        modifier = Modifier.padding(end = 4.dp),
+                    )
+                }
+            }
+            Text(
+                text = "Se activa los ${DateTimeUtils.nombreDiaIso(diaRevisionSemanal)} — antes de ese día " +
+                    "no se puede completar, para no adelantarse a cómo termina la semana.",
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(top = 4.dp),
+            )
 
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(text = "🔔 Sonido al marcar un check en Hoy", modifier = Modifier.weight(1f))
-            Switch(checked = sonidoCheckHabilitado, onCheckedChange = viewModel::setSonidoCheckHabilitado)
-        }
+            HorizontalDivider(modifier = Modifier.padding(top = 16.dp))
 
-        Text(
-            text = "🗓️ Día en que se activa Revisión semanal",
-            modifier = Modifier.padding(top = 24.dp),
-        )
-        Row(modifier = Modifier.padding(top = 8.dp)) {
-            LETRAS_DIA_ISO.forEachIndexed { index, letra ->
-                val diaIso = index + 1
-                FilterChip(
-                    selected = diaRevisionSemanal == diaIso,
-                    onClick = { viewModel.setDiaRevisionSemanal(diaIso) },
-                    label = { Text(letra) },
-                    modifier = Modifier.padding(end = 4.dp),
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(text = "🔥 Recordarme cerrar mi día", modifier = Modifier.weight(1f))
+                Switch(
+                    checked = horaRecordatorioCierreDia != null,
+                    onCheckedChange = { activado -> viewModel.setHoraRecordatorioCierreDia(if (activado) "20:00" else null) },
+                )
+            }
+            Text(
+                text = "Un aviso a la hora que elijas si todavía no cerraste el día — para no perder " +
+                    "la racha por olvido, sobre todo si tus hábitos no tienen recordatorio propio.",
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+            if (horaRecordatorioCierreDia != null) {
+                HoraSelector(
+                    hora = horaRecordatorioCierreDia,
+                    onHoraSeleccionada = { viewModel.setHoraRecordatorioCierreDia(it) },
+                    etiqueta = "¿A qué hora te recuerdo?",
+                    modifier = Modifier.padding(top = 8.dp),
                 )
             }
         }
-        Text(
-            text = "Se activa los ${DateTimeUtils.nombreDiaIso(diaRevisionSemanal)} — antes de ese día " +
-                "no se puede completar, para no adelantarse a cómo termina la semana.",
-            style = MaterialTheme.typography.bodySmall,
-            modifier = Modifier.padding(top = 4.dp),
-        )
 
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 24.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(text = "🔥 Recordarme cerrar mi día", modifier = Modifier.weight(1f))
-            Switch(
-                checked = horaRecordatorioCierreDia != null,
-                onCheckedChange = { activado -> viewModel.setHoraRecordatorioCierreDia(if (activado) "20:00" else null) },
+        TarjetaSeccion(titulo = "🔔 Recordarme revisar Lula") {
+            Text(
+                text = "Un aviso por franja del día si no entraste a revisar/marcar nada — útil " +
+                    "sobre todo si tienes hábitos sin recordatorio propio. Independiente del de " +
+                    "\"cerrar mi día\" de arriba.",
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(top = 4.dp),
             )
-        }
-        Text(
-            text = "Un aviso a la hora que elijas si todavía no cerraste el día — para no perder " +
-                "la racha por olvido, sobre todo si tus hábitos no tienen recordatorio propio.",
-            style = MaterialTheme.typography.bodySmall,
-            modifier = Modifier.padding(top = 4.dp),
-        )
-        if (horaRecordatorioCierreDia != null) {
-            HoraSelector(
-                hora = horaRecordatorioCierreDia,
-                onHoraSeleccionada = { viewModel.setHoraRecordatorioCierreDia(it) },
-                etiqueta = "¿A qué hora te recuerdo?",
-                modifier = Modifier.padding(top = 8.dp),
+            FilaRecordatorioFranja(
+                etiqueta = "🌅 Por la mañana",
+                hora = horaRecordatorioManana,
+                horaPorDefecto = "09:00",
+                onCambiar = { viewModel.setHoraRecordatorioFranja(MomentoDelDia.MANANA, it) },
+            )
+            FilaRecordatorioFranja(
+                etiqueta = "🌤️ Por la tarde",
+                hora = horaRecordatorioTarde,
+                horaPorDefecto = "15:00",
+                onCambiar = { viewModel.setHoraRecordatorioFranja(MomentoDelDia.TARDE, it) },
+            )
+            FilaRecordatorioFranja(
+                etiqueta = "🌙 Por la noche",
+                hora = horaRecordatorioNoche,
+                horaPorDefecto = "20:00",
+                onCambiar = { viewModel.setHoraRecordatorioFranja(MomentoDelDia.NOCHE, it) },
             )
         }
 
-        Text(
-            text = "🔔 Recordarme revisar Lula",
-            style = MaterialTheme.typography.titleSmall,
-            modifier = Modifier.padding(top = 24.dp),
-        )
-        Text(
-            text = "Un aviso por franja del día si no entraste a revisar/marcar nada — útil " +
-                "sobre todo si tienes hábitos sin recordatorio propio. Independiente del de " +
-                "\"cerrar mi día\" de arriba.",
-            style = MaterialTheme.typography.bodySmall,
-            modifier = Modifier.padding(top = 4.dp),
-        )
-        FilaRecordatorioFranja(
-            etiqueta = "🌅 Por la mañana",
-            hora = horaRecordatorioManana,
-            horaPorDefecto = "09:00",
-            onCambiar = { viewModel.setHoraRecordatorioFranja(MomentoDelDia.MANANA, it) },
-        )
-        FilaRecordatorioFranja(
-            etiqueta = "🌤️ Por la tarde",
-            hora = horaRecordatorioTarde,
-            horaPorDefecto = "15:00",
-            onCambiar = { viewModel.setHoraRecordatorioFranja(MomentoDelDia.TARDE, it) },
-        )
-        FilaRecordatorioFranja(
-            etiqueta = "🌙 Por la noche",
-            hora = horaRecordatorioNoche,
-            horaPorDefecto = "20:00",
-            onCambiar = { viewModel.setHoraRecordatorioFranja(MomentoDelDia.NOCHE, it) },
-        )
+        TarjetaSeccion(titulo = "✅ Marcar en Hoy") {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(text = "🔔 Sonido al marcar un check en Hoy", modifier = Modifier.weight(1f))
+                Switch(checked = sonidoCheckHabilitado, onCheckedChange = viewModel::setSonidoCheckHabilitado)
+            }
+        }
 
-        Text(
-            text = "🧭 Personalizar mi navegación",
-            style = MaterialTheme.typography.titleSmall,
-            modifier = Modifier.padding(top = 24.dp),
-        )
-        Text(
-            text = "Elige qué va en cada posición de la barra inferior, a los costados del \"+\".",
-            style = MaterialTheme.typography.bodySmall,
-            modifier = Modifier.padding(top = 4.dp),
-        )
-        SelectorPosicionBottomBar(
-            etiqueta = "Posición 2 (antes del \"+\")",
-            seleccionId = bottomBarPosicion2,
-            onSeleccionar = viewModel::setBottomBarPosicion2,
-        )
-        SelectorPosicionBottomBar(
-            etiqueta = "Posición 3 (después del \"+\")",
-            seleccionId = bottomBarPosicion3,
-            onSeleccionar = viewModel::setBottomBarPosicion3,
-        )
-        SelectorPosicionBottomBar(
-            etiqueta = "Posición 4 (después del \"+\")",
-            seleccionId = bottomBarPosicion4,
-            onSeleccionar = viewModel::setBottomBarPosicion4,
-        )
+        TarjetaSeccion(titulo = "🧭 Personalizar mi navegación") {
+            Text(
+                text = "Elige qué va en cada posición de la barra inferior, a los costados del \"+\".",
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+            SelectorPosicionBottomBar(
+                etiqueta = "Posición 2 (antes del \"+\")",
+                seleccionId = bottomBarPosicion2,
+                onSeleccionar = viewModel::setBottomBarPosicion2,
+            )
+            SelectorPosicionBottomBar(
+                etiqueta = "Posición 3 (después del \"+\")",
+                seleccionId = bottomBarPosicion3,
+                onSeleccionar = viewModel::setBottomBarPosicion3,
+            )
+            SelectorPosicionBottomBar(
+                etiqueta = "Posición 4 (después del \"+\")",
+                seleccionId = bottomBarPosicion4,
+                onSeleccionar = viewModel::setBottomBarPosicion4,
+            )
+        }
     }
+}
+
+@Composable
+private fun FilaPermiso(emoji: String, texto: String, explicacion: String, onClick: () -> Unit) {
+    SectionLinkRow(
+        emoji = emoji,
+        color = LulaAsistenteContainerLight,
+        texto = texto,
+        onClick = onClick,
+        modifier = Modifier.padding(top = 12.dp),
+    )
+    Text(text = explicacion, style = MaterialTheme.typography.bodySmall)
 }
 
 @Composable

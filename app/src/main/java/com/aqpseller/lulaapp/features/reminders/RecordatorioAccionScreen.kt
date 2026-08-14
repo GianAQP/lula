@@ -37,7 +37,7 @@ fun RecordatorioAccionScreen(
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text(text = if (uiState.esHabito) "✅" else "📝", style = MaterialTheme.typography.displayLarge)
+        Text(text = if (uiState.esHabito) "🌱" else "📝", style = MaterialTheme.typography.displayLarge)
         Text(
             text = "¡Hora de tu ${if (uiState.esHabito) "hábito" else "tarea"}!",
             style = MaterialTheme.typography.titleLarge,

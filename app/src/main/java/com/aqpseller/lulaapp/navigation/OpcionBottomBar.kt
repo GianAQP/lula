@@ -14,10 +14,10 @@ import com.aqpseller.lulaapp.ui.theme.LulaTareaContainerLight
  */
 enum class OpcionBottomBar(val id: String, val emoji: String, val etiqueta: String) {
     ASISTENTE("asistente", "🎙️", "Asistente"),
-    HABITOS("habitos", "✅", "Hábitos"),
+    HABITOS("habitos", "🌱", "Hábitos"),
     PROGRESO("progreso", "📊", "Progreso"),
     FINANZAS("finanzas", "💰", "Finanzas"),
-    TAREAS("tareas", "📅", "Tareas"),
+    TAREAS("tareas", "📝", "Tareas"),
     METAS("metas", "🎯", "Metas"),
     CIRCULO_CUIDADO("circulo_cuidado", "👥", "Círculo de cuidado");
 

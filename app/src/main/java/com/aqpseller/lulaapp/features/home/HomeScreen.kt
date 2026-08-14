@@ -2,7 +2,6 @@ package com.aqpseller.lulaapp.features.home
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -10,9 +9,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -38,6 +39,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import com.aqpseller.lulaapp.core.ui.EmptyState
 import com.aqpseller.lulaapp.core.ui.LulaProgressBar
 import com.aqpseller.lulaapp.core.ui.SectionLinkRow
+import com.aqpseller.lulaapp.core.ui.TarjetaSeccion
 import com.aqpseller.lulaapp.core.ui.TomaAccionRow
 import com.aqpseller.lulaapp.core.ui.emojiEstadoActividad
 import com.aqpseller.lulaapp.core.ui.emojiTipoActividad
@@ -55,12 +57,19 @@ import com.aqpseller.lulaapp.domain.model.TomaDeHoy
 import com.aqpseller.lulaapp.ui.theme.LulaAsistenteContainerLight
 import com.aqpseller.lulaapp.ui.theme.LulaFamiliaContainerDark
 import com.aqpseller.lulaapp.ui.theme.LulaFamiliaContainerLight
+import com.aqpseller.lulaapp.ui.theme.LulaHabito
 import com.aqpseller.lulaapp.ui.theme.LulaPrimaryContainerDark
 import com.aqpseller.lulaapp.ui.theme.LulaPrimaryContainerLight
 import com.aqpseller.lulaapp.ui.theme.LulaTareaContainerLight
 import com.aqpseller.lulaapp.ui.theme.lulaCardColors
 import com.aqpseller.lulaapp.ui.theme.lulaContainerColor
 import com.aqpseller.lulaapp.ui.theme.lulaContentColorSobreContainer
+
+/** Verde de confirmación (mismo verde de "hábitos/crecimiento" de la paleta) para todo check
+ * marcado — antes usaba el violeta primario por defecto de Material y se confundía con el resto
+ * de la UI en vez de leerse como "listo". A pedido del usuario. Ver `08-decisiones-tecnicas.md`. */
+@Composable
+private fun coloresCheckMarcar() = CheckboxDefaults.colors(checkedColor = LulaHabito, checkmarkColor = Color.White)
 
 @Composable
 fun HomeScreen(
@@ -183,6 +192,27 @@ fun HomeScreen(
             return@Column
         }
 
+        // Listas pendientes calculadas una sola vez acá (antes se repetían inline) — además de
+        // pintar cada sección, sirven para decidir si la tarjeta "✅ Para marcar hoy" tiene algo
+        // que mostrar, ya que ahora todas viven agrupadas dentro de una sola tarjeta en vez de
+        // aparecer sueltas una tras otra.
+        val actividadesMananaPendientes = uiState.actividadesManana.pendientes()
+        val actividadesTardePendientes = uiState.actividadesTarde.pendientes()
+        val actividadesNochePendientes = uiState.actividadesNoche.pendientes()
+        val tareasPendientes = uiState.tareasDeHoy.pendientes()
+        val medicamentosPendientes = uiState.medicamentosDeHoy.conSoloTomasPendientes()
+        val hayParaMarcar = actividadesMananaPendientes.isNotEmpty() || actividadesTardePendientes.isNotEmpty() ||
+            actividadesNochePendientes.isNotEmpty() || tareasPendientes.isNotEmpty() || medicamentosPendientes.isNotEmpty()
+        val hayAgendaOMetas = uiState.metasEnProgreso.isNotEmpty() || uiState.fechasImportantesDeHoy.isNotEmpty() ||
+            uiState.citasDeHoy.isNotEmpty()
+        val completados = uiState.actividadesManana + uiState.actividadesTarde +
+            uiState.actividadesNoche + uiState.tareasDeHoy
+        val completadosConfirmados = completados.filter { it.estado == EstadoActividad.CONFIRMADO }
+        val tomasResueltas = uiState.medicamentosDeHoy.flatMap { medicamento ->
+            medicamento.tomas.filter { it.estado != EstadoActividad.SIN_CONFIRMAR }.map { medicamento to it }
+        }
+        val hayYaHechos = completadosConfirmados.isNotEmpty() || tomasResueltas.isNotEmpty()
+
         LazyColumn(
             modifier = Modifier
                 .weight(1f)
@@ -204,107 +234,126 @@ fun HomeScreen(
             }
 
             seccionHitosMeta(uiState.hitosMetaPendientes, viewModel)
-            seccionMetas(uiState.metasEnProgreso, onVerMetaDetail)
 
-            seccionAgenda("🎉 FECHAS IMPORTANTES DE HOY", uiState.fechasImportantesDeHoy, onVerFechaImportante)
-            seccionAgenda("📅 CITAS DE HOY", uiState.citasDeHoy, onVerCita)
+            // Todo lo que solo se abre para ver/editar (Metas, Fechas importantes, Citas) va
+            // junto en una sola tarjeta — separado a propósito de lo que se marca con checkbox,
+            // a pedido del usuario mostrando ejemplos de otras apps.
+            if (hayAgendaOMetas) {
+                item {
+                    TarjetaSeccion(titulo = "📌 Metas y agenda de hoy") {
+                        MetasSeccion(uiState.metasEnProgreso, onVerMetaDetail)
+                        AgendaSeccion("🎉 Fechas importantes", uiState.fechasImportantesDeHoy, onVerFechaImportante)
+                        AgendaSeccion("📅 Citas", uiState.citasDeHoy, onVerCita)
+                    }
+                }
+            }
 
             seccionRevisionesHabito(uiState.revisionesHabitoPendientes, viewModel)
 
-            // Lo pendiente se muestra primero y agrupado — lo ya hecho se saca de acá para no
-            // competir visualmente, pero sigue disponible (nunca se borra ni se castiga, ver
-            // `Plan/CLAUDE.md`) en "✅ Ya hechos hoy" más abajo, donde también se puede deshacer.
-            seccionActividades("POR LA MAÑANA", uiState.actividadesManana.pendientes(), viewModel, uiState.sonidoCheckHabilitado)
-            seccionActividades("POR LA TARDE", uiState.actividadesTarde.pendientes(), viewModel, uiState.sonidoCheckHabilitado)
-            seccionActividades("POR LA NOCHE", uiState.actividadesNoche.pendientes(), viewModel, uiState.sonidoCheckHabilitado)
-            seccionActividades("TAREAS DE HOY", uiState.tareasDeHoy.pendientes(), viewModel, uiState.sonidoCheckHabilitado)
-            seccionMedicamentos(uiState.medicamentosDeHoy.conSoloTomasPendientes(), viewModel)
-
-            item {
-                val completados = uiState.actividadesManana + uiState.actividadesTarde +
-                    uiState.actividadesNoche + uiState.tareasDeHoy
-                val tomasResueltas = uiState.medicamentosDeHoy.flatMap { medicamento ->
-                    medicamento.tomas.filter { it.estado != EstadoActividad.SIN_CONFIRMAR }.map { medicamento to it }
+            // Todo lo que se marca con checkbox (Hábitos/Tareas/Medicamentos pendientes) va junto
+            // en su propia tarjeta — lo ya hecho se saca de acá para no competir visualmente,
+            // pero sigue disponible (nunca se borra ni se castiga, ver `Plan/CLAUDE.md`) en
+            // "✅ Ya hechos hoy", su propia tarjeta más abajo.
+            if (hayParaMarcar) {
+                item {
+                    TarjetaSeccion(titulo = "✅ Para marcar hoy") {
+                        ActividadesSeccion("Por la mañana", actividadesMananaPendientes, viewModel, uiState.sonidoCheckHabilitado)
+                        ActividadesSeccion("Por la tarde", actividadesTardePendientes, viewModel, uiState.sonidoCheckHabilitado)
+                        ActividadesSeccion("Por la noche", actividadesNochePendientes, viewModel, uiState.sonidoCheckHabilitado)
+                        ActividadesSeccion("Tareas de hoy", tareasPendientes, viewModel, uiState.sonidoCheckHabilitado)
+                        MedicamentosSeccion(medicamentosPendientes, viewModel)
+                    }
                 }
-                SeccionYaHechosHoy(
-                    completados = completados.filter { it.estado == EstadoActividad.CONFIRMADO },
-                    tomasResueltas = tomasResueltas,
-                    viewModel = viewModel,
-                    sonidoCheckHabilitado = uiState.sonidoCheckHabilitado,
-                )
+            }
+
+            if (hayYaHechos) {
+                item {
+                    Card(modifier = Modifier.fillMaxWidth().padding(top = 16.dp)) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            SeccionYaHechosHoy(
+                                completados = completadosConfirmados,
+                                tomasResueltas = tomasResueltas,
+                                viewModel = viewModel,
+                                sonidoCheckHabilitado = uiState.sonidoCheckHabilitado,
+                            )
+                        }
+                    }
+                }
             }
 
             item {
-                SectionLinkRow(
-                    emoji = "📝",
-                    color = LulaTareaContainerLight,
-                    texto = "Ver todas mis tareas",
-                    onClick = onVerTareas,
-                    modifier = Modifier.padding(top = 4.dp),
-                )
-                SectionLinkRow(
-                    emoji = "📅",
-                    color = LulaPrimaryContainerLight,
-                    texto = "Ver calendario",
-                    onClick = onVerCalendario,
-                )
-                if (uiState.hayMedicamentosOCitas) {
-                    SectionLinkRow(
-                        emoji = "💊",
-                        color = LulaAsistenteContainerLight,
-                        texto = "Ver mi salud",
-                        onClick = onVerSalud,
-                    )
-                }
-                // "Ver mis metas"/"Ver mis rutinas" solo aparecen si ya hay al menos una — se
-                // descubren desde el menú "+" (que sí siempre está disponible), no se muestran
-                // enlaces a listas vacías (a pedido del usuario).
-                if (uiState.hayMetas) {
-                    SectionLinkRow(
-                        emoji = "🎯",
-                        color = LulaPrimaryContainerLight,
-                        texto = "Ver mis metas",
-                        onClick = onVerMetas,
-                    )
-                }
-                if (uiState.hayRutinas) {
-                    SectionLinkRow(
-                        emoji = "🧩",
-                        color = LulaPrimaryContainerLight,
-                        texto = "Ver mis rutinas",
-                        onClick = onVerRutinas,
-                    )
-                }
-                if (uiState.hayListas) {
-                    SectionLinkRow(
-                        emoji = "📋",
-                        color = LulaPrimaryContainerLight,
-                        texto = "Ver mis listas",
-                        onClick = onVerListas,
-                    )
-                }
-                if (uiState.hayFechasImportantes) {
-                    SectionLinkRow(
-                        emoji = "🎉",
-                        color = LulaPrimaryContainerLight,
-                        texto = "Ver mis fechas importantes",
-                        onClick = onVerFechasImportantes,
-                    )
-                }
-                if (uiState.hayNotas) {
+                TarjetaSeccion(titulo = "🔎 Explorar más") {
                     SectionLinkRow(
                         emoji = "📝",
+                        color = LulaTareaContainerLight,
+                        texto = "Ver todas mis tareas",
+                        onClick = onVerTareas,
+                        modifier = Modifier.padding(top = 8.dp),
+                    )
+                    SectionLinkRow(
+                        emoji = "📅",
                         color = LulaPrimaryContainerLight,
-                        texto = "Ver mis notas",
-                        onClick = onVerNotas,
+                        texto = "Ver calendario",
+                        onClick = onVerCalendario,
+                    )
+                    if (uiState.hayMedicamentosOCitas) {
+                        SectionLinkRow(
+                            emoji = "💊",
+                            color = LulaAsistenteContainerLight,
+                            texto = "Ver mi salud",
+                            onClick = onVerSalud,
+                        )
+                    }
+                    // "Ver mis metas"/"Ver mis rutinas" solo aparecen si ya hay al menos una — se
+                    // descubren desde el menú "+" (que sí siempre está disponible), no se muestran
+                    // enlaces a listas vacías (a pedido del usuario).
+                    if (uiState.hayMetas) {
+                        SectionLinkRow(
+                            emoji = "🎯",
+                            color = LulaPrimaryContainerLight,
+                            texto = "Ver mis metas",
+                            onClick = onVerMetas,
+                        )
+                    }
+                    if (uiState.hayRutinas) {
+                        SectionLinkRow(
+                            emoji = "🧩",
+                            color = LulaPrimaryContainerLight,
+                            texto = "Ver mis rutinas",
+                            onClick = onVerRutinas,
+                        )
+                    }
+                    if (uiState.hayListas) {
+                        SectionLinkRow(
+                            emoji = "📋",
+                            color = LulaPrimaryContainerLight,
+                            texto = "Ver mis listas",
+                            onClick = onVerListas,
+                        )
+                    }
+                    if (uiState.hayFechasImportantes) {
+                        SectionLinkRow(
+                            emoji = "🎉",
+                            color = LulaPrimaryContainerLight,
+                            texto = "Ver mis fechas importantes",
+                            onClick = onVerFechasImportantes,
+                        )
+                    }
+                    if (uiState.hayNotas) {
+                        SectionLinkRow(
+                            emoji = "📝",
+                            color = LulaPrimaryContainerLight,
+                            texto = "Ver mis notas",
+                            onClick = onVerNotas,
+                        )
+                    }
+                    SectionLinkRow(
+                        emoji = "📊",
+                        color = LulaPrimaryContainerLight,
+                        texto = "Ver mi progreso",
+                        onClick = onVerProgreso,
                     )
                 }
-                SectionLinkRow(
-                    emoji = "📊",
-                    color = LulaPrimaryContainerLight,
-                    texto = "Ver mi progreso",
-                    onClick = onVerProgreso,
-                )
             }
 
             item {
@@ -373,40 +422,54 @@ private fun androidx.compose.foundation.lazy.LazyListScope.seccionRevisionesHabi
 }
 
 /** Fila de solo lectura para Citas/Fechas importantes de hoy — tocar lleva al detalle, sin
- * checkbox acá (a diferencia de Hábitos/Tareas, no se "completan" desde Hoy). */
-private fun androidx.compose.foundation.lazy.LazyListScope.seccionAgenda(
+ * checkbox acá (a diferencia de Hábitos/Tareas, no se "completan" desde Hoy). Antes vivía
+ * directamente en el `LazyColumn`; ahora es un composable normal porque va dentro de la tarjeta
+ * compartida "📌 Metas y agenda de hoy". */
+@Composable
+private fun AgendaSeccion(
     titulo: String,
     items: List<ItemAgenda>,
     onItemClick: (String) -> Unit,
 ) {
     if (items.isEmpty()) return
-    item {
-        Text(text = titulo, style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(top = 8.dp))
-    }
+    Text(text = titulo, style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 12.dp))
     val horaActual = DateTimeUtils.horaHHmm(DateTimeUtils.ahoraEpochMillis())
-    items(items, key = { it.actividadId }) { item ->
-        // Ya pasó su hora y sigue sin marcar — se resalta para que llame la atención, en vez de
-        // quedar igual que algo que todavía falta por venir (a pedido del usuario).
+    items.forEach { item ->
+        // Ya pasó su hora y sigue sin marcar — se resalta con fondo (no solo texto rojo) para
+        // que sea fácil de ubicar de un vistazo cuál toca resolver ahora, a pedido del usuario.
         val vencida = item.estado == EstadoActividad.SIN_CONFIRMAR && item.horario != null && item.horario < horaActual
-        Column(
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .clickable { onItemClick(item.actividadId) }
-                .padding(vertical = 6.dp),
+                .then(if (vencida) Modifier.background(MaterialTheme.colorScheme.errorContainer, RoundedCornerShape(8.dp)) else Modifier)
+                .padding(horizontal = 8.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
-                text = "${emojiEstadoActividad(item.estado)} ${item.nombre}",
-                style = MaterialTheme.typography.bodyMedium,
-                color = if (vencida) MaterialTheme.colorScheme.error else Color.Unspecified,
-            )
-            val detalle = listOfNotNull(item.horario, item.subtitulo).joinToString(" · ")
-            if (detalle.isNotEmpty()) {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = detalle,
-                    style = MaterialTheme.typography.bodySmall,
+                    text = "${emojiEstadoActividad(item.estado)} ${item.nombre}",
+                    style = MaterialTheme.typography.bodyMedium,
                     color = if (vencida) MaterialTheme.colorScheme.error else Color.Unspecified,
                 )
+                val detalle = listOfNotNull(item.horario, item.subtitulo).joinToString(" · ")
+                if (detalle.isNotEmpty()) {
+                    Text(
+                        text = detalle,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (vencida) MaterialTheme.colorScheme.error else Color.Unspecified,
+                    )
+                }
             }
+            // Solo se abre para ver/editar, no se marca acá — la flecha lo distingue de un
+            // vistazo de las filas con checkbox (mismo lenguaje que `SectionLinkRow`), a pedido
+            // del usuario. Ver `Plan/08-decisiones-tecnicas.md`.
+            Text(
+                text = "›",
+                style = MaterialTheme.typography.headlineSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 8.dp),
+            )
         }
     }
 }
@@ -414,32 +477,41 @@ private fun androidx.compose.foundation.lazy.LazyListScope.seccionAgenda(
 /**
  * Antes las Metas solo aparecían como un enlace "Ver mis metas" en Hoy, sin ningún progreso
  * visible — a pedido del usuario, ahora se ven acá con su barra, igual que Notas/Diario ya
- * hacían con sus propios "¿hay algo?" — ver `Plan/08-decisiones-tecnicas.md`.
+ * hacían con sus propios "¿hay algo?" — ver `Plan/08-decisiones-tecnicas.md`. Composable normal
+ * (antes vivía suelta en el `LazyColumn`) porque ahora va dentro de la tarjeta compartida
+ * "📌 Metas y agenda de hoy".
  */
-private fun androidx.compose.foundation.lazy.LazyListScope.seccionMetas(
+@Composable
+private fun MetasSeccion(
     metas: List<com.aqpseller.lulaapp.domain.usecase.meta.MetaConProgreso>,
     onMetaClick: (String) -> Unit,
 ) {
     if (metas.isEmpty()) return
-    item {
-        Text(text = "🎯 TUS METAS POR VENCER", style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(top = 8.dp))
-    }
+    Text(text = "🎯 Tus metas por vencer", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 12.dp))
     // Mismo estilo compacto de "Ver mis metas" (nombre a la izquierda, contador a la derecha,
     // sin barra de progreso) — antes tenía su propia barra, distinta a la de la lista completa,
     // y el usuario pidió que se vea "bonito" acá también. El aviso de días restantes ahora es un
     // atajo directo a reprogramar (aplazar), no solo texto — ver `Plan/08-decisiones-tecnicas.md`.
-    items(metas, key = { it.meta.id }) { metaConProgreso ->
+    metas.forEach { metaConProgreso ->
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .clickable { onMetaClick(metaConProgreso.meta.id) }
-                .padding(vertical = 8.dp),
+                .padding(vertical = 6.dp),
         ) {
-            Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                 Text(text = metaConProgreso.meta.nombre, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f).padding(end = 8.dp))
                 Text(
                     text = "(${metaConProgreso.progreso.toInt()}/${metaConProgreso.meta.valorObjetivo.toInt()})",
                     style = MaterialTheme.typography.titleSmall,
+                )
+                // Se abre para ver el detalle, no se marca acá — misma flecha que Citas/Fechas
+                // importantes, para que se lea igual de un vistazo. Ver `08-decisiones-tecnicas.md`.
+                Text(
+                    text = "›",
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(start = 8.dp),
                 )
             }
             // Solo se resalta en los últimos 7 días (o ya vencida) — la fecha límite no debe
@@ -497,18 +569,19 @@ private fun androidx.compose.foundation.lazy.LazyListScope.seccionHitosMeta(
     }
 }
 
-private fun androidx.compose.foundation.lazy.LazyListScope.seccionActividades(
+/** Composable normal (antes vivía suelta en el `LazyColumn`) porque ahora va dentro de la
+ * tarjeta compartida "✅ Para marcar hoy". */
+@Composable
+private fun ActividadesSeccion(
     titulo: String,
     actividades: List<ActividadUi>,
     viewModel: HomeViewModel,
     sonidoCheckHabilitado: Boolean,
 ) {
     if (actividades.isEmpty()) return
-    item {
-        Text(text = titulo, style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(top = 8.dp))
-    }
+    Text(text = titulo, style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 12.dp))
     val horaActual = DateTimeUtils.horaHHmm(DateTimeUtils.ahoraEpochMillis())
-    items(actividades, key = { it.id }) { actividad ->
+    actividades.forEach { actividad ->
         // Ya pasó su hora y sigue sin marcar — mismo criterio que Cita/Fecha importante/Medicamento.
         // Una Tarea, además, cuenta como vencida si su fecha límite (no solo la hora) ya pasó —
         // antes solo se miraba `horaRecordatorio`, así que una tarea vencida de días atrás sin
@@ -520,7 +593,8 @@ private fun androidx.compose.foundation.lazy.LazyListScope.seccionActividades(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 4.dp),
+                .then(if (vencida) Modifier.background(MaterialTheme.colorScheme.errorContainer, RoundedCornerShape(8.dp)) else Modifier)
+                .padding(horizontal = 8.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Checkbox(
@@ -532,6 +606,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.seccionActividades(
                     )
                     if (sonidoCheckHabilitado) SonidoUtils.reproducirCheck()
                 },
+                colors = coloresCheckMarcar(),
             )
             Text(
                 text = "${emojiTipoActividad(actividad.tipo)} ${actividad.nombre}" + if (vencida) " ⚠️" else "",
@@ -553,7 +628,9 @@ private fun List<MedicamentoDeHoy>.conSoloTomasPendientes(): List<MedicamentoDeH
  * Todo lo ya completado hoy (hábitos, tareas y tomas de medicamento resueltas), junto en un
  * solo lugar colapsado por defecto — a pedido del usuario, para que lo pendiente resalte y lo
  * hecho no estorbe, sin ocultarlo para siempre: se puede expandir y desmarcar, y al desmarcar
- * vuelve arriba, a su sección de pendientes.
+ * vuelve arriba, a su sección de pendientes. Ahora vive dentro de su propia tarjeta redondeada
+ * (antes solo tenía un divisor arriba) — el divisor se sacó porque ya no hace falta separar de
+ * nada, la tarjeta misma es la separación.
  */
 @Composable
 private fun SeccionYaHechosHoy(
@@ -562,10 +639,8 @@ private fun SeccionYaHechosHoy(
     viewModel: HomeViewModel,
     sonidoCheckHabilitado: Boolean,
 ) {
-    if (completados.isEmpty() && tomasResueltas.isEmpty()) return
     var expandido by remember { mutableStateOf(false) }
 
-    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -584,7 +659,7 @@ private fun SeccionYaHechosHoy(
         Text(
             text = "✅ Ya hechos hoy ($etiquetaConteo)",
             style = MaterialTheme.typography.titleSmall,
-            modifier = Modifier.weight(1f).padding(vertical = 8.dp),
+            modifier = Modifier.weight(1f),
         )
         Text(text = if (expandido) "▲" else "▼")
     }
@@ -594,7 +669,8 @@ private fun SeccionYaHechosHoy(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 4.dp),
+                    .padding(vertical = 4.dp, horizontal = 8.dp)
+                    .padding(top = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Checkbox(
@@ -603,6 +679,7 @@ private fun SeccionYaHechosHoy(
                         viewModel.marcarActividad(actividad.id, EstadoActividad.SIN_CONFIRMAR)
                         if (sonidoCheckHabilitado) SonidoUtils.reproducirCheck()
                     },
+                    colors = coloresCheckMarcar(),
                 )
                 Text(
                     text = "${emojiTipoActividad(actividad.tipo)} ${actividad.nombre}",
@@ -622,15 +699,16 @@ private fun SeccionYaHechosHoy(
     }
 }
 
-private fun androidx.compose.foundation.lazy.LazyListScope.seccionMedicamentos(
+/** Composable normal (antes vivía suelta en el `LazyColumn`) porque ahora va dentro de la
+ * tarjeta compartida "✅ Para marcar hoy". */
+@Composable
+private fun MedicamentosSeccion(
     medicamentos: List<MedicamentoDeHoy>,
     viewModel: HomeViewModel,
 ) {
     if (medicamentos.isEmpty()) return
-    item {
-        Text(text = "MEDICAMENTOS DE HOY", style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(top = 8.dp))
-    }
-    items(medicamentos, key = { it.actividadId }) { medicamento ->
+    Text(text = "Medicamentos de hoy", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 12.dp))
+    medicamentos.forEach { medicamento ->
         Column {
             medicamento.tomas.forEach { toma ->
                 TomaAccionRow(

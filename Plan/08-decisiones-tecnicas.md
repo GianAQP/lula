@@ -3153,3 +3153,138 @@ reparar todos los recordatorios, sin depender de que el usuario reinicie el tel�
 
 Compilado y verificado (`compileDebugKotlin`, `EXIT_CODE=0`) e instalado en el dispositivo real
 (moto g(9) plus).
+
+## Rediseño de Ajustes en tarjetas (2026-08-13)
+
+El usuario compartió 3 capturas de pantalla de otras apps (cuenta de Honor, una app de botica,
+una app de salud) señalando cómo agrupan sus ajustes/cuenta: cada sección vive en su propia
+tarjeta (rectángulo redondeado), con filas ícono + texto + flecha, en vez de una sola lista
+continua. `SettingsScreen.kt` (antes: todo suelto en un `Column` con solo espacios entre
+secciones) se reagrupó siguiendo ese mismo patrón — nuevo composable local `TarjetaAjustes`
+(envuelve cualquier contenido en un `Card` con su propio título), usado para 5 grupos:
+
+- **🔔 Recordatorios y permisos** — notificaciones/alarmas exactas/optimización de batería
+  (solo si faltan) + sonido de recordatorios.
+- **🗓️ Revisión y cierre del día** — día de revisión semanal + recordatorio de cerrar el día.
+- **🔔 Recordarme revisar Lula** — las 3 franjas (mañana/tarde/noche).
+- **✅ Marcar en Hoy** — sonido al marcar un check.
+- **🧭 Personalizar mi navegación** — las 3 posiciones configurables de la barra inferior.
+
+Mismo contenido y misma lógica de antes (nada de esto tocó `SettingsViewModel`) — el cambio es
+puramente de agrupación visual, para que la pantalla se pueda escanear de un vistazo en vez de
+sentirse como un formulario largo sin secciones.
+
+Compilado y verificado (`compileDebugKotlin`, `EXIT_CODE=0`) e instalado en el dispositivo real
+(moto g(9) plus).
+
+## Perfil en tarjetas + separar "marcar" de "ver/editar" en Hoy (2026-08-13)
+
+Siguiendo con el mismo pedido de elegancia visual (mismas 3 capturas de referencia), tres
+cambios más:
+
+1. **`TarjetaAjustes` se sacó de `SettingsScreen.kt`** a un composable compartido,
+   `core/ui/TarjetaSeccion.kt` (mismo comportamiento, nombre genérico porque ya no es solo de
+   Ajustes) — para no duplicar el mismo patrón de tarjeta en cada pantalla que lo necesite.
+
+2. **`ProfileScreen.kt` se reagrupó en tarjetas** con `TarjetaSeccion`: "🧭 Mi crecimiento" (Mi
+   propósito), "👥 Mi espacio" (nueva — Círculo de cuidado y Familia/Espacios), "🍽️ Horarios de
+   comida", "🔒 Privacidad y legal", "⚠️ Zona de peligro". Antes Círculo de cuidado y
+   Familia/Espacios no aparecían en Perfil para nada — solo se llegaba a ellos desde el menú "⋮"
+   de la barra superior o, si el usuario los había configurado, desde una posición del bottom
+   bar. `ProfileScreen` ganó los parámetros `onVerCirculoCuidado`/`onVerFamilia`, cableados en
+   `LulaNavHost.kt` a las rutas `CIRCULO_CUIDADO`/`FAMILIA` que ya existían.
+
+3. **`HomeScreen.kt`: separación visual entre lo que se marca y lo que solo se abre.** A pedido
+   del usuario — antes una fila de Cita/Fecha importante/Meta (clickeable, lleva al detalle) se
+   veía visualmente igual que una fila de Hábito/Tarea (con checkbox), sin ninguna pista de que
+   unas se tocan para ver/editar y otras se marcan. Se agregó una flecha "›" al final de cada
+   fila de `seccionAgenda` (Citas/Fechas importantes) y `seccionMetas`, mismo lenguaje visual que
+   ya usa `SectionLinkRow` en el resto de la app. No se tocó ninguna fila con checkbox
+   (Hábitos/Tareas/Medicamentos) — esas ya se distinguen por tener el checkbox mismo.
+
+Compilado y verificado (`compileDebugKotlin`, `EXIT_CODE=0`) e instalado en el dispositivo real
+(moto g(9) plus).
+
+## Hoy en tarjetas + check verde + resaltado de vencidos (2026-08-13)
+
+Tercera ronda del mismo pedido de elegancia visual. En `HomeScreen.kt`:
+
+1. **Todo lo que se marca (checkbox) va en una sola tarjeta "✅ Para marcar hoy"** — Mañana,
+   Tarde, Noche, Tareas y Medicamentos pendientes, antes sueltos uno tras otro en el
+   `LazyColumn`. Solo aparece si hay al menos un pendiente.
+2. **Todo lo que solo se abre para ver/editar va en otra tarjeta "📌 Metas y agenda de hoy"**
+   — Metas, Fechas importantes y Citas. Mismo criterio de "marcar vs no marcar" pedido para
+   Perfil/Ajustes, ahora aplicado también a Hoy: dos tarjetas separadas en vez de una lista
+   plana donde checkbox y flecha se mezclaban visualmente.
+3. **"✅ Ya hechos hoy" pasó a ser su propia tarjeta redondeada** (antes solo tenía un divisor
+   arriba, ahora la tarjeta misma cumple ese rol — se quitó el divisor porque ya no hacía falta).
+4. **El bloque de enlaces del final ("Ver tareas", "Ver calendario", etc.) pasó a la tarjeta
+   "🔎 Explorar más"**.
+5. **Checkbox marcado ahora es verde** (`LulaHabito`, el mismo verde de "hábitos/crecimiento"
+   de la paleta) en vez del violeta primario de Material por defecto — a pedido del usuario, que
+   lo notó como "medio violeta" y pidió verde para que se lea como "confirmación", no solo como
+   el color de acento genérico de la app. Se centralizó en `coloresCheckMarcar()` (HomeScreen) y
+   se aplicó también al `Checkbox` de `TomaAccionRow.kt` (compartido con "Mi salud" y
+   `AccionTomaScreen`), para no tener dos checks de color distinto en la misma app.
+6. **Las filas vencidas (hora ya pasada, sin marcar) ahora tienen fondo resaltado**
+   (`colorScheme.errorContainer` + esquinas redondeadas), no solo texto en rojo como antes — a
+   pedido del usuario, para que sea fácil detectar de un vistazo cuál toca resolver ahora mismo
+   y pasar a check verde. Aplicado en `ActividadesSeccion` (Hábitos/Tareas), `AgendaSeccion`
+   (Citas/Fechas importantes) y `TomaAccionRow` (Medicamentos) — mismo criterio "vencida" que ya
+   existía en cada una, solo se sumó el fondo.
+
+Para que las secciones antes sueltas (`seccionActividades`, `seccionAgenda`, `seccionMetas`,
+`seccionMedicamentos`) pudieran vivir dentro de una sola `Card`, se convirtieron de extensiones
+de `LazyListScope` (`item`/`items`) a composables normales (`ActividadesSeccion`, `AgendaSeccion`,
+`MetasSeccion`, `MedicamentosSeccion`) que se recorren con `forEach` — aceptable porque las
+listas de un solo día son chicas, no hace falta que sean lazy.
+
+Compilado y verificado (`compileDebugKotlin`, `EXIT_CODE=0`) e instalado en el dispositivo real
+(moto g(9) plus).
+
+## Ícono de Hábito: de "✅" a "🌱" (2026-08-13)
+
+Con el checkbox ahora verde (ver sección anterior), el usuario notó que la fila de un Hábito
+tenía dos símbolos de check pegados: el emoji de tipo ("✅") justo al lado del checkbox real
+("✅" cuando está marcado) — confuso, parecían dos checks compitiendo. Se cambió el emoji de
+Hábito a "🌱" (semilla), reusando el mismo símbolo que ya usa Lula para "crecimiento" en otros
+lados (el estado vacío de Hoy, y el verde de la paleta ya está descrito como "hábitos,
+crecimiento"). El checkbox se queda tal cual — solo se cambió el ícono que identifica el tipo.
+
+Como el emoji de tipo Hábito estaba duplicado en varios lugares en vez de vivir en un solo sitio
+(la función compartida `emojiTipoActividad()` existe justo para evitar esto, pero no todos los
+lugares la usan todavía), el cambio se aplicó a mano en los 7 sitios encontrados:
+`TipoActividadEmoji.kt` (la función compartida, usada en Hoy/Calendario), `OpcionBottomBar.kt`
+(chip/ícono de la barra inferior), `AddMenuSheet.kt` (menú "+"), `HabitoEmoji.kt` (ícono
+automático por palabra clave del hábito — el símbolo de respaldo cuando ninguna palabra
+coincide), `RecordatorioReceiver.kt` (copia duplicada del mapeo para notificaciones, pendiente
+de consolidar en el futuro), `RecordatorioAccionScreen.kt` (ícono grande en la pantalla de
+Hecho/Posponer) y `CrearHabitoScreen.kt` (botón "Ver mis hábitos"). No se tocó el "✅" que
+significa "estado confirmado" (`EstadoActividad.CONFIRMADO` en `emojiEstadoActividad()`,
+`CitaDetailScreen.kt`, `MedicamentoDetailScreen.kt`) — ese es un símbolo distinto, compartido por
+todos los tipos de actividad, no específico de Hábito.
+
+Compilado y verificado (`compileDebugKotlin`, `EXIT_CODE=0`) e instalado en el dispositivo real
+(moto g(9) plus).
+
+## Ícono de Tareas en "Personalizar mi navegación" era el de Calendario (2026-08-13)
+
+El usuario notó que el chip de "Tareas" en Ajustes → Personalizar mi navegación
+(`OpcionBottomBar.TAREAS`) usaba "📅" — el mismo símbolo de Calendario, aunque Tareas en todo el
+resto de la app (menú "+", `TipoActividadEmoji`, enlaces de Hoy) ya usa "📝". Se corrigió ese
+único punto para que coincida con el resto — no era una decisión de diseño nueva, era una
+inconsistencia real (`OpcionBottomBar.kt` nunca se alineó con `TipoActividadEmoji.kt` cuando se
+definieron por separado). Compilado y verificado (`compileDebugKotlin`, `EXIT_CODE=0`) e
+instalado en el dispositivo real (moto g(9) plus).
+
+## Ícono de Citas: de "📅" a "🩺" (2026-08-13)
+
+Mismo motivo que Tareas arriba — Citas usaba "📅", el mismo símbolo de Calendario. Se cambió a
+"🩺" en los 4 lugares donde vivía: `TipoActividadEmoji.kt` (función compartida), `AddMenuSheet.kt`
+(menú "+"), `RecordatorioReceiver.kt` (notificaciones) y `HealthScreen.kt` ("Nueva cita"). Esto
+dejó "🩺" ocupado por Citas, así que la tarjeta "👥 Mi espacio" de `ProfileScreen.kt` (que usaba
+"🩺" para "Círculo de cuidado", agregado el mismo día) se realineó a "👥" — que además ya era el
+símbolo establecido para Círculo de cuidado en `OpcionBottomBar.kt` (chip de "Personalizar mi
+navegación"), así que de paso corrigió una inconsistencia que ya existía entre esos dos lugares.
+Compilado y verificado (`compileDebugKotlin`, `EXIT_CODE=0`) e instalado en el dispositivo real
+(moto g(9) plus).

@@ -1,12 +1,15 @@
 package com.aqpseller.lulaapp.core.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -22,6 +25,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.aqpseller.lulaapp.core.utils.DateTimeUtils
 import com.aqpseller.lulaapp.core.utils.SonidoUtils
 import com.aqpseller.lulaapp.domain.model.EstadoActividad
+import com.aqpseller.lulaapp.ui.theme.LulaHabito
 
 /**
  * Fila de una toma de Medicamento: hora + instrucción original (ej. "Después del almuerzo") y
@@ -49,7 +53,12 @@ fun TomaAccionRow(
     val vencida = estado == EstadoActividad.SIN_CONFIRMAR && horario < horaActual
     val colorTexto = if (vencida) MaterialTheme.colorScheme.error else Color.Unspecified
 
-    Column(modifier = modifier.fillMaxWidth().padding(vertical = 6.dp)) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .then(if (vencida) Modifier.background(MaterialTheme.colorScheme.errorContainer, RoundedCornerShape(8.dp)) else Modifier)
+            .padding(horizontal = 8.dp, vertical = 6.dp),
+    ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Checkbox(
                 checked = estado == EstadoActividad.CONFIRMADO,
@@ -57,6 +66,7 @@ fun TomaAccionRow(
                     onMarcar(if (marcado) EstadoActividad.CONFIRMADO else EstadoActividad.SIN_CONFIRMAR)
                     if (sonidoHabilitado) SonidoUtils.reproducirCheck()
                 },
+                colors = CheckboxDefaults.colors(checkedColor = LulaHabito, checkmarkColor = Color.White),
             )
             Column(modifier = Modifier.weight(1f)) {
                 Text(

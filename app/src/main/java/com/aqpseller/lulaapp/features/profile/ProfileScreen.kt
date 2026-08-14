@@ -13,7 +13,6 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -27,20 +26,29 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.aqpseller.lulaapp.core.ui.ConfirmarEliminarDialog
 import com.aqpseller.lulaapp.core.ui.HoraSelector
+import com.aqpseller.lulaapp.core.ui.SectionLinkRow
+import com.aqpseller.lulaapp.core.ui.TarjetaSeccion
 import com.aqpseller.lulaapp.core.utils.DateTimeUtils
 import com.aqpseller.lulaapp.core.utils.reiniciarApp
 import com.aqpseller.lulaapp.domain.legal.TipoDocumentoLegal
+import com.aqpseller.lulaapp.ui.theme.LulaAsistenteContainerLight
+import com.aqpseller.lulaapp.ui.theme.LulaFamiliaContainerLight
+import com.aqpseller.lulaapp.ui.theme.LulaPrimaryContainerLight
 
 /**
  * "Mi perfil" (CUENTA en el menú "⋮"), separada de Ajustes (CONFIGURACIÓN) por `02-pantallas.md`.
  * Hoy solo edita horarios de comida — antes solo se podían fijar la primera vez, de paso, dentro
  * de "Crear medicamento". Nombre/correo son de solo lectura porque todavía no hay onboarding real
- * (usuario semilla local, ver `Plan/08-decisiones-tecnicas.md`).
+ * (usuario semilla local, ver `Plan/08-decisiones-tecnicas.md`). Reagrupada en tarjetas (mismo
+ * patrón `TarjetaSeccion` que Ajustes) y con acceso directo a Círculo de cuidado y Familia/Espacios
+ * — antes solo se llegaba ahí desde el menú "⋮" o el bottom bar, no desde Perfil.
  */
 @Composable
 fun ProfileScreen(
     onVerProposito: () -> Unit,
     onVerTextoLegal: (tipo: String) -> Unit,
+    onVerCirculoCuidado: () -> Unit,
+    onVerFamilia: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: ProfileViewModel = hiltViewModel(),
 ) {
@@ -62,99 +70,111 @@ fun ProfileScreen(
             }
         }
 
-        TextButton(onClick = onVerProposito, modifier = Modifier.padding(top = 8.dp).fillMaxWidth()) {
-            Text("🧭 Mi propósito")
+        TarjetaSeccion(titulo = "🧭 Mi crecimiento") {
+            SectionLinkRow(
+                emoji = "🧭",
+                color = LulaPrimaryContainerLight,
+                texto = "Mi propósito",
+                onClick = onVerProposito,
+                modifier = Modifier.padding(top = 8.dp),
+            )
         }
 
-        Text(
-            text = "🍽️ Horarios de comida",
-            style = MaterialTheme.typography.titleSmall,
-            modifier = Modifier.padding(top = 24.dp),
-        )
-        Text(
-            text = "Lula los usa para calcular la hora de tus medicamentos \"según las comidas\". " +
-                "Si cambias un horario acá, los medicamentos que ya creaste no se mueven solos — " +
-                "hay que volver a abrirlos y guardarlos para que tomen la hora nueva.",
-            style = MaterialTheme.typography.bodySmall,
-            modifier = Modifier.padding(top = 4.dp),
-        )
+        TarjetaSeccion(titulo = "👥 Mi espacio") {
+            SectionLinkRow(
+                emoji = "👥",
+                color = LulaAsistenteContainerLight,
+                texto = "Círculo de cuidado",
+                onClick = onVerCirculoCuidado,
+                modifier = Modifier.padding(top = 8.dp),
+            )
+            SectionLinkRow(
+                emoji = "👨‍👩‍👧",
+                color = LulaFamiliaContainerLight,
+                texto = "Familia / Espacios",
+                onClick = onVerFamilia,
+            )
+        }
 
-        Text(text = "🌅 Desayuno", modifier = Modifier.padding(top = 16.dp))
-        HoraSelector(
-            hora = usuario?.horaDesayuno,
-            onHoraSeleccionada = viewModel::actualizarHorarioDesayuno,
-            modifier = Modifier.padding(top = 4.dp),
-        )
+        TarjetaSeccion(titulo = "🍽️ Horarios de comida") {
+            Text(
+                text = "Lula los usa para calcular la hora de tus medicamentos \"según las comidas\". " +
+                    "Si cambias un horario acá, los medicamentos que ya creaste no se mueven solos — " +
+                    "hay que volver a abrirlos y guardarlos para que tomen la hora nueva.",
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(top = 4.dp),
+            )
 
-        Text(text = "🍲 Almuerzo", modifier = Modifier.padding(top = 16.dp))
-        HoraSelector(
-            hora = usuario?.horaAlmuerzo,
-            onHoraSeleccionada = viewModel::actualizarHorarioAlmuerzo,
-            modifier = Modifier.padding(top = 4.dp),
-        )
+            Text(text = "🌅 Desayuno", modifier = Modifier.padding(top = 16.dp))
+            HoraSelector(
+                hora = usuario?.horaDesayuno,
+                onHoraSeleccionada = viewModel::actualizarHorarioDesayuno,
+                modifier = Modifier.padding(top = 4.dp),
+            )
 
-        Text(text = "🌙 Cena", modifier = Modifier.padding(top = 16.dp))
-        HoraSelector(
-            hora = usuario?.horaCena,
-            onHoraSeleccionada = viewModel::actualizarHorarioCena,
-            modifier = Modifier.padding(top = 4.dp),
-        )
+            Text(text = "🍲 Almuerzo", modifier = Modifier.padding(top = 16.dp))
+            HoraSelector(
+                hora = usuario?.horaAlmuerzo,
+                onHoraSeleccionada = viewModel::actualizarHorarioAlmuerzo,
+                modifier = Modifier.padding(top = 4.dp),
+            )
 
-        Text(
-            text = "🔒 Privacidad y legal",
-            style = MaterialTheme.typography.titleSmall,
-            modifier = Modifier.padding(top = 24.dp),
-        )
+            Text(text = "🌙 Cena", modifier = Modifier.padding(top = 16.dp))
+            HoraSelector(
+                hora = usuario?.horaCena,
+                onHoraSeleccionada = viewModel::actualizarHorarioCena,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+        }
 
         usuario?.let { u ->
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Checkbox(
-                    checked = u.confirmoMayorDe13,
-                    onCheckedChange = { if (it) viewModel.confirmarMayorDe13() },
-                    enabled = !u.confirmoMayorDe13,
+            TarjetaSeccion(titulo = "🔒 Privacidad y legal") {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Checkbox(
+                        checked = u.confirmoMayorDe13,
+                        onCheckedChange = { if (it) viewModel.confirmarMayorDe13() },
+                        enabled = !u.confirmoMayorDe13,
+                    )
+                    Text("Confirmo que soy mayor de 13 años")
+                }
+
+                ConsentimientoRow(
+                    etiqueta = "Términos de servicio",
+                    aceptadoEn = u.terminosAceptadosEn,
+                    onClick = { onVerTextoLegal(TipoDocumentoLegal.TERMINOS.id) },
                 )
-                Text("Confirmo que soy mayor de 13 años")
+
+                ConsentimientoRow(
+                    etiqueta = "Datos de salud (medicamentos, citas)",
+                    aceptadoEn = u.consentimientoDatosSaludEn,
+                    onClick = { onVerTextoLegal(TipoDocumentoLegal.DATOS_SALUD.id) },
+                )
+
+                ConsentimientoRow(
+                    etiqueta = "Política de privacidad",
+                    aceptadoEn = u.privacidadAceptadaEn,
+                    onClick = { onVerTextoLegal(TipoDocumentoLegal.PRIVACIDAD.id) },
+                )
             }
-
-            ConsentimientoRow(
-                etiqueta = "Términos de servicio",
-                aceptadoEn = u.terminosAceptadosEn,
-                onClick = { onVerTextoLegal(TipoDocumentoLegal.TERMINOS.id) },
-            )
-
-            ConsentimientoRow(
-                etiqueta = "Datos de salud (medicamentos, citas)",
-                aceptadoEn = u.consentimientoDatosSaludEn,
-                onClick = { onVerTextoLegal(TipoDocumentoLegal.DATOS_SALUD.id) },
-            )
-
-            ConsentimientoRow(
-                etiqueta = "Política de privacidad",
-                aceptadoEn = u.privacidadAceptadaEn,
-                onClick = { onVerTextoLegal(TipoDocumentoLegal.PRIVACIDAD.id) },
-            )
         }
 
-        Text(
-            text = "⚠️ Zona de peligro",
-            style = MaterialTheme.typography.titleSmall,
-            modifier = Modifier.padding(top = 32.dp),
-        )
-        Text(
-            text = "Borra todos tus datos de este dispositivo: hábitos, tareas, finanzas, " +
-                "diario, propósito, todo. No se puede deshacer.",
-            style = MaterialTheme.typography.bodySmall,
-            modifier = Modifier.padding(top = 4.dp),
-        )
-        Button(
-            onClick = { mostrarConfirmarEliminar = true },
-            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
-            modifier = Modifier.padding(top = 8.dp).fillMaxWidth(),
-        ) {
-            Text("🗑️ Eliminar mi cuenta")
+        TarjetaSeccion(titulo = "⚠️ Zona de peligro") {
+            Text(
+                text = "Borra todos tus datos de este dispositivo: hábitos, tareas, finanzas, " +
+                    "diario, propósito, todo. No se puede deshacer.",
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+            Button(
+                onClick = { mostrarConfirmarEliminar = true },
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                modifier = Modifier.padding(top = 8.dp).fillMaxWidth(),
+            ) {
+                Text("🗑️ Eliminar mi cuenta")
+            }
         }
     }
 

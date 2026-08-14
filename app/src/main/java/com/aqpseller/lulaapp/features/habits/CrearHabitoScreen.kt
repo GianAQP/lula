@@ -105,7 +105,7 @@ fun CrearHabitoScreen(
     Column(modifier = modifier.padding(16.dp).verticalScroll(rememberScrollState())) {
         Text(text = if (viewModel.esEdicion) "Editar hábito" else "Nuevo hábito", style = MaterialTheme.typography.titleLarge)
         TextButton(onClick = onVerHabitos, modifier = Modifier.padding(top = 4.dp)) {
-            Text("✅ Ver mis hábitos")
+            Text("🌱 Ver mis hábitos")
         }
 
         DictationTextField(

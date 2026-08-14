@@ -363,6 +363,8 @@ fun LulaNavHost(
                 ProfileScreen(
                     onVerProposito = { navController.navigate(LulaDestinations.PROPOSITO_PERSONAL) },
                     onVerTextoLegal = { tipo -> navController.navigate(LulaDestinations.textoLegal(tipo)) },
+                    onVerCirculoCuidado = { navController.navigate(LulaDestinations.CIRCULO_CUIDADO) },
+                    onVerFamilia = { navController.navigate(LulaDestinations.FAMILIA) },
                 )
             }
             composable(

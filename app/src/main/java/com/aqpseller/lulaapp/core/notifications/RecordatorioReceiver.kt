@@ -302,10 +302,10 @@ class RecordatorioReceiver : BroadcastReceiver() {
         }
         val claveNotificacion = (if (horario != null) "$actividadId:$horario" else actividadId).hashCode()
         val emoji = when (tipo) {
-            TipoActividad.HABITO -> "✅"
+            TipoActividad.HABITO -> "🌱"
             TipoActividad.TAREA -> "📝"
             TipoActividad.MEDICAMENTO -> "💊"
-            TipoActividad.CITA -> "📅"
+            TipoActividad.CITA -> "🩺"
             TipoActividad.FECHA_IMPORTANTE -> "🎉"
             else -> "🔔"
         }

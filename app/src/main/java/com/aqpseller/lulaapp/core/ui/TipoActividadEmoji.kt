@@ -6,10 +6,10 @@ import com.aqpseller.lulaapp.domain.model.TipoActividad
 /** Un emoji por tipo, reusado en Hoy y Calendario — antes cada pantalla tenía su propia copia
  * de este mapeo (mismo riesgo de divergencia que ya pasó con el conteo de "hoy"). */
 fun emojiTipoActividad(tipo: TipoActividad): String = when (tipo) {
-    TipoActividad.HABITO -> "✅"
+    TipoActividad.HABITO -> "🌱"
     TipoActividad.TAREA -> "📝"
     TipoActividad.MEDICAMENTO -> "💊"
-    TipoActividad.CITA -> "📅"
+    TipoActividad.CITA -> "🩺"
     TipoActividad.FECHA_IMPORTANTE -> "🎉"
     else -> "🔔"
 }

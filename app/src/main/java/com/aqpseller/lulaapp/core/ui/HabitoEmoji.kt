@@ -31,5 +31,5 @@ private val PALABRAS_CLAVE_EMOJI_HABITO: List<Pair<List<String>, String>> = list
 
 fun emojiParaHabito(nombre: String): String {
     val texto = nombre.lowercase()
-    return PALABRAS_CLAVE_EMOJI_HABITO.firstOrNull { (palabras, _) -> palabras.any { texto.contains(it) } }?.second ?: "✅"
+    return PALABRAS_CLAVE_EMOJI_HABITO.firstOrNull { (palabras, _) -> palabras.any { texto.contains(it) } }?.second ?: "🌱"
 }

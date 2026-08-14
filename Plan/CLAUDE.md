@@ -890,3 +890,45 @@ compartido nuevo y ahora también se llama cada vez que se abre la app (antes so
 el teléfono) — de paso se encontró que Meta nunca se reprogramaba en absoluto, ya corregido
 también. Compiló e instaló en el dispositivo real. Detalle completo en
 `Plan/08-decisiones-tecnicas.md`.
+
+**Rediseño de Ajustes en tarjetas** (2026-08-13): el usuario mostró 3 capturas de otras apps
+(cuenta de Honor, una app de botica, una app de salud) donde cada sección de ajustes vive en su
+propia tarjeta, no en un solo scroll continuo. `SettingsScreen.kt` se reagrupó siguiendo ese
+mismo patrón — nuevo `TarjetaAjustes` local, 5 tarjetas: "🔔 Recordatorios y permisos", "🗓️
+Revisión y cierre del día", "🔔 Recordarme revisar Lula", "✅ Marcar en Hoy", "🧭 Personalizar mi
+navegación" — mismo contenido de antes, solo agrupado visualmente. Compiló e instaló en el
+dispositivo real. Detalle completo en `Plan/08-decisiones-tecnicas.md`.
+
+**Perfil en tarjetas + separar "marcar" de "ver/editar" en Hoy** (2026-08-13): siguiendo con el
+mismo pedido de elegancia visual, la tarjeta de Ajustes se hizo compartida
+(`core/ui/TarjetaSeccion.kt`) y se reusó en `ProfileScreen.kt`, que ganó una tarjeta nueva "👥 Mi
+espacio" con acceso directo a Círculo de cuidado y Familia/Espacios (antes no aparecían en
+Perfil para nada). En `HomeScreen.kt` se agregó una flecha "›" a las filas de Citas/Fechas
+importantes/Metas (se abren para ver/editar) para distinguirlas de un vistazo de las filas con
+checkbox (Hábitos/Tareas/Medicamentos, que se marcan). Compiló e instaló en el dispositivo real.
+Detalle completo en `Plan/08-decisiones-tecnicas.md`.
+
+**Hoy en tarjetas + check verde + resaltado de vencidos** (2026-08-13): tercera ronda del mismo
+pedido de elegancia. `HomeScreen.kt` se reagrupó en tarjetas: "✅ Para marcar hoy" (todo con
+checkbox), "📌 Metas y agenda de hoy" (todo lo que solo se abre para ver/editar), "✅ Ya hechos
+hoy" (ahora tarjeta propia) y "🔎 Explorar más" (los enlaces del final). El checkbox marcado pasó
+de violeta a verde (`LulaHabito`, mismo verde de hábitos) y las filas vencidas ahora tienen fondo
+resaltado, no solo texto rojo, para ubicar rápido qué falta marcar. Compiló e instaló en el
+dispositivo real. Detalle completo en `Plan/08-decisiones-tecnicas.md`.
+
+**Ícono de Hábito: de "✅" a "🌱"** (2026-08-13): con el checkbox ya verde, dos checks pegados
+en la misma fila (el emoji de tipo y el checkbox real) confundían. Se cambió el emoji de Hábito
+a "🌱" en los 7 lugares donde vivía (estaba duplicado en vez de estar solo en la función
+compartida `emojiTipoActividad()`). Compiló e instaló en el dispositivo real. Detalle completo
+en `Plan/08-decisiones-tecnicas.md`.
+
+**Ícono de Tareas en "Personalizar mi navegación" era el de Calendario** (2026-08-13): el chip
+de Tareas en Ajustes usaba "📅" (el mismo de Calendario) en vez de "📝" como en el resto de la
+app — inconsistencia real, no una decisión nueva, corregida en `OpcionBottomBar.kt`. Compiló e
+instaló en el dispositivo real.
+
+**Ícono de Citas: de "📅" a "🩺"** (2026-08-13): mismo motivo que Tareas, Citas también usaba el
+símbolo de Calendario. Se cambió a "🩺" en los 4 lugares donde vivía, y de paso se realineó el
+ícono de "Círculo de cuidado" en Perfil (que había quedado en "🩺" y ahora chocaba) a "👥" — el
+mismo que ya usaba el chip de "Personalizar mi navegación". Compiló e instaló en el dispositivo
+real.

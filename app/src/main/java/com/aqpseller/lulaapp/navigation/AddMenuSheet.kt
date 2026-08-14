@@ -27,7 +27,7 @@ import com.aqpseller.lulaapp.ui.theme.LulaTareaContainerLight
 private data class OpcionMenu(val nombre: String, val emoji: String, val color: Color)
 
 private val OPCIONES_DISPONIBLES = listOf(
-    OpcionMenu("Hábito", "✅", LulaHabitoContainerLight),
+    OpcionMenu("Hábito", "🌱", LulaHabitoContainerLight),
     OpcionMenu("Tarea", "📝", LulaTareaContainerLight),
     OpcionMenu("Rutina", "🧩", LulaPrimaryContainerLight),
     OpcionMenu("Meta", "🎯", LulaPrimaryContainerLight),
@@ -36,7 +36,7 @@ private val OPCIONES_DISPONIBLES = listOf(
     OpcionMenu("Ingreso", "📈", LulaFinanzasContainerLight),
     OpcionMenu("Nota", "🗒️", LulaPrimaryContainerLight),
     OpcionMenu("Medicamento", "💊", LulaAsistenteContainerLight),
-    OpcionMenu("Cita", "📅", LulaPrimaryContainerLight),
+    OpcionMenu("Cita", "🩺", LulaPrimaryContainerLight),
     OpcionMenu("Fecha importante", "🎉", LulaAsistenteContainerLight),
     OpcionMenu("Diario", "📓", LulaPrimaryContainerLight),
 )
