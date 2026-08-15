@@ -27,6 +27,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -291,20 +292,28 @@ private fun FilaItemAgenda(
     compacta: Boolean = false,
     onMarcarHecha: (() -> Unit)? = null,
 ) {
+    // Un eliminado no lleva a ningún detalle (ya no existe) ni se puede marcar — solo queda como
+    // rastro de que existió y se borró. Se ve apagado a propósito para no competir visualmente
+    // con lo que sigue vigente. Ver `Plan/08-decisiones-tecnicas.md`.
+    val colorTexto = if (item.eliminado) MaterialTheme.colorScheme.onSurfaceVariant else Color.Unspecified
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .let { if (item.eliminado) it else it.clickable(onClick = onClick) }
             .padding(vertical = if (compacta) 4.dp else 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(text = emojiEstadoActividad(item.estado), modifier = Modifier.padding(end = 8.dp))
+        Text(
+            text = if (item.eliminado) "🗑️" else emojiEstadoActividad(item.estado),
+            modifier = Modifier.padding(end = 8.dp),
+        )
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = "${emojiTipoActividad(item.tipo)} ${item.nombre}" + (item.horario?.let { " — $it" } ?: ""),
                 style = if (compacta) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.bodyLarge,
+                color = colorTexto,
             )
-            item.subtitulo?.let { Text(text = it, style = MaterialTheme.typography.bodySmall) }
+            item.subtitulo?.let { Text(text = it, style = MaterialTheme.typography.bodySmall, color = colorTexto) }
         }
         if (onMarcarHecha != null) {
             Checkbox(checked = false, onCheckedChange = { onMarcarHecha() })

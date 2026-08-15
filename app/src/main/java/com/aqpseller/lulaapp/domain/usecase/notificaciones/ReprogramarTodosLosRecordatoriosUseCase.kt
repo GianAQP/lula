@@ -2,6 +2,7 @@ package com.aqpseller.lulaapp.domain.usecase.notificaciones
 
 import com.aqpseller.lulaapp.core.notifications.RecordatorioScheduler
 import com.aqpseller.lulaapp.core.utils.DateTimeUtils
+import com.aqpseller.lulaapp.core.utils.horariosParaFecha
 import com.aqpseller.lulaapp.core.utils.instruccionParaHorario
 import com.aqpseller.lulaapp.domain.model.ActividadDetalle
 import com.aqpseller.lulaapp.domain.model.EstadoActividad
@@ -65,7 +66,13 @@ class ReprogramarTodosLosRecordatoriosUseCase @Inject constructor(
         actividadRepository.observarMedicamentos(sesion.espacioId).first().forEach { medicamento ->
             val detalle = medicamento.detalle as? ActividadDetalle.Medicamento ?: return@forEach
             if (!medicamento.activa) return@forEach
-            detalle.horariosCalculados.forEachIndexed { index, horario ->
+            // Antes se reprogramaban TODOS los `horariosCalculados` sin revisar `fechaFin` — un
+            // medicamento cuyo tratamiento ya terminó se volvía a armar entero (todas sus horas)
+            // cada vez que se abría la app, porque "activa" no se apaga solo cuando pasa la
+            // fecha fin. `horariosParaFecha` es el mismo filtro que ya usa "Medicamentos de hoy"
+            // para saber qué horarios de verdad siguen vigentes. Ver `08-decisiones-tecnicas.md`.
+            val horariosDeHoy = horariosParaFecha(detalle, DateTimeUtils.hoy())
+            horariosDeHoy.forEachIndexed { index, horario ->
                 recordatorioScheduler.programarMedicamento(
                     medicamento.id,
                     medicamento.nombre,

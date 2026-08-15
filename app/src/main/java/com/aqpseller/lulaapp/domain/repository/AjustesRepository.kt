@@ -43,4 +43,11 @@ interface AjustesRepository {
     suspend fun obtenerEspacioActivoId(): String?
     fun observarEspacioActivoId(): Flow<String?>
     suspend fun setEspacioActivoId(espacioId: String?)
+
+    /** Racha más alta ya celebrada con la pantalla grande de hito (7/21/30/60...) — evita
+     * repetir la misma celebración si se vuelve a guardar el cierre del mismo día. 0 = ninguna
+     * todavía. Se resetea a 0 cuando la racha se rompe, para poder celebrar 7 de nuevo en una
+     * racha nueva. Ver `Plan/08-decisiones-tecnicas.md`. */
+    suspend fun obtenerUltimoHitoRachaCelebrado(): Int
+    suspend fun setUltimoHitoRachaCelebrado(valor: Int)
 }

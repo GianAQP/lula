@@ -91,7 +91,15 @@ fun FinancesHistoryScreen(
                 IconButton(onClick = viewModel::mesAnterior) { Text("◀", style = MaterialTheme.typography.titleLarge) }
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(text = DateTimeUtils.formatearMesYAnio(uiState.mesVisible), style = MaterialTheme.typography.titleMedium)
-                    TextButton(onClick = viewModel::irAHoy) { Text("Hoy") }
+                    // Antes este botón vivía siempre ahí, incluso viendo el mes actual — debajo
+                    // de "Agosto 2026" parecía otro dato del mes, no un atajo, y confundía (a
+                    // pedido del usuario). Ahora solo aparece cuando de verdad hay a dónde
+                    // volver, igual que ya hacía el Calendario. Ver `08-decisiones-tecnicas.md`.
+                    val esMesActual = uiState.mesVisible.year == DateTimeUtils.hoy().year &&
+                        uiState.mesVisible.monthNumber == DateTimeUtils.hoy().monthNumber
+                    if (!esMesActual) {
+                        TextButton(onClick = viewModel::irAHoy) { Text("Ir a hoy") }
+                    }
                 }
                 IconButton(onClick = viewModel::mesSiguiente) { Text("▶", style = MaterialTheme.typography.titleLarge) }
             }

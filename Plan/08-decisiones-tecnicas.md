@@ -3288,3 +3288,220 @@ símbolo establecido para Círculo de cuidado en `OpcionBottomBar.kt` (chip de "
 navegación"), así que de paso corrigió una inconsistencia que ya existía entre esos dos lugares.
 Compilado y verificado (`compileDebugKotlin`, `EXIT_CODE=0`) e instalado en el dispositivo real
 (moto g(9) plus).
+
+## Recordatorios que seguían sonando después de terminados/eliminados — diagnóstico y arreglo de fondo (2026-08-14)
+
+El usuario reportó dos casos: (1) un medicamento "cada hora" cuyo tratamiento ya había
+terminado volvió a sonar cada hora un día después de vencido; (2) un medicamento "cada 8 horas"
+que se eliminó para que dejara de sonar, siguió sonando igual (y ya no aparece en Calendario,
+lo cual es correcto porque de verdad se borró). Se diagnosticó leyendo el código real de punta a
+punta, no adivinando:
+
+**Causa del caso 1**: `ReprogramarTodosLosRecordatoriosUseCase` (agregado el 2026-08-13 para el
+bug de "los recordatorios se duermen") reprograma TODOS los `horariosCalculados` de cada
+Medicamento activo cada vez que se abre la app, sin revisar `fechaFin` — a diferencia del
+recordatorio que se auto-reprograma solo al sonar (`RecordatorioReceiver.reprogramarMedicamentoSiVigente`,
+que sí la revisa desde una ronda anterior). Un medicamento cuyo tratamiento ya terminó nunca se
+"desactiva" solo (`activa` es un toggle manual, no se apaga con la fecha), así que cada apertura
+de la app volvía a armar sus 24 alarmas de "cada hora" enteras. Arreglado: ahora usa
+`horariosParaFecha(detalle, hoy)` — el mismo filtro que ya usa "Medicamentos de hoy" — así que
+si `fechaFin` ya pasó, no se programa nada.
+
+**Causa del caso 2**: `EliminarActividadUseCase` cancelaba la alarma diaria normal de cada
+horario del medicamento, pero NO la cadena de "insistir" (recordatorio persistente,
+`programarRenotificacionMedicamento`) si estaba activada — esa cadena es una alarma aparte, con
+su propia clave (`actividadId:horario:renotif`). Si el medicamento eliminado tenía insistencia
+prendida, esa cadena seguía viva. Arreglado: ahora usa `cancelarMedicamento()` (que cancela
+ambas) en vez de solo `cancelar()`.
+
+**Arreglo de fondo, no solo el síntoma**: además de las dos causas puntuales, se agregó una
+guardia general en `RecordatorioReceiver` — antes de mostrar CUALQUIER recordatorio de Hábito/
+Tarea/Medicamento/Cita/Fecha importante, ahora se revisa el estado real de la actividad
+(`debeMostrarRecordatorio`): si ya no existe (se borró), está pausada, ya se marcó como hecha, o
+(Medicamento) su tratamiento ya no está vigente hoy — no se muestra nada y no se reprograma más.
+Así, ninguna vía de cancelación (eliminar, marcar, editar, pausar) necesita ser perfecta: aunque
+alguna se le escape un caso, la alarma que ya quedó armada en `AlarmManager` se autocorrige la
+próxima vez que suena, en vez de seguir sonando indefinidamente. Se aplicó el mismo criterio a
+la cadena de "insistir" de Medicamento (`manejarRenotificacionMedicamento`), que antes solo
+revisaba el estado de la toma y no si la actividad seguía existiendo — una toma sin registro
+(porque el medicamento ya no existe) se leía igual que "sin confirmar" y seguía insistiendo.
+
+**Rastro de eliminados en Calendario**: a pedido del usuario ("si la elimino debe quedar
+registro que fue eliminado también, para que quede rastro esto en calendario nomas"), se
+aprovechó la auditoría que ya existe desde el MVP (`historial_cambios`, escrita en cada método
+de escritura de los repositorios — ver "Lecciones de MayiaApp aplicadas") en vez de construir
+algo nuevo. Nuevo método `ActividadRepository.obtenerEliminadosDeRango(espacioId, desde, hasta)`
+lee `historial_cambios` donde `entidad = "actividad"` y `accion = "ELIMINAR"` en el rango,
+deserializa el `ActividadEntity` que quedó guardado en `valoresAntesJson` (de ahí sale
+nombre/tipo) y arma un `ItemAgenda` con el nuevo campo `eliminado = true`, puesto en el día en
+que se eliminó (no en su fecha original — no se intenta reconstruir todo el rango que ocupaba
+antes, solo dejar la huella de que existió y se borró). `ObtenerAgendaDelRangoUseCase` lo suma
+al resto de la agenda. En `CalendarScreen.kt`, una fila `eliminado` se ve apagada (color
+`onSurfaceVariant`), con "🗑️" en vez del emoji de estado, sin checkbox y sin poder tocarla (no
+hay ningún detalle al que ir, ya no existe).
+
+Compilado y verificado (`compileDebugKotlin`, `EXIT_CODE=0`).
+
+## Botón "Hoy" confuso en Historial de Finanzas (2026-08-14)
+
+El usuario notó que en "Ver historial completo" (Finanzas), el título del mes (ej. "Agosto
+2026") siempre tenía un botón "Hoy" debajo, incluso viendo el mes actual — parecía otro dato del
+mes, no un atajo para volver a hoy. `FinancesHistoryScreen.kt` ya tenía precedente para esto:
+el propio Calendario (`CalendarScreen.kt`) resuelve el mismo problema mostrando "Ir a hoy" SOLO
+cuando no se está viendo el período actual. Se aplicó el mismo criterio acá: el botón ahora solo
+aparece si `mesVisible` no es el mes/año de hoy, y se renombró a "Ir a hoy" (mismo texto que
+Calendario) para que sea inconfundible que es una acción, no una etiqueta.
+
+Compilado y verificado (`compileDebugKotlin`, `EXIT_CODE=0`).
+
+## Ronda de feedback de uso real — 5 puntos, con datos reales del dispositivo (2026-08-14)
+
+Antes de tocar código, se sacó la base de datos real del dispositivo (`adb exec-out run-as
+com.aqpseller.lulaapp cat databases/lula.db`) para verificar cada reporte contra datos reales en
+vez de adivinar — misma disciplina que el diagnóstico de alarmas de días atrás.
+
+**1. Racha global (🔥 en la barra superior, junto a "💰") y 2. racha de Hábitos — ninguna es un
+bug, son dos mecánicas distintas y el usuario las vio en 0 por el mismo motivo.** La racha
+global (`ObtenerProgresoDeHoyUseCase.calcularRachaActual`) cuenta días CONSECUTIVOS con "Cerrar
+mi día" hecho Y al menos una actividad cumplida — empieza a contar desde HOY hacia atrás, así
+que si hoy todavía no se cerró el día, se corta ahí mismo y muestra 0, aunque ayer y antes haya
+una racha real en curso. La racha de un Hábito (`ObtenerHistorialHabitoUseCase.calcularRacha`)
+es análoga pero por hábito: cuenta días CONSECUTIVOS confirmados desde hoy hacia atrás, así que
+si el hábito de hoy todavía no se marcó, también se corta y muestra 0. Ninguna tiene relación con
+Finanzas — el "💰" de la barra superior es "gastos de HOY" (solo egresos), no un contador
+relacionado con la racha; están uno al lado del otro mostrando cosas distintas. Sobre "21 días":
+no hay ningún tope ni mención a 21 días en el código — la racha de Hábito no tiene límite
+superior (si acaso, `calcularRacha` solo mira los últimos 60 días de historial al calcular, así
+que una racha real de más de 60 días se vería truncada en 60, no en 21).
+
+**Observación para el usuario, no aplicada todavía**: mostrar 0 hasta que se actúa HOY (cerrar el
+día / marcar el hábito) contradice un poco la filosofía ya documentada en este proyecto ("en
+Lula ningún intento se castiga") — una racha real de 10 días se ve como "0" toda la mañana hasta
+que se cierra el día, aunque no se haya roto nada. Posible mejora: si hoy todavía no se cerró,
+mostrar la racha "hasta ayer" con algún indicio de "continúa hoy" en vez de un 0 directo. No se
+aplicó porque cambia el significado de una métrica visible constantemente — se deja para decidir
+con el usuario.
+
+**3. Medicamento "eliminado" que aparece sin haberlo borrado — investigado con datos reales, NO
+es un bug.** Se revisó `historial_cambios` y `actividad` directamente en el dispositivo: el
+medicamento nuevo que el usuario creó ("Ampicilina", mayúscula, 09:29am de hoy,
+`id=7be40846…`) es una actividad distinta de una "ampicilina" (minúscula, `id=4d311459…`)
+eliminada a las 00:01am del mismo día — un resto de una prueba anterior, no algo que el usuario
+haya borrado ahora. Por eso el rastro "🗑️ eliminado" del feature nuevo (ver ronda anterior) SÍ
+aparece hoy: es real, solo que de otra actividad que el usuario ya no recordaba. Se revisó
+también `horariosParaFecha` para el medicamento nuevo (3 tomas por intervalo de 8h desde las
+14:00: `["14:00","22:00","06:00"]`) y para HOY correctamente filtra el "06:00" (que en realidad
+es de mañana) — no se encontró ninguna fila de toma con horario "06:00" para ninguno de los dos
+medicamentos en `toma_medicamento`. No se pudo reproducir con datos el "aparece 6:00 am pero
+tachado" tal como se describe — puede haberse visto en una build anterior a este último install,
+o en otra vista del Calendario. Si sigue apareciendo después de este build, hace falta una
+captura de pantalla para ubicar exactamente qué fila es.
+
+**4. Tarea sin fecha límite, completada hoy, no aparecía en Calendario — bug real, arreglado.**
+En `ObtenerAgendaDelRangoUseCase`, la Tarea salía del `forEach` con
+`detalle.fechaLimite ?: return@forEach` ANTES de llegar a mirar `fechaCompletado` — una Tarea
+creada sin fecha (solo nombre) que se completaba hoy nunca tenía ningún ancla de fecha para
+mostrarse en Calendario, ni siquiera en el día real en que se completó. Se movió el fallback de
+`fechaCompletado` antes del `return@forEach`, así que ahora si no hay `fechaLimite` pero SÍ hay
+`fechaCompletado` (se marcó hecha), se muestra en su día de finalización.
+
+**5. Citas de curso (sesiones) — rediseño visual completo, mismo patrón que el resto de la
+app.** El usuario reportó: el texto de una sesión ya cumplida se veía morado (era
+`colorScheme.primary`, el violeta de marca, igual que el resto de la UI antes de los cambios de
+esta semana — nunca se actualizó a verde), la sesión de HOY sin marcar no se distinguía de una
+futura ni de una vencida, y el botón "📅 Reprogramar" competía a la izquierda con "No se
+cumplió"/"Deshacer" como si fuera parte del mismo grupo de acciones. `CitaDetailScreen.kt`
+(`FilaSesionCita`) se actualizó: el `Checkbox` de una sesión ahora usa el mismo verde
+(`LulaHabito`) que el resto de la app; una sesión cumplida se tacha y se apaga (`onSurfaceVariant`)
+en vez de pintarse morada; la sesión de HOY sin marcar y sin vencer se resalta con fondo
+(`colorScheme.surfaceVariant`) para diferenciarla de un vistazo de las futuras (blanco) y las
+vencidas (rojo); "Reprogramar" se movió al lado derecho de su fila (`Arrangement.SpaceBetween`),
+separado de las acciones de la izquierda; se redujo el `contentPadding` de los `TextButton` (el
+valor por defecto de Material es bastante generoso) y el padding vertical de cada fila, para
+achicar el hueco en blanco que el usuario notó entre sesiones.
+
+Compilado y verificado (`compileDebugKotlin`, `EXIT_CODE=0`) e instalado en el dispositivo real
+(moto g(9) plus).
+
+## Finanzas: la sección "Hoy" solo mostraba gastos, un ingreso no se veía en ningún lado (2026-08-14)
+
+Ligado al punto 1 de arriba: el usuario registró un ingreso hoy y "no aparece nada". Se
+verificó con datos reales que el movimiento SÍ se guardó bien (dos ingresos de S/20, fecha de
+hoy, confirmados en la tabla `finanzas`) — el problema era de visibilidad, no de guardado.
+`FinancesScreen.kt` tenía una sección "Gastos de hoy" que, tal como decía su nombre, solo
+filtraba `EGRESO` — un ingreso registrado hoy nunca iba a aparecer ahí por diseño, y no había
+ningún otro lugar en esa pantalla que mostrara "esto es lo que hiciste hoy" para un ingreso (solo
+se reflejaba, sin resaltar, en el total "Este mes" de arriba). Se renombró a "Hoy" y ahora
+lista TODOS los movimientos de hoy (ingresos y egresos, con su signo +/-), con un total
+"Neto de hoy" en vez de "Total" (puede ser negativo). `FinancesUiState.gastosHoy`/`totalGastosHoy`
+pasaron a ser `movimientosHoy`/`netoHoy`.
+
+Compilado y verificado (`compileDebugKotlin`, `EXIT_CODE=0`) e instalado en el dispositivo real
+(moto g(9) plus).
+
+## Racha en 0 al empezar el día + signo en gastos de la barra superior (2026-08-15)
+
+El usuario confirmó con un ejemplo concreto la observación de la ronda anterior: "ayer tenía 3"
+de racha y hoy, antes de cerrar el día, se veía "0" — se sentía como haber perdido la racha sin
+haberla perdido. Se aplicó la mejora que se había dejado pendiente para decidir con él:
+`ObtenerProgresoDeHoyUseCase.calcularRachaActual` y `ObtenerHistorialHabitoUseCase.calcularRacha`
+ahora, si hoy todavía no se cerró el día / no se marcó el hábito, arrancan a contar desde AYER en
+vez de desde hoy — así se sigue viendo la racha real en curso toda la mañana, y cerrar hoy la
+extiende en +1 en vez de hacerla "aparecer de la nada". Mismo criterio en ambas rachas (global y
+por hábito) para que sean consistentes entre sí.
+
+También, a pedido del usuario ("el 💰 que es gasto le faltaría el signo, no se entiende que es
+gasto"), el pill "💰" de `LulaTopBar.kt` ahora antepone "-" al monto cuando hay algo gastado hoy
+(nunca "-0" cuando no hay nada).
+
+Sobre "premios por persistencia" (el usuario mostró capturas de Duolingo: racha con cofres de
+recompensa por niveles, desafíos diarios/mensuales) — quedó como pregunta abierta para el
+usuario, no implementado: se recomendó NO copiar el mecanismo de cofres/urgencia ("¡última
+oportunidad!"), que choca con la filosofía ya establecida en este proyecto ("ningún intento se
+castiga", "no hace falta exagerar el premio" — ver comentario de los hitos de Meta), y en cambio
+extender el mismo patrón ya usado en Metas (tarjeta chica de reconocimiento, una sola vez, sin
+sonido) a hitos de racha (7/21/30/60/100 días).
+
+Compilado y verificado (`compileDebugKotlin`, `EXIT_CODE=0`) e instalado en el dispositivo real
+(moto g(9) plus).
+
+## Hitos de racha: pantalla grande de celebración + mensajes variados al cerrar el día (2026-08-15)
+
+Se construyó la Fase 1 de la estrategia guardada (ver memoria de sesión
+`project_gamificacion_premios_persistencia`), acordada en varias rondas con el usuario (que trajo
+una conversación con ChatGPT como referencia, evaluada y adaptada, no copiada literal — se dejó
+afuera la mecánica de "gemas" a propósito, para más adelante).
+
+**`core/utils/MensajesRacha.kt`** (nuevo) centraliza todos los textos:
+- `esHitoRacha(racha)`: 7, 21, 30, y cada 30 días después de ese (60, 90, 120...).
+- `mensajeHitoRacha(racha)`: un mensaje al azar de un pool de 4-5 por hito (7/21/30 tienen su
+  propio pool con lenguaje que evoluciona — de "lo lograste" a "esto ya es parte de ti"; 60+
+  usa un pool genérico parametrizado por los días).
+- `emojiHitoRacha(racha)`: una plantita que crece (🌱 hasta 21, 🌿 hasta 30, 🌳 de ahí en más) —
+  reusa el mismo símbolo que ya se eligió para Hábitos/crecimiento (`TipoActividadEmoji.kt`) en
+  vez de inventar un ícono nuevo, y deja el camino listo para más adelante reemplazarla por un
+  personaje propio (a pedido del usuario: "con el tiempo armemos un muñeco").
+- `mensajeCierreDiario()`: pool de 12 frases cortas para el cierre normal (sin hito), al azar.
+- `mensajeAnticipacionHito(racha)`: si falta exactamente 1 día para el próximo hito, devuelve un
+  aviso tipo "Mañana completas 7 días. Ya casi." en vez del mensaje diario normal — información
+  real (no urgencia falsa), pensada para dar una razón concreta de volver mañana.
+
+**Persistencia**: `AjustesRepository.obtenerUltimoHitoRachaCelebrado()`/`setUltimoHitoRachaCelebrado()`
+(nuevo, DataStore) guarda la racha más alta ya celebrada con la pantalla grande, para no repetir
+la misma celebración si se vuelve a guardar el cierre del mismo día. Se resetea a 0 cuando la
+racha vuelve a 0 o 1 (se rompió), así una racha nueva puede volver a celebrar 7/21/30 desde cero.
+
+**`CerrarDiaViewModel.cerrarDia()`**: después de calcular la racha, decide qué mostrar —
+celebración de hito (si `esHitoRacha` y todavía no se había celebrado esa racha) > aviso de "casi
+llegas" (si falta 1 día) > mensaje diario al azar. Todo se calcula una sola vez al cerrar, no en
+cada recomposición, para que el mensaje no cambie solo si la pantalla se recompone.
+
+**`CerrarDiaScreen.kt`**: si se acaba de cruzar un hito, en vez de la vista chica normal de "día
+cerrado" se muestra `CelebracionHitoRacha` — pantalla completa a propósito (no una tarjeta), con
+la plantita grande (96sp), "N días", el mensaje al azar, y un botón fijo "Voy a seguir 🌱" (a
+propósito NO rota, para que sea un llamado a la acción siempre reconocible — solo el mensaje de
+arriba varía) que vuelve a Hoy. Sin hito, la vista normal ahora también usa el mensaje
+diario/de-anticipación variable en vez del texto fijo "Buen trabajo. Mañana seguimos." de antes.
+
+Compilado y verificado (`compileDebugKotlin`, `EXIT_CODE=0`) e instalado en el dispositivo real
+(moto g(9) plus).

@@ -100,7 +100,14 @@ fun LulaTopBar(
             )
             StatPill(
                 emoji = "💰",
-                valor = "S/ ${"%.0f".format(uiState.gastosHoyTotal)}",
+                // Sin el "-" un "20" ahí no se entendía como gasto (podía leerse como cualquier
+                // número) — a pedido del usuario. Solo cuando hay algo que restar; en 0 no tiene
+                // sentido un "-0". Ver `Plan/08-decisiones-tecnicas.md`.
+                valor = if (uiState.gastosHoyTotal > 0) {
+                    "-S/ ${"%.0f".format(uiState.gastosHoyTotal)}"
+                } else {
+                    "S/ ${"%.0f".format(uiState.gastosHoyTotal)}"
+                },
                 colorContenedor = LulaFinanzasContainerLight,
                 modifier = Modifier.clickable(onClick = onVerFinanzas),
             )

@@ -1,13 +1,18 @@
 package com.aqpseller.lulaapp.features.health
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -27,6 +32,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.aqpseller.lulaapp.core.ui.CompartirActividadDialog
@@ -35,6 +41,7 @@ import com.aqpseller.lulaapp.core.ui.InvitacionEnviadaDialog
 import com.aqpseller.lulaapp.core.utils.DateTimeUtils
 import com.aqpseller.lulaapp.domain.model.EstadoActividad
 import com.aqpseller.lulaapp.domain.model.PermisoCompartir
+import com.aqpseller.lulaapp.ui.theme.LulaHabito
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -195,60 +202,83 @@ private fun FilaSesionCita(
     onReprogramar: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier = modifier.fillMaxWidth().padding(vertical = 8.dp)) {
-        val horaActual = DateTimeUtils.horaHHmm(DateTimeUtils.ahoraEpochMillis())
-        val hoyEpochDay = DateTimeUtils.hoy().toEpochDays().toLong()
-        // Vencida = ya pasó su fecha/hora y sigue sin marcar — mismo criterio que el resto de
-        // la app (Hoy/Calendario), para que una sesión que quedó pendiente llame la atención en
-        // vez de perderse en una lista larga donde antes todo se veía igual.
-        val vencida = sesion.estado == EstadoActividad.SIN_CONFIRMAR &&
-            (sesion.fecha < hoyEpochDay || (sesion.fecha == hoyEpochDay && sesion.horario < horaActual))
-        // Una sesión futura (todavía no llega su día) no tiene nada que marcar todavía — antes
-        // mostraba igual el botón "✅ Cumplida" en TODAS las sesiones sin marcar, y con un curso
-        // largo (ej. 20 sesiones de radioterapia) eso se veía como una fila de checks verdes,
-        // como si ya estuvieran hechas (confusión real reportada por el usuario). Solo se ofrece
-        // marcar hoy o atrás; una futura solo se puede reprogramar.
-        val esFutura = sesion.fecha > hoyEpochDay
-        // Antes esto era solo un emoji "⬜"/"✅" de texto al inicio de la fila — parecía un
-        // checkbox tocable (invitaba a tocarlo) pero no hacía nada; marcar de verdad requería
-        // encontrar un botón de texto aparte más abajo, confuso (reportado por el usuario). Para
-        // una sesión que sí se puede marcar (no futura, no omitida) ahora es un `Checkbox` real:
-        // tocarlo SÍ marca/desmarca. Futura (no se puede marcar todavía) y Omitida (no es un
-        // simple sí/no) siguen con el emoji fijo, sin fingir que se puede tocar. Ver
-        // `Plan/08-decisiones-tecnicas.md`.
-        val puedeUsarCheckbox = !esFutura && sesion.estado != EstadoActividad.OMITIDO
-        val (emojiEstado, colorEstado) = when (sesion.estado) {
-            EstadoActividad.CONFIRMADO -> "✅" to MaterialTheme.colorScheme.primary
-            EstadoActividad.OMITIDO -> "⏭️" to MaterialTheme.colorScheme.onSurfaceVariant
-            EstadoActividad.SIN_CONFIRMAR -> if (esFutura) "⬜" to Color.Unspecified else "⬜" to if (vencida) MaterialTheme.colorScheme.error else Color.Unspecified
-        }
+    val horaActual = DateTimeUtils.horaHHmm(DateTimeUtils.ahoraEpochMillis())
+    val hoyEpochDay = DateTimeUtils.hoy().toEpochDays().toLong()
+    // Vencida = ya pasó su fecha/hora y sigue sin marcar — mismo criterio que el resto de
+    // la app (Hoy/Calendario), para que una sesión que quedó pendiente llame la atención en
+    // vez de perderse en una lista larga donde antes todo se veía igual.
+    val vencida = sesion.estado == EstadoActividad.SIN_CONFIRMAR &&
+        (sesion.fecha < hoyEpochDay || (sesion.fecha == hoyEpochDay && sesion.horario < horaActual))
+    // Una sesión futura (todavía no llega su día) no tiene nada que marcar todavía — antes
+    // mostraba igual el botón "✅ Cumplida" en TODAS las sesiones sin marcar, y con un curso
+    // largo (ej. 20 sesiones de radioterapia) eso se veía como una fila de checks verdes,
+    // como si ya estuvieran hechas (confusión real reportada por el usuario). Solo se ofrece
+    // marcar hoy o atrás; una futura solo se puede reprogramar.
+    val esFutura = sesion.fecha > hoyEpochDay
+    // La de hoy, todavía sin marcar y sin vencer, se resalta con fondo — antes se veía IGUAL que
+    // una futura (blanco) o que una ya vencida (roja), sin ninguna pista de "esta es la que toca
+    // ahora". A pedido del usuario. Ver `Plan/08-decisiones-tecnicas.md`.
+    val esHoySinMarcar = sesion.fecha == hoyEpochDay && sesion.estado == EstadoActividad.SIN_CONFIRMAR && !vencida
+    // Antes esto era solo un emoji "⬜"/"✅" de texto al inicio de la fila — parecía un
+    // checkbox tocable (invitaba a tocarlo) pero no hacía nada; marcar de verdad requería
+    // encontrar un botón de texto aparte más abajo, confuso (reportado por el usuario). Para
+    // una sesión que sí se puede marcar (no futura, no omitida) ahora es un `Checkbox` real:
+    // tocarlo SÍ marca/desmarca. Futura (no se puede marcar todavía) y Omitida (no es un
+    // simple sí/no) siguen con el emoji fijo, sin fingir que se puede tocar. Ver
+    // `Plan/08-decisiones-tecnicas.md`.
+    val puedeUsarCheckbox = !esFutura && sesion.estado != EstadoActividad.OMITIDO
+    // El check marcado usa el mismo verde que el resto de la app (antes usaba el violeta
+    // primario de Material, que se confundía con el color de acento genérico) — igual que el
+    // texto de una sesión ya cumplida: en vez de pintarlo morado, se tacha y se apaga, mismo
+    // lenguaje que "Ya hechos hoy" en Hoy. Ver `08-decisiones-tecnicas.md`.
+    val colorTexto = when {
+        vencida -> MaterialTheme.colorScheme.error
+        sesion.estado == EstadoActividad.CONFIRMADO -> MaterialTheme.colorScheme.onSurfaceVariant
+        else -> Color.Unspecified
+    }
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .let { if (esHoySinMarcar) it.background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(8.dp)) else it }
+            .padding(horizontal = if (esHoySinMarcar) 8.dp else 0.dp, vertical = 6.dp),
+    ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             if (puedeUsarCheckbox) {
                 Checkbox(
                     checked = sesion.estado == EstadoActividad.CONFIRMADO,
                     onCheckedChange = { marcado -> if (marcado) onMarcarCumplida() else onDeshacer() },
+                    colors = CheckboxDefaults.colors(checkedColor = LulaHabito, checkmarkColor = Color.White),
                 )
             } else {
-                Text(text = emojiEstado, modifier = Modifier.padding(end = 12.dp))
+                Text(text = if (sesion.estado == EstadoActividad.OMITIDO) "⏭️" else "⬜", modifier = Modifier.padding(end = 12.dp))
             }
             Text(
                 text = "Sesión ${sesion.numeroSesion} — " +
                     "${DateTimeUtils.formatearFechaLarga(DateTimeUtils.epochDaysToLocalDate(sesion.fecha))} · ${sesion.horario}" +
                     (if (vencida) " ⚠️" else if (esFutura) " · pendiente" else ""),
                 style = MaterialTheme.typography.bodyMedium,
-                color = colorEstado,
+                textDecoration = if (sesion.estado == EstadoActividad.CONFIRMADO) TextDecoration.LineThrough else null,
+                color = colorTexto,
             )
         }
-        Row(modifier = Modifier.padding(top = 4.dp)) {
-            when {
-                sesion.estado == EstadoActividad.SIN_CONFIRMAR && !esFutura -> {
-                    TextButton(onClick = onMarcarOmitida) { Text("⏭️ No se cumplió") }
-                }
-                sesion.estado == EstadoActividad.OMITIDO -> {
-                    TextButton(onClick = onDeshacer) { Text("↩️ Deshacer") }
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Row {
+                when {
+                    sesion.estado == EstadoActividad.SIN_CONFIRMAR && !esFutura -> {
+                        TextButton(onClick = onMarcarOmitida, contentPadding = PaddingValues(horizontal = 4.dp)) { Text("⏭️ No se cumplió") }
+                    }
+                    sesion.estado == EstadoActividad.OMITIDO -> {
+                        TextButton(onClick = onDeshacer, contentPadding = PaddingValues(horizontal = 4.dp)) { Text("↩️ Deshacer") }
+                    }
                 }
             }
-            TextButton(onClick = onReprogramar) { Text("📅 Reprogramar") }
+            // A la derecha a propósito — antes competía a la izquierda con "No se cumplió"/
+            // "Deshacer", como si fueran del mismo grupo de acciones, cuando reprogramar es algo
+            // aparte (a pedido del usuario). Ver `08-decisiones-tecnicas.md`.
+            TextButton(onClick = onReprogramar, contentPadding = PaddingValues(horizontal = 4.dp)) { Text("📅 Reprogramar") }
         }
     }
 }

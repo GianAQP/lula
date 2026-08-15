@@ -42,9 +42,7 @@ class FinancesViewModel @Inject constructor(
                         ahorradoMes = movimientosMes
                             .filter { it.tipo == TipoMovimientoFinanciero.EGRESO && it.categoria.equals("Ahorro", ignoreCase = true) }
                             .sumOf { it.monto },
-                        gastosHoy = movimientosMes.filter {
-                            it.tipo == TipoMovimientoFinanciero.EGRESO && it.fecha in inicioHoy..finHoy
-                        },
+                        movimientosHoy = movimientosMes.filter { it.fecha in inicioHoy..finHoy },
                         movimientosMes = movimientosMes,
                     )
                 }

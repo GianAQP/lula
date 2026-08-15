@@ -71,8 +71,12 @@ class ObtenerAgendaDelRangoUseCase @Inject constructor(
         // días después). Ver `Plan/08-decisiones-tecnicas.md`.
         actividadRepository.observarTareas(espacioId).first().forEach { tarea ->
             val detalle = tarea.detalle as? ActividadDetalle.Tarea ?: return@forEach
-            val fechaLimite = detalle.fechaLimite ?: return@forEach
-            val fechaAMostrar = (if (tarea.estado == EstadoActividad.CONFIRMADO) tarea.fechaCompletado else null) ?: fechaLimite
+            // Antes se salía acá si no había `fechaLimite`, ANTES de llegar a mirar
+            // `fechaCompletado` — una Tarea creada sin fecha (sin nada, solo nombre) que se
+            // marcaba hecha hoy nunca aparecía en Calendario, ni siquiera en el día en que de
+            // verdad se completó. A pedido del usuario. Ver `Plan/08-decisiones-tecnicas.md`.
+            val fechaAMostrar = (if (tarea.estado == EstadoActividad.CONFIRMADO) tarea.fechaCompletado else null)
+                ?: detalle.fechaLimite ?: return@forEach
             agregar(
                 DateTimeUtils.epochMillisToLocalDate(fechaAMostrar),
                 ItemAgenda(
@@ -188,6 +192,11 @@ class ObtenerAgendaDelRangoUseCase @Inject constructor(
                 }
             }
         }
+
+        // Rastro de lo eliminado — a pedido del usuario, para que borrar algo dentro del rango
+        // visible no lo haga desaparecer sin dejar huella. Se ve el día en que se eliminó (no su
+        // fecha original), es de solo lectura. Ver `Plan/08-decisiones-tecnicas.md`.
+        actividadRepository.obtenerEliminadosDeRango(espacioId, desde, hasta).forEach { (fecha, item) -> agregar(fecha, item) }
 
         return resultado.mapValues { (_, items) -> items.sortedBy { it.horario ?: "99:99" } }
     }

@@ -86,28 +86,57 @@ class RecordatorioReceiver : BroadcastReceiver() {
             return
         }
 
-        mostrarNotificacion(context, actividadId, nombre, tipo, nivel, horario, instruccion)
-
-        when {
-            tipo == TipoActividad.HABITO && hora != null ->
-                recordatorioScheduler.programarHabito(actividadId, nombre, hora, nivel)
-            tipo == TipoActividad.MEDICAMENTO && horario != null -> {
-                reprogramarMedicamentoSiVigente(actividadId, nombre, horario, instruccion, nivel)
-                if (intervaloPersistenciaMin != null) {
-                    recordatorioScheduler.programarRenotificacionMedicamento(
-                        actividadId,
-                        nombre,
-                        horario,
-                        instruccion,
-                        nivel,
-                        intervaloPersistenciaMin,
-                        fechaOriginalEpochDay = DateTimeUtils.hoy().toEpochDays().toLong(),
-                    )
+        // Guarda contra alarmas "huérfanas": una que ya quedó armada en `AlarmManager` antes de
+        // que la actividad se borrara, se completara antes de tiempo, o (Medicamento) su
+        // tratamiento ya terminara. Sin esto, cancelar al eliminar/completar es la ÚNICA defensa
+        // — y si esa cancelación falla o no cubre algún caso, la alarma ya armada suena igual.
+        // Acá se revisa el estado real justo antes de mostrar nada, así que ninguna vía de
+        // cancelación necesita ser perfecta. A pedido del usuario. Ver `08-decisiones-tecnicas.md`.
+        val pendingResult = goAsync()
+        CoroutineScope(Dispatchers.IO).launch {
+            runCatching {
+                if (debeMostrarRecordatorio(actividadId, tipo, horario)) {
+                    mostrarNotificacion(context, actividadId, nombre, tipo, nivel, horario, instruccion)
+                    when {
+                        tipo == TipoActividad.HABITO && hora != null ->
+                            recordatorioScheduler.programarHabito(actividadId, nombre, hora, nivel)
+                        tipo == TipoActividad.MEDICAMENTO && horario != null -> {
+                            reprogramarMedicamentoSiVigente(actividadId, nombre, horario, instruccion, nivel)
+                            if (intervaloPersistenciaMin != null) {
+                                recordatorioScheduler.programarRenotificacionMedicamento(
+                                    actividadId,
+                                    nombre,
+                                    horario,
+                                    instruccion,
+                                    nivel,
+                                    intervaloPersistenciaMin,
+                                    fechaOriginalEpochDay = DateTimeUtils.hoy().toEpochDays().toLong(),
+                                )
+                            }
+                        }
+                        tipo == TipoActividad.FECHA_IMPORTANTE ->
+                            reprogramarFechaImportanteSiRepite(actividadId, nombre)
+                    }
                 }
             }
-            tipo == TipoActividad.FECHA_IMPORTANTE ->
-                reprogramarFechaImportanteSiRepite(actividadId, nombre)
+            pendingResult.finish()
         }
+    }
+
+    /**
+     * Antes de mostrar cualquier recordatorio de Hábito/Tarea/Medicamento/Cita/Fecha importante,
+     * se revisa el estado real: si la actividad ya no existe (se borró), está pausada, ya se
+     * marcó como hecha, o (Medicamento) su tratamiento ya terminó — no se muestra nada y no se
+     * reprograma más.
+     */
+    private suspend fun debeMostrarRecordatorio(actividadId: String, tipo: TipoActividad, horario: String?): Boolean {
+        val actividad = actividadRepository.obtenerConDetalle(actividadId) ?: return false
+        if (!actividad.activa || actividad.estado == EstadoActividad.CONFIRMADO) return false
+        if (tipo == TipoActividad.MEDICAMENTO && horario != null) {
+            val detalle = actividad.detalle as? ActividadDetalle.Medicamento ?: return false
+            if (horario !in horariosParaFecha(detalle, DateTimeUtils.hoy())) return false
+        }
+        return true
     }
 
     /**
@@ -223,7 +252,13 @@ class RecordatorioReceiver : BroadcastReceiver() {
         CoroutineScope(Dispatchers.IO).launch {
             runCatching {
                 val hoyEpochDay = DateTimeUtils.hoy().toEpochDays().toLong()
-                if (hoyEpochDay == fechaOriginalEpochDay) {
+                // Si el medicamento se borró (o se pausó) mientras esta cadena de insistencia
+                // seguía viva, acá se corta — antes solo revisaba la toma, y una toma sin
+                // registro (porque el medicamento ya no existe) se leía igual que "sin
+                // confirmar", así que seguía insistiendo aunque ya no hubiera nada que insistir.
+                // A pedido del usuario. Ver `08-decisiones-tecnicas.md`.
+                val actividad = actividadRepository.obtenerConDetalle(actividadId)
+                if (hoyEpochDay == fechaOriginalEpochDay && actividad != null && actividad.activa) {
                     val estado = actividadRepository.obtenerEstadoToma(actividadId, fechaOriginalEpochDay, horario)
                     if (estado == null || estado == EstadoActividad.SIN_CONFIRMAR) {
                         mostrarNotificacion(context, actividadId, nombre, TipoActividad.MEDICAMENTO, nivel, horario, instruccion)
@@ -243,17 +278,11 @@ class RecordatorioReceiver : BroadcastReceiver() {
      * detalle porque `fechaFin`/`cantidadDosisTotal` pueden haber cambiado desde que se programó
      * esta alarma (ej. la persona editó o pausó el medicamento).
      */
-    private fun reprogramarMedicamentoSiVigente(actividadId: String, nombre: String, horario: String, instruccion: String, nivel: NivelRecordatorio) {
-        val pendingResult = goAsync()
-        CoroutineScope(Dispatchers.IO).launch {
-            runCatching {
-                val actividad = actividadRepository.obtenerConDetalle(actividadId)
-                val detalle = actividad?.detalle as? ActividadDetalle.Medicamento
-                if (actividad != null && actividad.activa && detalle != null && medicamentoSigueVigenteManana(detalle, horario)) {
-                    recordatorioScheduler.programarMedicamento(actividadId, nombre, horario, instruccion, nivel)
-                }
-            }
-            pendingResult.finish()
+    private suspend fun reprogramarMedicamentoSiVigente(actividadId: String, nombre: String, horario: String, instruccion: String, nivel: NivelRecordatorio) {
+        val actividad = actividadRepository.obtenerConDetalle(actividadId)
+        val detalle = actividad?.detalle as? ActividadDetalle.Medicamento
+        if (actividad != null && actividad.activa && detalle != null && medicamentoSigueVigenteManana(detalle, horario)) {
+            recordatorioScheduler.programarMedicamento(actividadId, nombre, horario, instruccion, nivel)
         }
     }
 
@@ -269,18 +298,12 @@ class RecordatorioReceiver : BroadcastReceiver() {
      * campos que solo usa este tipo. Nunca se muta `fechaBase`, siempre se recalcula la
      * próxima ocurrencia desde el original (ver `RecordatorioScheduler`).
      */
-    private fun reprogramarFechaImportanteSiRepite(actividadId: String, nombre: String) {
-        val pendingResult = goAsync()
-        CoroutineScope(Dispatchers.IO).launch {
-            runCatching {
-                val detalle = actividadRepository.obtenerConDetalle(actividadId)?.detalle as? ActividadDetalle.FechaImportante
-                if (detalle != null && detalle.recurrencia != Recurrencia.UNICA) {
-                    recordatorioScheduler.programarFechaImportante(
-                        actividadId, nombre, detalle.fechaBase, detalle.horaNotificacion, detalle.anticipacion, detalle.recurrencia, detalle.tipoAviso,
-                    )
-                }
-            }
-            pendingResult.finish()
+    private suspend fun reprogramarFechaImportanteSiRepite(actividadId: String, nombre: String) {
+        val detalle = actividadRepository.obtenerConDetalle(actividadId)?.detalle as? ActividadDetalle.FechaImportante
+        if (detalle != null && detalle.recurrencia != Recurrencia.UNICA) {
+            recordatorioScheduler.programarFechaImportante(
+                actividadId, nombre, detalle.fechaBase, detalle.horaNotificacion, detalle.anticipacion, detalle.recurrencia, detalle.tipoAviso,
+            )
         }
     }
 

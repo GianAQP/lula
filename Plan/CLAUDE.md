@@ -932,3 +932,56 @@ símbolo de Calendario. Se cambió a "🩺" en los 4 lugares donde vivía, y de 
 ícono de "Círculo de cuidado" en Perfil (que había quedado en "🩺" y ahora chocaba) a "👥" — el
 mismo que ya usaba el chip de "Personalizar mi navegación". Compiló e instaló en el dispositivo
 real.
+
+**Recordatorios que seguían sonando después de terminados/eliminados** (2026-08-14): dos bugs
+reales, diagnosticados leyendo el código, no adivinando. (1) `ReprogramarTodosLosRecordatoriosUseCase`
+(el arreglo del 2026-08-13 para "los recordatorios se duermen") reprogramaba TODAS las horas de
+un Medicamento activo en cada apertura de la app sin revisar `fechaFin` — un tratamiento ya
+terminado volvía a sonar completo. (2) Eliminar un Medicamento no cancelaba su cadena de
+"insistir" (recordatorio persistente) si estaba activada. Además del arreglo puntual de ambos,
+se agregó una guardia general en `RecordatorioReceiver`: antes de mostrar cualquier
+recordatorio, revisa si la actividad todavía existe, está activa, no está ya confirmada, y (si
+es Medicamento) sigue vigente hoy — así ninguna vía de cancelación necesita ser perfecta. De
+paso, a pedido del usuario, borrar algo ahora deja rastro en Calendario (usando la auditoría
+`historial_cambios` que ya existía) en vez de desaparecer sin dejar huella. Compiló y se instaló
+en el dispositivo real. Detalle completo en `Plan/08-decisiones-tecnicas.md`.
+
+**Botón "Hoy" confuso en Historial de Finanzas** (2026-08-14): aparecía siempre debajo del mes,
+incluso viendo el mes actual, y confundía. Ahora solo aparece cuando se está viendo otro mes
+(mismo criterio que ya usa el Calendario con "Ir a hoy"). Compiló y se instaló en el dispositivo
+real.
+
+**Ronda de feedback de uso real, 5 puntos, verificados con datos reales del dispositivo**
+(2026-08-14): se sacó la base de datos real (`adb exec-out run-as ... cat databases/lula.db`)
+antes de tocar código, para no adivinar. (1-2) Las dos rachas en 0 (global y de Hábito) no son
+un bug — ambas cuentan hacia atrás desde HOY y se cortan si hoy todavía no se actuó, aunque haya
+racha real en curso desde ayer; no hay ningún tope de "21 días". Quedó como observación para
+decidir con el usuario (contradice un poco "ningún intento se castiga"), no se cambió el
+comportamiento todavía. (3) El "eliminado" que aparecía sin que el usuario borrara nada era
+real, pero de OTRA actividad (una "ampicilina" de prueba eliminada a las 00:01am), no de la que
+acababa de crear — confirmado con los IDs y timestamps reales, no encontré el "6:00 am" que
+describió en los datos del medicamento nuevo. (4) Bug real arreglado: una Tarea sin fecha límite
+completada hoy nunca aparecía en Calendario porque el código salía antes de mirar
+`fechaCompletado`. (5) `CitaDetailScreen.kt` (sesiones de un curso de citas) rediseñado: check
+verde en vez de morado, la sesión de hoy se resalta con fondo, "Reprogramar" pasó al lado
+derecho, menos espacio en blanco entre filas. De paso, Finanzas ganó una sección "Hoy" que
+muestra ingresos Y egresos de hoy (antes solo egresos, por eso un ingreso registrado "no
+aparecía"). Compiló e instaló en el dispositivo real. Detalle completo en
+`Plan/08-decisiones-tecnicas.md`.
+
+**Racha en 0 al empezar el día + signo en gastos de la barra superior** (2026-08-15): el usuario
+confirmó el problema que había quedado como observación — "ayer tenía 3" y hoy antes de cerrar
+el día se veía "0". Ahora, si hoy todavía no se cerró/marcó, la racha (global y por hábito)
+arranca a contar desde ayer en vez de desde hoy, así no desaparece hasta que de verdad se rompe.
+También se agregó el signo "-" al gasto de hoy en la barra superior. Sobre premios por
+persistencia (inspirado en Duolingo) quedó como pregunta abierta, sin implementar. Compiló e
+instaló en el dispositivo real. Detalle completo en `Plan/08-decisiones-tecnicas.md`.
+
+**Hitos de racha: pantalla grande de celebración + mensajes variados** (2026-08-15): construida
+la Fase 1 de la estrategia de gamificación guardada en memoria (ver
+`project_gamificacion_premios_persistencia`) — sin gemas todavía, a propósito. Nuevo
+`core/utils/MensajesRacha.kt` centraliza los mensajes (al azar, varios pools: diario, por hito
+7/21/30/60+, y aviso de "casi llegas" cuando falta 1 día). Al cerrar el día y cruzar un hito,
+`CerrarDiaScreen.kt` muestra una pantalla completa de celebración (plantita 🌱→🌿→🌳 que crece,
+mensaje al azar, botón fijo "Voy a seguir 🌱") en vez de la vista chica normal. Compiló e instaló
+en el dispositivo real. Detalle completo en `Plan/08-decisiones-tecnicas.md`.

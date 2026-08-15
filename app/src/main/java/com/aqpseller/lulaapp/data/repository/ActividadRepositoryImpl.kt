@@ -6,6 +6,7 @@ import com.aqpseller.lulaapp.data.local.dao.ActividadDao
 import com.aqpseller.lulaapp.data.local.dao.CitaDetalleDao
 import com.aqpseller.lulaapp.data.local.dao.FechaImportanteDetalleDao
 import com.aqpseller.lulaapp.data.local.dao.HabitoDetalleDao
+import com.aqpseller.lulaapp.data.local.dao.HistorialCambiosDao
 import com.aqpseller.lulaapp.data.local.dao.MedicamentoDetalleDao
 import com.aqpseller.lulaapp.data.local.dao.RegistroActividadDao
 import com.aqpseller.lulaapp.data.local.dao.RutinaDetalleDao
@@ -22,6 +23,7 @@ import com.aqpseller.lulaapp.domain.model.ActividadDetalle
 import com.aqpseller.lulaapp.domain.model.DiaHistorialHabito
 import com.aqpseller.lulaapp.domain.model.EstadoActividad
 import com.aqpseller.lulaapp.domain.model.EstadoActividadEnFecha
+import com.aqpseller.lulaapp.domain.model.ItemAgenda
 import com.aqpseller.lulaapp.domain.model.SesionCita
 import com.aqpseller.lulaapp.domain.model.TipoActividad
 import com.aqpseller.lulaapp.domain.model.TomaMedicamento
@@ -29,6 +31,8 @@ import com.aqpseller.lulaapp.domain.repository.ActividadRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
+import kotlinx.datetime.LocalDate
+import kotlinx.serialization.json.Json
 import javax.inject.Inject
 
 class ActividadRepositoryImpl @Inject constructor(
@@ -42,6 +46,7 @@ class ActividadRepositoryImpl @Inject constructor(
     private val tomaMedicamentoDao: TomaMedicamentoDao,
     private val sesionCitaDao: SesionCitaDao,
     private val registroActividadDao: RegistroActividadDao,
+    private val historialCambiosDao: HistorialCambiosDao,
     private val auditLogger: AuditLogger,
 ) : ActividadRepository {
 
@@ -542,5 +547,29 @@ class ActividadRepositoryImpl @Inject constructor(
                 actividad
             }
         }
+    }
+
+    override suspend fun obtenerEliminadosDeRango(espacioId: String, desde: LocalDate, hasta: LocalDate): List<Pair<LocalDate, ItemAgenda>> {
+        val desdeMillis = DateTimeUtils.localDateAEpochMillis(desde)
+        val hastaMillis = DateTimeUtils.localDateAEpochMillis(hasta) + 86_400_000L - 1
+        return historialCambiosDao
+            .obtenerPorEntidadYAccionEnRango("actividad", AccionAuditoria.ELIMINAR.name, desdeMillis, hastaMillis)
+            .mapNotNull { registro ->
+                val json = registro.valoresAntesJson ?: return@mapNotNull null
+                val entidadEliminada = runCatching { Json.decodeFromString<ActividadEntity>(json) }.getOrNull() ?: return@mapNotNull null
+                if (entidadEliminada.espacioId != espacioId) return@mapNotNull null
+                val tipo = runCatching { TipoActividad.valueOf(entidadEliminada.tipo) }.getOrNull() ?: return@mapNotNull null
+                val fecha = DateTimeUtils.epochMillisToLocalDate(registro.timestamp)
+                fecha to ItemAgenda(
+                    actividadId = entidadEliminada.id,
+                    tipo = tipo,
+                    nombre = entidadEliminada.nombre,
+                    horario = null,
+                    momentoDelDia = null,
+                    estado = EstadoActividad.OMITIDO,
+                    subtitulo = "Eliminado",
+                    eliminado = true,
+                )
+            }
     }
 }

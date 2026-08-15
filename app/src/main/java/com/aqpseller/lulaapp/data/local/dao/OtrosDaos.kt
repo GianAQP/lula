@@ -112,4 +112,7 @@ interface HistorialCambiosDao {
 
     @Query("SELECT * FROM historial_cambios WHERE entidad = :entidad AND entidadId = :entidadId ORDER BY timestamp DESC")
     fun observarPorEntidad(entidad: String, entidadId: String): Flow<List<HistorialCambiosEntity>>
+
+    @Query("SELECT * FROM historial_cambios WHERE entidad = :entidad AND accion = :accion AND timestamp BETWEEN :desde AND :hasta ORDER BY timestamp DESC")
+    suspend fun obtenerPorEntidadYAccionEnRango(entidad: String, accion: String, desde: Long, hasta: Long): List<HistorialCambiosEntity>
 }

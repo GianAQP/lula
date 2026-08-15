@@ -19,4 +19,12 @@ data class CerrarDiaUiState(
     val queAjustoInicial: String? = null,
     val cerrado: Boolean = false,
     val rachaFinal: Int = 0,
+    /** Distinto de null solo si `rachaFinal` acaba de cruzar un hito (7/21/30/60...) por primera
+     * vez — dispara la pantalla grande de celebración en vez de la vista chica normal. */
+    val hitoAlcanzado: Int? = null,
+    /** Mensaje a mostrar al cerrar: el de hito si `hitoAlcanzado != null`, si no el diario (o el
+     * de "casi llegas" si falta un solo día para el próximo hito). Elegido al azar entre varios
+     * — se calcula una vez al cerrar, no en cada recomposición, para no cambiar solo. Ver
+     * `Plan/08-decisiones-tecnicas.md`. */
+    val mensajeCierre: String = "",
 )

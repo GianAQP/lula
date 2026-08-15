@@ -5,9 +5,11 @@ import com.aqpseller.lulaapp.domain.model.ActividadDetalle
 import com.aqpseller.lulaapp.domain.model.DiaHistorialHabito
 import com.aqpseller.lulaapp.domain.model.EstadoActividad
 import com.aqpseller.lulaapp.domain.model.EstadoActividadEnFecha
+import com.aqpseller.lulaapp.domain.model.ItemAgenda
 import com.aqpseller.lulaapp.domain.model.SesionCita
 import com.aqpseller.lulaapp.domain.model.TomaMedicamento
 import kotlinx.coroutines.flow.Flow
+import kotlinx.datetime.LocalDate
 
 interface ActividadRepository {
     suspend fun crearHabito(actividad: Actividad, detalle: ActividadDetalle.Habito, usuarioId: String)
@@ -94,4 +96,12 @@ interface ActividadRepository {
 
     /** Reprograma UNA sesión puntual — no toca `fechaOriginal` ni el resto del curso (ver `08-decisiones-tecnicas.md`). */
     suspend fun reprogramarSesionCita(actividadId: String, numeroSesion: Int, nuevaFecha: Long, usuarioId: String)
+
+    /**
+     * Reconstruye, desde `historial_cambios`, qué actividades del espacio se eliminaron en
+     * [desde]..[hasta] — cada una devuelta con la fecha en que se eliminó (no su fecha original)
+     * y marcada `ItemAgenda.eliminado = true`. Usado por el Calendario para dejar rastro de lo
+     * borrado en vez de que desaparezca sin dejar huella. Ver `Plan/08-decisiones-tecnicas.md`.
+     */
+    suspend fun obtenerEliminadosDeRango(espacioId: String, desde: LocalDate, hasta: LocalDate): List<Pair<LocalDate, ItemAgenda>>
 }

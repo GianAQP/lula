@@ -1,7 +1,9 @@
 package com.aqpseller.lulaapp.features.daily_review
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
@@ -18,13 +20,17 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.aqpseller.lulaapp.core.ui.DictationTextField
 import com.aqpseller.lulaapp.core.ui.StatPill
 import com.aqpseller.lulaapp.core.utils.DateTimeUtils
+import com.aqpseller.lulaapp.core.utils.emojiHitoRacha
 import com.aqpseller.lulaapp.ui.theme.LulaRachaContainerLight
 
 @Composable
@@ -50,9 +56,18 @@ fun CerrarDiaScreen(
         }
     }
 
+    // Un hito de racha (7/21/30/60...) se celebra en grande, ocupando toda la pantalla, en vez
+    // de la vista chica normal de "día cerrado" — a pedido del usuario, para que se sienta como
+    // un momento aparte, no una línea más de texto. Ver `Plan/08-decisiones-tecnicas.md`.
+    val hito = uiState.hitoAlcanzado
+    if (uiState.cerrado && hito != null) {
+        CelebracionHitoRacha(hito = hito, mensaje = uiState.mensajeCierre, onSeguir = onVolverAHoy, modifier = modifier)
+        return
+    }
+
     Column(modifier = modifier.padding(16.dp).verticalScroll(rememberScrollState())) {
         if (uiState.cerrado) {
-            Text(text = "Buen trabajo. Mañana seguimos.", style = MaterialTheme.typography.titleMedium)
+            Text(text = uiState.mensajeCierre, style = MaterialTheme.typography.titleMedium)
             StatPill(
                 emoji = "🔥",
                 valor = "Racha: ${uiState.rachaFinal} días",
@@ -150,6 +165,46 @@ fun CerrarDiaScreen(
             modifier = Modifier.padding(top = 24.dp),
         ) {
             Text(if (uiState.yaExistiaRegistro) "Guardar cambios" else "Guardar y cerrar")
+        }
+    }
+}
+
+/**
+ * Celebración de hito de racha (7/21/30/60...) — pantalla completa a propósito, no una tarjeta
+ * chica, para que se sienta como un momento aparte de cerrar el día. La "cara" es una plantita
+ * que crece (🌱→🌿→🌳, `emojiHitoRacha`) en vez de un ícono nuevo — mismo símbolo que ya usa
+ * Lula para "hábitos/crecimiento", y deja listo el camino para más adelante reemplazarla por un
+ * personaje propio. El botón queda siempre igual (no rota) para que sea un llamado a la acción
+ * reconocible; el mensaje de arriba sí rota entre varios (ver `MensajesRacha.kt`). A pedido del
+ * usuario. Ver `Plan/08-decisiones-tecnicas.md`.
+ */
+@Composable
+private fun CelebracionHitoRacha(
+    hito: Int,
+    mensaje: String,
+    onSeguir: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier.fillMaxSize().padding(24.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(text = emojiHitoRacha(hito), fontSize = 96.sp)
+        Text(
+            text = "$hito días",
+            style = MaterialTheme.typography.displaySmall,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(top = 16.dp),
+        )
+        Text(
+            text = mensaje,
+            style = MaterialTheme.typography.titleMedium,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(top = 12.dp),
+        )
+        Button(onClick = onSeguir, modifier = Modifier.padding(top = 32.dp)) {
+            Text("Voy a seguir 🌱")
         }
     }
 }

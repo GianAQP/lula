@@ -17,7 +17,11 @@ class EliminarActividadUseCase @Inject constructor(
         val detalle = actividadRepository.obtenerConDetalle(actividadId)?.detalle
         when (detalle) {
             is ActividadDetalle.Medicamento ->
-                detalle.horariosCalculados.forEach { horario -> recordatorioScheduler.cancelar(actividadId, horario) }
+                // `cancelarMedicamento` cancela también la cadena de "insistir" (recordatorio
+                // persistente) — antes acá solo se cancelaba la alarma diaria normal, así que un
+                // medicamento con insistencia activa seguía reintentando después de eliminado
+                // (el que ya estaba armado en `AlarmManager` no se tocaba). A pedido del usuario.
+                detalle.horariosCalculados.forEach { horario -> recordatorioScheduler.cancelarMedicamento(actividadId, horario) }
             is ActividadDetalle.Cita ->
                 if (detalle.esCurso) {
                     actividadRepository.obtenerSesionesCita(actividadId).forEach { sesion ->

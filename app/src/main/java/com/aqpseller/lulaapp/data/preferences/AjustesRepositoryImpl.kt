@@ -10,6 +10,7 @@ import com.aqpseller.lulaapp.domain.repository.AjustesRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -28,6 +29,7 @@ class AjustesRepositoryImpl @Inject constructor(
     private val bottomBarPosicion2Key = stringPreferencesKey("bottom_bar_posicion_2")
     private val bottomBarPosicion3Key = stringPreferencesKey("bottom_bar_posicion_3")
     private val bottomBarPosicion4Key = stringPreferencesKey("bottom_bar_posicion_4")
+    private val ultimoHitoRachaCelebradoKey = intPreferencesKey("ultimo_hito_racha_celebrado")
 
     /**
      * A propósito NO se guarda en DataStore (a diferencia de todo lo demás en esta clase): el
@@ -100,5 +102,12 @@ class AjustesRepositoryImpl @Inject constructor(
 
     override suspend fun setEspacioActivoId(espacioId: String?) {
         this.espacioActivoId.value = espacioId
+    }
+
+    override suspend fun obtenerUltimoHitoRachaCelebrado(): Int =
+        context.ajustesDataStore.data.first()[ultimoHitoRachaCelebradoKey] ?: 0
+
+    override suspend fun setUltimoHitoRachaCelebrado(valor: Int) {
+        context.ajustesDataStore.edit { it[ultimoHitoRachaCelebradoKey] = valor }
     }
 }

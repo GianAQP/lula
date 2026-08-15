@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.aqpseller.lulaapp.core.ui.EmptyState
 import com.aqpseller.lulaapp.core.ui.StatPill
+import com.aqpseller.lulaapp.domain.model.TipoMovimientoFinanciero
 import com.aqpseller.lulaapp.ui.theme.LulaAsistenteContainerLight
 import com.aqpseller.lulaapp.ui.theme.LulaFinanzasContainerLight
 import com.aqpseller.lulaapp.ui.theme.LulaHabitoContainerLight
@@ -81,14 +82,15 @@ fun FinancesScreen(
             )
         }
 
-        Text(text = "Gastos de hoy", style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(top = 16.dp))
-        if (uiState.gastosHoy.isEmpty()) {
-            Text(text = "Sin gastos registrados hoy.")
+        Text(text = "Hoy", style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(top = 16.dp))
+        if (uiState.movimientosHoy.isEmpty()) {
+            Text(text = "Nada registrado hoy.")
         } else {
-            uiState.gastosHoy.forEach { gasto ->
-                Text(text = "${gasto.categoria}  S/ ${"%.2f".format(gasto.monto)}")
+            uiState.movimientosHoy.forEach { movimiento ->
+                val signo = if (movimiento.tipo == TipoMovimientoFinanciero.EGRESO) "-" else "+"
+                Text(text = "${movimiento.categoria}  $signo S/ ${"%.2f".format(movimiento.monto)}")
             }
-            Text(text = "Total: S/ ${"%.2f".format(uiState.totalGastosHoy)}", style = MaterialTheme.typography.bodyLarge)
+            Text(text = "Neto de hoy: S/ ${"%.2f".format(uiState.netoHoy)}", style = MaterialTheme.typography.bodyLarge)
         }
 
         Row(modifier = Modifier.padding(top = 16.dp)) {

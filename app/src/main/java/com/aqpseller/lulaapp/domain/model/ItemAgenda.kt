@@ -14,4 +14,9 @@ data class ItemAgenda(
     val tomaHorario: String? = null,
     /** Para una Cita de curso, el número de esa sesión (clave compuesta con `actividadId`). */
     val sesionNumero: Int? = null,
+    /** Marca de "esto se eliminó" reconstruida desde `historial_cambios` — a pedido del usuario,
+     * para que borrar algo deje rastro en Calendario en vez de desaparecer sin dejar huella. Se
+     * muestra el día en que se eliminó (no en su fecha original), es de solo lectura: no lleva a
+     * ningún detalle ni se puede marcar. Ver `Plan/08-decisiones-tecnicas.md`. */
+    val eliminado: Boolean = false,
 )

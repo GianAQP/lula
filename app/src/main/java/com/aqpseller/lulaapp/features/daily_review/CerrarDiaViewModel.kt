@@ -5,10 +5,15 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aqpseller.lulaapp.core.utils.DateTimeUtils
 import com.aqpseller.lulaapp.core.utils.actividadCuentaParaHoy
+import com.aqpseller.lulaapp.core.utils.esHitoRacha
 import com.aqpseller.lulaapp.core.utils.estadoDeHoy
+import com.aqpseller.lulaapp.core.utils.mensajeAnticipacionHito
+import com.aqpseller.lulaapp.core.utils.mensajeCierreDiario
+import com.aqpseller.lulaapp.core.utils.mensajeHitoRacha
 import com.aqpseller.lulaapp.domain.model.EstadoActividad
 import com.aqpseller.lulaapp.domain.model.SesionActual
 import com.aqpseller.lulaapp.domain.model.TipoActividad
+import com.aqpseller.lulaapp.domain.repository.AjustesRepository
 import com.aqpseller.lulaapp.domain.usecase.actividad.ObtenerActividadesDeHoyUseCase
 import com.aqpseller.lulaapp.domain.usecase.calendario.ObtenerAgendaDelRangoUseCase
 import com.aqpseller.lulaapp.domain.usecase.registrodiario.CerrarDiaUseCase
@@ -33,6 +38,7 @@ class CerrarDiaViewModel @Inject constructor(
     private val obtenerProgresoDeHoyUseCase: ObtenerProgresoDeHoyUseCase,
     private val obtenerAgendaDelRangoUseCase: ObtenerAgendaDelRangoUseCase,
     private val obtenerRegistroDiarioDeFechaUseCase: ObtenerRegistroDiarioDeFechaUseCase,
+    private val ajustesRepository: AjustesRepository,
 ) : ViewModel() {
 
     /** null (o ausente) = hoy. Un epoch day explícito viene de Calendario, para llenar o
@@ -120,7 +126,19 @@ class CerrarDiaViewModel @Inject constructor(
             // Recalcular siempre, no solo si es hoy: cerrar un día anterior puede rellenar un
             // hueco que hasta ahora cortaba la racha, extendiéndola hacia atrás.
             val racha = obtenerProgresoDeHoyUseCase.calcularRachaActual(sesionActual.espacioId)
-            _uiState.update { it.copy(cerrado = true, rachaFinal = racha) }
+
+            // Si la racha se rompió (volvió a 0 o 1), se olvida el último hito celebrado — una
+            // racha nueva puede volver a celebrar 7/21/30 desde cero. Ver `08-decisiones-tecnicas.md`.
+            if (racha <= 1) ajustesRepository.setUltimoHitoRachaCelebrado(0)
+            val ultimoHitoCelebrado = ajustesRepository.obtenerUltimoHitoRachaCelebrado()
+            val hitoAlcanzado = if (esHitoRacha(racha) && racha > ultimoHitoCelebrado) racha else null
+            val mensaje = if (hitoAlcanzado != null) {
+                ajustesRepository.setUltimoHitoRachaCelebrado(hitoAlcanzado)
+                mensajeHitoRacha(hitoAlcanzado)
+            } else {
+                mensajeAnticipacionHito(racha) ?: mensajeCierreDiario()
+            }
+            _uiState.update { it.copy(cerrado = true, rachaFinal = racha, hitoAlcanzado = hitoAlcanzado, mensajeCierre = mensaje) }
         }
     }
 
