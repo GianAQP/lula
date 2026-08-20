@@ -1,5 +1,6 @@
 package com.aqpseller.lulaapp.features.tasks
 
+import android.widget.Toast
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -28,6 +29,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.aqpseller.lulaapp.core.ui.DescartarCambiosAlSalir
@@ -75,6 +77,9 @@ private fun resumenFecha(opcionFecha: OpcionFecha, fechaPersonalizada: Long?): S
 private fun resumenRecordatorio(horaRecordatorio: String?, nivelRecordatorio: NivelRecordatorio): String =
     if (horaRecordatorio == null) "Sin recordatorio" else "$horaRecordatorio · ${etiquetaNivel(nivelRecordatorio)}"
 
+private fun resumenVinculo(actividadVinculadaId: String?, opciones: List<ActividadVinculableUi>): String =
+    opciones.firstOrNull { it.id == actividadVinculadaId }?.let { "${it.emoji} ${it.nombre}" } ?: "Sin vincular"
+
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun CrearTareaScreen(
@@ -96,6 +101,7 @@ fun CrearTareaScreen(
     var actividadVinculadaId by remember { mutableStateOf<String?>(null) }
     var mostrarSelectorFechaLimite by remember { mutableStateOf(false) }
     var mostrarSelectorRecordatorio by remember { mutableStateOf(false) }
+    var mostrarSelectorVinculo by remember { mutableStateOf(false) }
 
     // Snapshot del formulario para saber si hay cambios sin guardar — comparado contra el
     // estado justo después de cargar (edición) o contra los valores en blanco (creación), así
@@ -104,10 +110,18 @@ fun CrearTareaScreen(
     fun snapshot() = listOf(nombre, opcionFecha, fechaPersonalizada, importante, urgente, horaRecordatorio, nivelRecordatorio, recurrencia, actividadVinculadaId)
     var snapshotInicial by remember { mutableStateOf(snapshot()) }
 
+    val context = LocalContext.current
     val guardado by viewModel.guardado.collectAsState()
     val formInicial by viewModel.formInicial.collectAsState()
     val actividadesVinculables by viewModel.actividadesVinculables.collectAsState()
+    val mensajeError by viewModel.mensajeError.collectAsState()
     LaunchedEffect(guardado) { if (guardado) onGuardado() }
+    LaunchedEffect(mensajeError) {
+        mensajeError?.let {
+            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
+            viewModel.errorMostrado()
+        }
+    }
     DescartarCambiosAlSalir(
         hayContenidoSinGuardar = snapshotInicial != snapshot() && !guardado,
         onDescartar = onSalirSinGuardar,
@@ -176,33 +190,20 @@ fun CrearTareaScreen(
                     onClick = { mostrarSelectorRecordatorio = true },
                 )
             }
-            HorizontalDivider()
-        }
-
-        if (actividadesVinculables.isNotEmpty()) {
-            Text(text = "¿Acompaña a un medicamento o cita?", modifier = Modifier.padding(top = 16.dp))
-            Text(
-                text = "Para el caso de cuidar a alguien por un tiempo — cuando ese medicamento o " +
-                    "cita termine, esta tarea se marca como completada sola.",
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.padding(top = 2.dp),
-            )
-            FlowRow(modifier = Modifier.padding(top = 8.dp)) {
-                FilterChip(
-                    selected = actividadVinculadaId == null,
-                    onClick = { actividadVinculadaId = null },
-                    label = { Text("Sin vincular") },
-                    modifier = Modifier.padding(end = 8.dp, bottom = 8.dp),
+            // Antes esto vivía siempre desplegado (título + explicación + un chip por cada
+            // medicamento/cita existente) — se veía muy cargado apenas se abría el formulario,
+            // sobre todo con varios medicamentos. Ahora es una fila colapsada más, mismo patrón
+            // que Fecha límite/Recordatorio, y las opciones solo aparecen al tocarla. A pedido
+            // del usuario. Ver `Plan/08-decisiones-tecnicas.md`.
+            if (actividadesVinculables.isNotEmpty()) {
+                HorizontalDivider()
+                SelectorRow(
+                    etiqueta = "🔗 ¿Acompaña a un medicamento o cita?",
+                    valor = resumenVinculo(actividadVinculadaId, actividadesVinculables),
+                    onClick = { mostrarSelectorVinculo = true },
                 )
-                actividadesVinculables.forEach { opcion ->
-                    FilterChip(
-                        selected = actividadVinculadaId == opcion.id,
-                        onClick = { actividadVinculadaId = opcion.id },
-                        label = { Text("${opcion.emoji} ${opcion.nombre}") },
-                        modifier = Modifier.padding(end = 8.dp, bottom = 8.dp),
-                    )
-                }
             }
+            HorizontalDivider()
         }
 
         Button(
@@ -318,6 +319,45 @@ fun CrearTareaScreen(
 
                 Button(
                     onClick = { mostrarSelectorRecordatorio = false },
+                    modifier = Modifier.padding(top = 20.dp).fillMaxWidth(),
+                ) {
+                    Text("Listo")
+                }
+            }
+        }
+    }
+
+    if (mostrarSelectorVinculo) {
+        ModalBottomSheet(
+            onDismissRequest = { mostrarSelectorVinculo = false },
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        ) {
+            Column(modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 24.dp)) {
+                Text(text = "¿Acompaña a un medicamento o cita?", style = MaterialTheme.typography.titleMedium)
+                Text(
+                    text = "Para el caso de cuidar a alguien por un tiempo — cuando ese medicamento o " +
+                        "cita termine, esta tarea se marca como completada sola.",
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
+                FlowRow(modifier = Modifier.padding(top = 12.dp)) {
+                    FilterChip(
+                        selected = actividadVinculadaId == null,
+                        onClick = { actividadVinculadaId = null },
+                        label = { Text("Sin vincular") },
+                        modifier = Modifier.padding(end = 8.dp, bottom = 8.dp),
+                    )
+                    actividadesVinculables.forEach { opcion ->
+                        FilterChip(
+                            selected = actividadVinculadaId == opcion.id,
+                            onClick = { actividadVinculadaId = opcion.id },
+                            label = { Text("${opcion.emoji} ${opcion.nombre}") },
+                            modifier = Modifier.padding(end = 8.dp, bottom = 8.dp),
+                        )
+                    }
+                }
+                Button(
+                    onClick = { mostrarSelectorVinculo = false },
                     modifier = Modifier.padding(top = 20.dp).fillMaxWidth(),
                 ) {
                     Text("Listo")

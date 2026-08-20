@@ -3505,3 +3505,240 @@ diario/de-anticipación variable en vez del texto fijo "Buen trabajo. Mañana se
 
 Compilado y verificado (`compileDebugKotlin`, `EXIT_CODE=0`) e instalado en el dispositivo real
 (moto g(9) plus).
+
+## Compartir una Lista como texto plano (2026-08-15)
+
+El usuario preguntó cómo compartir una Lista con otra persona (familia/amigos). Se analizaron 4
+variantes que planteó y se separaron en dos grupos, según si necesitan backend o no:
+
+**Necesitan cuentas reales/sync (quedan pendientes, ver `10-pendientes.md`)**:
+1. **Seguimiento conjunto en vivo** ("hagamos esto juntos, cada uno avanza y ve al otro") — el
+   mismo patrón que ya existe en Retos familiares, pero para una Lista y con un amigo puntual,
+   no solo dentro de un espacio Familia.
+2. **Copia vía QR/enlace que se desvincula** (compartir una lista puntual y que quede
+   totalmente independiente después) — técnicamente NO necesita backend (es una transferencia
+   de una sola vez, no una relación en curso), pero sí necesita construir el mecanismo de
+   generar/leer el QR o enlace y el importador del otro lado. Quedó fuera de esta ronda, es la
+   siguiente candidata obvia si se retoma esto.
+
+**No necesitaba backend, se construyó ahora**: compartir como texto plano (WhatsApp, correo, lo
+que sea) — ni siquiera requiere que la otra persona tenga Lula instalada. `ListDetailScreen.kt`
+ganó dos botones nuevos, "📋 Copiar" y "📤 Compartir", mismo patrón ya usado en
+`NoteEditorScreen.kt` (`Intent.ACTION_SEND` + `Intent.createChooser`, con
+`ClipboardManager`/`Toast` para copiar). El texto se arma como "☑/☐ + nombre del ítem" por
+línea, con el nombre de la lista arriba. Como es una copia de una sola vez, sin ningún vínculo
+después, no hay nada más que sincronizar ni mantener.
+
+Compilado y verificado (`compileDebugKotlin`, `EXIT_CODE=0`) e instalado en el dispositivo real
+(moto g(9) plus).
+
+## Diagnóstico del mensaje de cierre de día "no aparece" — no era un bug (2026-08-16/17)
+
+El usuario reportó que al cerrar el día no salía ningún mensaje, dos días seguidos. Se
+diagnosticó con datos reales del dispositivo en vez de adivinar: se sacó la base de datos
+completa (incluyendo `-wal`/`-shm`, que un primer pull sin esos archivos dejaba desactualizada —
+lección para la próxima vez que se necesite ver el estado real de la BD en vivo), se revisó
+`logcat` completo durante una prueba en vivo, y se leyó `ultimo_hito_racha_celebrado` directo
+del archivo de preferencias (protobuf, sin `strings`/`sqlite3` en el dispositivo → se decodificó
+a mano con Python). Conclusión: no hay ningún bug — la racha real es 7 (confirmado con los
+datos), el hito 7 ya se había celebrado antes (durante una prueba rellenando días atrasados en
+Calendario), y no se encontró ningún crash en el log. El mensaje corto (no la pantalla grande)
+debería seguir apareciendo en cada cierre — quedó pendiente que el usuario mande una captura de
+pantalla del momento exacto para confirmar visualmente, ya que todo lo verificable por datos
+está correcto.
+
+## Ronda de 6 puntos de uso real (2026-08-17)
+
+**1. Duración de la Alarma configurable** — el usuario pidió poder elegir "silenciar después
+de: 1/5/10/15/20/25 minutos o nunca" (mostró como referencia la pantalla de Alarmas del reloj
+nativo de Android). Se confirmó en `AlarmaSonidoService.kt` que hoy el nivel Alarma suena en
+loop **indefinidamente** (`isLooping = true`, sin ningún timer de corte) hasta que el usuario la
+detiene a mano — no existe la opción de duración máxima. Quedó como propuesta a confirmar antes
+de construir (toca `Ajustes` + el Service), no implementada esta ronda.
+
+**2. Tarea/hábito para "ir al mercado" con alarma de madrugada** — no es un bug, es una pregunta
+de uso. Para el caso regular (sábados y domingos, misma hora) conviene un **Hábito** con
+`FrecuenciaHabito.DIAS_ESPECIFICOS` (sábado + domingo) y recordatorio Alarma a las 3:00 — ya
+soportado, no hace falta nada nuevo. Para los viajes irregulares entre semana, sí hay que crear
+una Tarea puntual cada vez (no hay патrón fijo que capturar), con fecha + recordatorio Alarma.
+
+**3. Sección "¿Acompaña a un medicamento o cita?" muy cargada en Crear Tarea — arreglado.**
+Vivía siempre desplegada (título + explicación + un `FilterChip` por cada medicamento/cita
+existente), a diferencia de "Fecha límite"/"Recordatorio" que ya usaban el patrón compacto
+`SelectorRow` + `ModalBottomSheet`. Se le aplicó el mismo patrón: ahora es una fila colapsada
+más, las opciones solo aparecen al tocarla.
+
+**4. Sin aviso al faltar el nombre al crear — arreglado en Tarea y Hábito.** Antes
+`CrearTareaViewModel`/`CrearHabitoViewModel` hacían `if (nombre.isBlank()) return` en silencio —
+tocar "Crear" sin nombre no hacía nada visible, sin explicar por qué. Se agregó `mensajeError`
+(mismo patrón ya usado en `NoteEditorViewModel`) + `Toast` en ambas pantallas. Probablemente el
+mismo hueco existe en el resto de "Crear X" (Medicamento, Cita, Meta, Rutina, Lista, Fecha
+importante) — no barridos todavía, quedan pendientes si el usuario lo pide.
+
+**6. Las 6 preguntas de Metas (Hacer/Ser/Ver/Tener/Ir/Compartir)** — el usuario trajo una
+conversación con ChatGPT proponiendo una 7ª pregunta ("¿Cómo quiero vivir y sentirme?") y un
+seguimiento de "¿por qué es importante?" después de cada respuesta. Se evaluó contra cómo esta
+función vive HOY en el código: no es un flujo de entrevista guiada con respuestas guardadas (eso
+es "Mi propósito", una función distinta) — es solo texto de referencia/ejemplos mostrado al
+elegir la categoría de una Meta en `CrearMetaScreen` (`SelectorCategoriaSheet`). Se recomendó
+**no** adoptar la propuesta de ChatGPT tal cual: agregar una 7ª categoría rompe el mapeo limpio
+que ya existe (`CategoriaMeta`, usado para agrupar la lista de Metas) y el seguimiento "¿por
+qué?" es una entrevista profunda que no calza con lo liviano que es hoy este selector. Sin
+cambios de código esta ronda — decisión de producto, no bug.
+
+Compilado y verificado (`compileDebugKotlin`, `EXIT_CODE=0`) — pendiente instalar, el
+dispositivo se desconectó justo antes.
+
+## Duración máxima de la Alarma + ejemplos de las 6 preguntas de Metas actualizados (2026-08-17)
+
+**Duración máxima de Alarma**: nueva opción en Ajustes ("⏱️ Silenciar alarma después de", en la
+tarjeta "🔔 Recordatorios y permisos") con las mismas opciones que el reloj nativo de Android
+que mostró el usuario: 1/5/10/15/20/25 minutos o "Nunca" (default, el comportamiento de siempre
+— suena hasta apagarla a mano). Nueva preferencia `AjustesRepository.observarDuracionMaximaAlarmaMin()`/
+`setDuracionMaximaAlarmaMin()` (DataStore, `Int?`). `AlarmaSonidoService` pasó a `@AndroidEntryPoint`
+(inyecta `AjustesRepository` directo, evitando tocar `RecordatorioReceiver` — ese Service ya es
+quien controla el loop del `MediaPlayer`, tiene sentido que también controle cuánto dura): al
+iniciar, lanza una corrutina en su propio `CoroutineScope` que lee la duración configurada y, si
+no es "Nunca", espera esos minutos y llama a `detener()` sola — cancelable si el usuario la
+detiene antes a mano (botón, notificación, o abrir la app), y cancelada también en `onDestroy()`.
+
+**Ejemplos de las 6 preguntas de Metas actualizados**: los ejemplos en `ejemplosAyuda()` de
+`CrearMetaScreen.kt` eran muy específicos de un perfil emprendedor en particular ("Yo creo
+empresas y las hago crecer", "Yo tengo casas para alquilar", "Yo voy al evento de Tomorrowland")
+— se reemplazaron por ejemplos más universales (crear un negocio, aprender un idioma, tener
+independencia financiera, conocer un país, compartir conocimientos...) que le calcen a cualquier
+persona nueva en la app, manteniendo el mismo estilo "Yo..." en presente que ya usaba Lula (la
+meta afirmada como si ya estuviera lograda). El usuario aclaró que no quería agregar una 7ª
+pregunta ni el seguimiento "¿por qué?" de la ronda anterior — solo mejorar el contenido de los
+ejemplos existentes.
+
+Compilado y verificado (`compileDebugKotlin`, `EXIT_CODE=0`) e instalado en el dispositivo real
+(moto g(9) plus).
+
+## Confirmado con captura de pantalla: el mensaje de cierre de día SÍ funciona (2026-08-17)
+
+Cierre del ciclo de diagnóstico de los últimos 3 días: el usuario mandó captura de la pantalla
+de "día cerrado" y ahí está el mensaje — "Otro día a tu favor." (uno de los 12 de
+`MENSAJES_CIERRE_DIARIO`), justo arriba de "🔥 Racha: 8 días". Nunca hubo bug — el mensaje corto
+se confundía visualmente con la píldora de racha de al lado y no se notaba como "un mensaje"
+aparte. Sin cambios de código; el usuario decidirá si lo quiere más notorio (más grande/negrita/
+ícono) en otra ronda.
+
+## Punto 4 completo: aviso de campos obligatorios en TODOS los "Crear X" (2026-08-17)
+
+Se confirmó que Medicamento, Cita y Fecha importante YA tenían `mensajeError` (de una ronda
+anterior). Se agregó el mismo patrón (`mensajeError: StateFlow<String?>` + `Toast` en la
+pantalla) a los que faltaban:
+
+- **Meta**: nombre vacío o "cuánto quieres lograr" ≤ 0.
+- **Rutina**: nombre vacío, o ningún hábito/tarea elegido para incluir.
+- **Lista**: nombre vacío.
+- **Reto familiar**: nombre vacío, o objetivo vacío.
+- **Movimiento financiero** (Finanzas): categoría vacía, o monto ≤ 0.
+
+Con esto, las 10 pantallas "Crear X" de la app avisan qué falta en vez de fallar en silencio al
+tocar el botón de crear.
+
+Compilado y verificado (`compileDebugKotlin`, `EXIT_CODE=0`) e instalado en el dispositivo real
+(moto g(9) plus).
+
+## Firebase Auth + Firestore: integración Gradle inicial (2026-08-19)
+
+Primer paso concreto de `12-firebase-auth-y-sync.md`: conectar el SDK de Firebase al proyecto,
+sin todavía escribir código de autenticación real. El usuario creó el proyecto "Lula" en
+Firebase Console, descargó `google-services.json` y lo colocó en `app/` (ubicación correcta,
+confirmada). Se le indicó apagar "modo prueba" de Firestore y pegar una regla temporal de
+denegar-todo (`allow read, write: if false;`) hasta escribir las reglas reales de la sección 4
+del plan.
+
+Cambios de Gradle:
+- `gradle/libs.versions.toml`: versiones `googleServices=4.4.2`, `firebaseBom=33.6.0`,
+  `credentials=1.3.0`, `googleid=1.1.1`; librerías `firebase-bom`, `firebase-auth`
+  (`firebase-auth-ktx`), `firebase-firestore` (`firebase-firestore-ktx`),
+  `androidx-credentials`, `androidx-credentials-play-services-auth`, `googleid`; plugin
+  `google-services`.
+- `build.gradle.kts` (raíz): `alias(libs.plugins.google.services) apply false`.
+- `app/build.gradle.kts`: aplica el plugin `google-services` de verdad, agrega BoM de Firebase +
+  `firebase-auth` + `firebase-firestore` + Credential Manager (`androidx.credentials` +
+  `credentials-play-services-auth`) + `googleid`.
+
+Se eligió **Credential Manager API** (`androidx.credentials` + `googleid`) para el login con
+Google, no la API vieja `com.google.android.gms:play-services-auth` (deprecada por Google).
+
+**Nombre "Lula" ya usado por otras apps**: se confirmó que no hay problema técnico en usar
+"Lula" ahora en Firebase Console — el nombre del proyecto Firebase, el título en Play Store y el
+`applicationId` (`com.aqpseller.lulaapp`) son tres cosas independientes; solo el
+`applicationId` es efectivamente permanente tras publicar, y no contiene "lula" literal. Si la
+marca pública cambia de nombre más adelante por conflicto de marca registrada, no exige tocar
+código ni el proyecto de Firebase.
+
+Compilado y verificado (`compileDebugKotlin`, `EXIT_CODE=0`) e instalado en el dispositivo real
+(moto g(9) plus) — arrancó sin crash, logcat confirma `FirebaseApp initialization successful`.
+Falta el código real de autenticación (`AuthRepositoryFirebaseImpl`, pantallas de login/registro,
+flujo de "reclamar cuenta" del usuario semilla, reglas de Firestore reales) — siguiente paso.
+
+## Firebase Auth: login con Google real + "reclamar cuenta" (2026-08-19)
+
+Paso 2 de `12-firebase-auth-y-sync.md` §8: login real con Google sobre el usuario semilla
+existente (correo mágico queda para otra ronda, para no acoplar todo en un solo cambio grande).
+
+- **`UsuarioEntity`/`Usuario` ganan `firebaseUid: String?`** (nullable, default `null`) —
+  `MIGRATION_26_27` (`ALTER TABLE usuario ADD COLUMN firebaseUid TEXT`), `LulaDatabase.version = 27`.
+  Verificado con `PRAGMA table_info(usuario)` en el dispositivo real después de instalar: la
+  columna existe y la migración no truena (nada en logcat, la fila semilla sigue con su mismo
+  `id`).
+- **`AuthRepository` gana dos métodos** (interfaz sigue "estable" en el sentido de que
+  `usuarioActualId()`/`observarUsuarioActualId()` no cambiaron de significado — siguen
+  devolviendo el id del usuario LOCAL, no el uid de Firebase, porque Lula sigue siendo
+  local-first de un usuario por dispositivo):
+  `sesionFirebaseActiva(): Boolean` y `suspend fun iniciarSesionConGoogle(idToken): ResultadoSesionGoogle`.
+- **`AuthRepositoryLocalImpl` se borró y se reemplazó por `AuthRepositoryFirebaseImpl`** (no se
+  dejó como alternativa/flag — ya no tiene sentido con Firebase siempre enlazado). `signOut()`
+  ahora sí hace algo real (`firebaseAuth.signOut()`), pero deliberadamente NO toca la fila local
+  del usuario semilla ni sus datos — cerrar sesión de Google solo detiene la sincronización, la
+  app se sigue usando 100% local como siempre.
+- **`UsuarioRepository.vincularConGoogle(usuarioId, correo, firebaseUid)`** — el "reclamar
+  cuenta": actualiza la misma fila (`copy` + `upsert`, mismo patrón que
+  `actualizarConsentimientos`), nunca crea un usuario nuevo. Nuevo caso de uso
+  `ReclamarCuentaConGoogleUseCase` conecta `iniciarSesionConGoogle` + `vincularConGoogle`.
+- **Google Sign-In con Credential Manager** (no la API vieja deprecada): nuevo
+  `core/auth/GoogleSignInHelper.kt` (`obtenerGoogleIdToken(context, serverClientId)`), usa
+  `GetGoogleIdOption` + `GoogleIdTokenCredential`. El `serverClientId` (Web Client ID) no se
+  hardcodeó — se lee de `R.string.default_web_client_id`, que el plugin `google-services` genera
+  solo a partir de `google-services.json` (confirmado leyendo
+  `app/build/generated/res/processDebugGoogleServices/values/values.xml`).
+- **UI en `ProfileScreen.kt`**: nueva tarjeta "🔑 Cuenta" arriba de "Mi crecimiento" — si
+  `metodoLogin != GOOGLE` muestra botón "🔵 Continuar con Google" (dispara Credential Manager
+  desde una corrutina de `rememberCoroutineScope`, captura `GetCredentialException` si la
+  persona cancela); si ya está vinculada muestra "✅ Vinculada con Google" + botón "Cerrar sesión
+  de Google". Mensajes de éxito/error vía `Toast`, mismo patrón `mensajeError`/`LaunchedEffect`
+  ya usado en el resto de la app.
+- Nuevo `di/FirebaseModule.kt` (provee `FirebaseAuth.getInstance()` como singleton de Hilt).
+  Se agregó la dependencia `kotlinx-coroutines-play-services` (necesaria para `Task<T>.await()`
+  sobre las llamadas de Firebase Auth) — no llegaba transitivamente declarada, había que
+  agregarla a mano.
+
+Compilado y verificado (`compileDebugKotlin`, `EXIT_CODE=0`) e instalado en el dispositivo real
+(moto g(9) plus) — arrancó sin crash, migración de Room confirmada con `PRAGMA table_info` sobre
+la base real del dispositivo.
+
+**Bug real al primer intento, diagnosticado con logcat en vivo, no adivinado**: el botón
+"Continuar con Google" fallaba con "No se pudo iniciar sesión con Google". El log mostró la
+causa exacta: `Auth: [GetTokenResponseHandler] Server returned error: This android application
+is not registered to use OAuth2.0, please confirm the package name and SHA-1 certificate
+fingerprint match...` — al proyecto de Firebase le faltaba la huella SHA-1 del certificado de
+firma del APK (obligatoria para que Google valide qué app está pidiendo el login, aparte del
+`google-services.json`). Se generó el SHA-1 del keystore de debug local
+(`keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey`) y se le indicó
+al usuario agregarlo en Firebase Console → Configuración del proyecto → Tus apps → Huellas
+digitales de certificado SHA. Con eso agregado (sin tocar código ni `google-services.json`, se
+resuelve del lado de Google), el login funcionó al segundo intento — confirmado con logcat
+(`FirebaseAuth: Notifying id token listeners about user (DKLRvhoEglMEbiw8XhQ4ig4T45J3)`) Y
+leyendo la base de datos real del dispositivo (`usuario.correo`, `metodoLogin='GOOGLE'`,
+`firebaseUid` quedaron seteados sobre la misma fila semilla de siempre, mismo `id`). **Pendiente
+para cuando se publique con firma de release**: agregar TAMBIÉN el SHA-1 de esa firma en Firebase
+Console — el de debug no sirve para el APK firmado de Play Store.
+
+Sigue pendiente: correo mágico (passwordless), sync de `Conexion`/`SolicitudCompartir`/Espacios
+Familia a Firestore, y las reglas de seguridad reales (hoy Firestore sigue con la regla temporal
+de denegar-todo).

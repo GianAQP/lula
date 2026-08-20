@@ -20,8 +20,18 @@ class CrearListaViewModel @Inject constructor(
     private val _guardado = MutableStateFlow(false)
     val guardado: StateFlow<Boolean> = _guardado.asStateFlow()
 
+    private val _mensajeError = MutableStateFlow<String?>(null)
+    val mensajeError: StateFlow<String?> = _mensajeError.asStateFlow()
+
+    fun errorMostrado() {
+        _mensajeError.value = null
+    }
+
     fun guardar(nombre: String, itemsTexto: List<String>) {
-        if (nombre.isBlank()) return
+        if (nombre.isBlank()) {
+            _mensajeError.value = "Escribe el nombre de la lista"
+            return
+        }
         viewModelScope.launch {
             val sesion = obtenerSesionActualUseCase()
             crearListaUseCase(sesion.espacioId, nombre, itemsTexto, sesion.usuarioId)

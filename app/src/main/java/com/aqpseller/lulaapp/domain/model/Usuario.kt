@@ -18,4 +18,8 @@ data class Usuario(
     /** Solo se pide si la persona declara que va a usar Medicamentos/Citas — categoría
      * sensible aparte en Play Store, no se mezcla con `privacidadAceptadaEn`. */
     val consentimientoDatosSaludEn: Long? = null,
+    /** uid de Firebase Auth una vez que la cuenta se "reclama" con Google/correo mágico —
+     * null mientras siga siendo solo el usuario semilla local. Ver
+     * `Plan/12-firebase-auth-y-sync.md`. */
+    val firebaseUid: String? = null,
 )

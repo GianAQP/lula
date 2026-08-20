@@ -57,6 +57,13 @@ class CrearTareaViewModel @Inject constructor(
     private val _guardado = MutableStateFlow(false)
     val guardado: StateFlow<Boolean> = _guardado.asStateFlow()
 
+    private val _mensajeError = MutableStateFlow<String?>(null)
+    val mensajeError: StateFlow<String?> = _mensajeError.asStateFlow()
+
+    fun errorMostrado() {
+        _mensajeError.value = null
+    }
+
     init {
         val id = actividadId
         if (id != null) {
@@ -99,7 +106,13 @@ class CrearTareaViewModel @Inject constructor(
         recurrencia: RecurrenciaTarea,
         actividadVinculadaId: String?,
     ) {
-        if (nombre.isBlank()) return
+        // Antes esto se salía en silencio, sin avisar nada — el usuario tocaba "Crear" y no
+        // pasaba nada visible, sin saber que le faltaba el nombre. A pedido del usuario. Ver
+        // `Plan/08-decisiones-tecnicas.md`.
+        if (nombre.isBlank()) {
+            _mensajeError.value = "Falta el nombre de la tarea"
+            return
+        }
         viewModelScope.launch {
             val sesion = obtenerSesionActualUseCase()
             val id = actividadId

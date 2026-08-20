@@ -20,4 +20,8 @@ data class UsuarioEntity(
     val confirmoMayorDe13: Boolean = false,
     val terminosAceptadosEn: Long? = null,
     val consentimientoDatosSaludEn: Long? = null,
+    /** uid de Firebase Auth una vez que la cuenta se "reclama" con Google/correo mágico —
+     * null mientras siga siendo solo el usuario semilla local. Ver
+     * `Plan/12-firebase-auth-y-sync.md`. */
+    val firebaseUid: String? = null,
 )

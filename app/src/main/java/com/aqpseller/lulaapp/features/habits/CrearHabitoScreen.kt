@@ -1,5 +1,6 @@
 package com.aqpseller.lulaapp.features.habits
 
+import android.widget.Toast
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -26,6 +27,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -80,9 +82,17 @@ fun CrearHabitoScreen(
     )
     var snapshotInicial by remember { mutableStateOf(snapshot()) }
 
+    val context = LocalContext.current
     val guardado by viewModel.guardado.collectAsState()
     val formInicial by viewModel.formInicial.collectAsState()
+    val mensajeError by viewModel.mensajeError.collectAsState()
     LaunchedEffect(guardado) { if (guardado) onGuardado() }
+    LaunchedEffect(mensajeError) {
+        mensajeError?.let {
+            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
+            viewModel.errorMostrado()
+        }
+    }
     DescartarCambiosAlSalir(
         hayContenidoSinGuardar = snapshotInicial != snapshot() && !guardado,
         onDescartar = onSalirSinGuardar,

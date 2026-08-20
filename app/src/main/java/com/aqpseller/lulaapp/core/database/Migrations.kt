@@ -152,3 +152,13 @@ val MIGRATION_25_26 = object : Migration(25, 26) {
         db.execSQL("ALTER TABLE meta ADD COLUMN nivelRecordatorio TEXT NOT NULL DEFAULT 'SONIDO'")
     }
 }
+
+/** Usuario gana `firebaseUid` — primer paso de cuentas reales (Google/correo mágico) sobre
+ * Firebase Auth. `null` mientras la cuenta siga siendo solo el usuario semilla local; se llena
+ * al "reclamar" la cuenta, sin crear una fila nueva ni tocar ningún FK. Ver
+ * `Plan/12-firebase-auth-y-sync.md`. */
+val MIGRATION_26_27 = object : Migration(26, 27) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE usuario ADD COLUMN firebaseUid TEXT DEFAULT NULL")
+    }
+}

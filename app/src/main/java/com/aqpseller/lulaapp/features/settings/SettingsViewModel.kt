@@ -41,6 +41,10 @@ class SettingsViewModel @Inject constructor(
     val bottomBarPosicion4: StateFlow<String> = ajustesRepository.observarBottomBarPosicion4()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), "finanzas")
 
+    /** null = nunca (suena hasta apagarla a mano, el comportamiento de siempre). */
+    val duracionMaximaAlarmaMin: StateFlow<Int?> = ajustesRepository.observarDuracionMaximaAlarmaMin()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
     fun setSonidoCheckHabilitado(habilitado: Boolean) {
         viewModelScope.launch { ajustesRepository.setSonidoCheckHabilitado(habilitado) }
     }
@@ -84,5 +88,9 @@ class SettingsViewModel @Inject constructor(
 
     fun setBottomBarPosicion4(opcionId: String) {
         viewModelScope.launch { ajustesRepository.setBottomBarPosicion4(opcionId) }
+    }
+
+    fun setDuracionMaximaAlarmaMin(minutos: Int?) {
+        viewModelScope.launch { ajustesRepository.setDuracionMaximaAlarmaMin(minutos) }
     }
 }

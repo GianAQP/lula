@@ -23,4 +23,9 @@ interface UsuarioRepository {
     /** Borra TODA la base de datos local — hoy equivale a borrar la cuenta entera, porque solo
      * hay un usuario semilla. Ver `Plan/11-cuentas-y-conexiones.md`. */
     suspend fun eliminarCuenta()
+
+    /** "Reclamar cuenta": vincula el usuario semilla local con una cuenta real de Google —
+     * actualiza la misma fila (mismo `id`), nunca crea una nueva ni toca ningún FK. Ver
+     * `Plan/12-firebase-auth-y-sync.md`, sección 5. */
+    suspend fun vincularConGoogle(usuarioId: String, correo: String, firebaseUid: String)
 }

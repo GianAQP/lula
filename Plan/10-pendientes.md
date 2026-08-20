@@ -46,8 +46,18 @@ falta activar en cuanto exista:
   participante real. La base local (crear el espacio, selector Personal/Familia, tareas del
   hogar, retos familiares con un solo participante) ya está construida — ver
   `08-decisiones-tecnicas.md`, 2026-07-30.
+- **Compartir una Lista en seguimiento conjunto con un amigo puntual** (no solo dentro de un
+  espacio Familia) — mismo patrón que ya existe en Retos familiares ("X de Y ya cumplieron
+  hoy"), aplicado a una Lista. Pedido por el usuario 2026-08-15, ver `08-decisiones-tecnicas.md`.
 
 ## 2. Piezas de UI que quedaron afuera de una fase ya "completa"
+
+- **Copiar una Lista a otra persona vía QR/enlace, sin quedar vinculadas después** — a
+  diferencia de todo lo demás en esta página, esto NO depende de backend (es una transferencia
+  de una sola vez, no una relación en curso que sincronizar), simplemente no se construyó
+  todavía. Es la continuación obvia de "compartir Lista como texto plano" (2026-08-15, ver
+  `08-decisiones-tecnicas.md`) para cuando la otra persona sí tiene Lula instalada y se quiere
+  algo más prolijo que pegar texto.
 
 - Rutinas dentro de Hoy mezcladas con hábitos/tareas sueltos (a propósito no están, para no
   duplicar la visualización).

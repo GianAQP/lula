@@ -49,6 +49,13 @@ class CrearMetaViewModel @Inject constructor(
     private val _guardado = MutableStateFlow(false)
     val guardado: StateFlow<Boolean> = _guardado.asStateFlow()
 
+    private val _mensajeError = MutableStateFlow<String?>(null)
+    val mensajeError: StateFlow<String?> = _mensajeError.asStateFlow()
+
+    fun errorMostrado() {
+        _mensajeError.value = null
+    }
+
     private var sesion: SesionActual? = null
 
     init {
@@ -78,7 +85,14 @@ class CrearMetaViewModel @Inject constructor(
         categoria: CategoriaMeta? = null,
         nivelRecordatorio: NivelRecordatorio = NivelRecordatorio.SONIDO,
     ) {
-        if (nombre.isBlank() || valorObjetivo <= 0) return
+        if (nombre.isBlank()) {
+            _mensajeError.value = "Escribe el nombre de la meta"
+            return
+        }
+        if (valorObjetivo <= 0) {
+            _mensajeError.value = "Elige cuánto quieres lograr (mayor a 0)"
+            return
+        }
         viewModelScope.launch {
             val sesionActual = sesionActual()
             val id = metaId

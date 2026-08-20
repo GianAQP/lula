@@ -50,4 +50,11 @@ interface AjustesRepository {
      * racha nueva. Ver `Plan/08-decisiones-tecnicas.md`. */
     suspend fun obtenerUltimoHitoRachaCelebrado(): Int
     suspend fun setUltimoHitoRachaCelebrado(valor: Int)
+
+    /** Minutos que suena el nivel Alarma antes de detenerse sola — null = nunca (suena hasta que
+     * la persona la detiene a mano, el comportamiento de siempre). A pedido del usuario, mismo
+     * concepto que "Silenciar después de" del reloj nativo de Android. Ver
+     * `Plan/08-decisiones-tecnicas.md`. */
+    fun observarDuracionMaximaAlarmaMin(): Flow<Int?>
+    suspend fun setDuracionMaximaAlarmaMin(minutos: Int?)
 }

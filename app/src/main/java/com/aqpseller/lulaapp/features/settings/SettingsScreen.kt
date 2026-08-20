@@ -43,6 +43,7 @@ import com.aqpseller.lulaapp.navigation.OpcionBottomBar
 import com.aqpseller.lulaapp.ui.theme.LulaAsistenteContainerLight
 
 private val LETRAS_DIA_ISO = listOf("L", "M", "M", "J", "V", "S", "D")
+private val DURACIONES_MAXIMAS_ALARMA_MIN = listOf(1, 5, 10, 15, 20, 25, null)
 
 /**
  * Ajustes personales — accesible desde el menú "⋮" en Hoy, no mezclado con el contenido diario.
@@ -66,6 +67,7 @@ fun SettingsScreen(
     val bottomBarPosicion2 by viewModel.bottomBarPosicion2.collectAsState()
     val bottomBarPosicion3 by viewModel.bottomBarPosicion3.collectAsState()
     val bottomBarPosicion4 by viewModel.bottomBarPosicion4.collectAsState()
+    val duracionMaximaAlarmaMin by viewModel.duracionMaximaAlarmaMin.collectAsState()
 
     var notificacionesPermitidas by remember { mutableStateOf(notificacionesPermitidas(context)) }
     var alarmasExactasPermitidas by remember { mutableStateOf(alarmasExactasPermitidas(context)) }
@@ -131,6 +133,26 @@ fun SettingsScreen(
                 style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier.padding(top = 4.dp),
             )
+
+            HorizontalDivider(modifier = Modifier.padding(top = 16.dp))
+
+            Text(text = "⏱️ Silenciar alarma después de", modifier = Modifier.padding(top = 16.dp))
+            Text(
+                text = "El nivel Alarma suena en loop hasta que la apagas — elige un límite si " +
+                    "prefieres que se corte sola.",
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+            FlowRow(modifier = Modifier.padding(top = 8.dp)) {
+                DURACIONES_MAXIMAS_ALARMA_MIN.forEach { minutos ->
+                    FilterChip(
+                        selected = duracionMaximaAlarmaMin == minutos,
+                        onClick = { viewModel.setDuracionMaximaAlarmaMin(minutos) },
+                        label = { Text(if (minutos == null) "Nunca" else "$minutos min") },
+                        modifier = Modifier.padding(end = 8.dp, bottom = 8.dp),
+                    )
+                }
+            }
         }
 
         TarjetaSeccion(titulo = "🗓️ Revisión y cierre del día") {

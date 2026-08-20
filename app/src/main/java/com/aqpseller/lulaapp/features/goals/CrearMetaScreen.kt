@@ -1,5 +1,6 @@
 package com.aqpseller.lulaapp.features.goals
 
+import android.widget.Toast
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -28,6 +29,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -59,13 +61,18 @@ private fun preguntaAyuda(categoria: CategoriaMeta) = when (categoria) {
     CategoriaMeta.COMPARTIR -> "¿Qué es lo que deseo compartir?"
 }
 
+// Antes eran ejemplos muy propios de un perfil emprendedor específico (crear empresas, casas
+// para alquilar, Tomorrowland) — se cambiaron a ejemplos más universales, que le calcen a
+// cualquier persona que abra la app por primera vez, manteniendo el mismo estilo "Yo..." en
+// presente (afirmación de la meta como ya lograda). A pedido del usuario. Ver
+// `Plan/08-decisiones-tecnicas.md`.
 private fun ejemplosAyuda(categoria: CategoriaMeta) = when (categoria) {
-    CategoriaMeta.HACER -> listOf("Yo administro mi tiempo haciendo un plan", "Yo gano dinero mientras duermo", "Yo creo empresas y las hago crecer")
-    CategoriaMeta.SER -> listOf("Yo soy un ejemplo a seguir", "Yo soy más positivo", "Yo soy mejor cada día")
-    CategoriaMeta.VER -> listOf("Yo veo a varios crecer conmigo", "Yo veo la alegría de mi familia", "Yo veo a mis socios más grandes")
-    CategoriaMeta.TENER -> listOf("Yo tengo un carro donde llevo a toda mi familia", "Yo tengo casas para alquilar", "Yo tengo a mis trabajadores contentos")
-    CategoriaMeta.IR -> listOf("Yo voy de viaje a todo el Perú", "Yo voy a México", "Yo voy al evento de Tomorrowland")
-    CategoriaMeta.COMPARTIR -> listOf("Yo comparto mis conocimientos", "Yo comparto momentos inolvidables con mi familia", "Yo comparto sonrisas todos los días")
+    CategoriaMeta.HACER -> listOf("Yo creo mi propio negocio", "Yo aprendo un nuevo idioma", "Yo organizo mejor mi tiempo para disfrutar más de mi familia")
+    CategoriaMeta.SER -> listOf("Yo soy una persona disciplinada y constante", "Yo soy un buen líder y ejemplo para otros", "Yo soy más seguro y positivo frente a los problemas")
+    CategoriaMeta.VER -> listOf("Yo veo crecer y prosperar a mi familia", "Yo veo que un proyecto que inicié tiene éxito", "Yo veo a las personas que me rodean alcanzar sus propias metas")
+    CategoriaMeta.TENER -> listOf("Yo tengo mi propia casa", "Yo tengo independencia financiera", "Yo tengo un vehículo que me permite viajar con mi familia")
+    CategoriaMeta.IR -> listOf("Yo voy a conocer un país que siempre soñé visitar", "Yo voy a recorrer diferentes lugares de mi país", "Yo voy a un evento o lugar especial que siempre quise conocer")
+    CategoriaMeta.COMPARTIR -> listOf("Yo comparto más tiempo y experiencias con mi familia", "Yo comparto mis conocimientos para ayudar a otros", "Yo comparto oportunidades y crezco junto con otras personas")
 }
 
 private val CONSEJOS_REDACCION_META = listOf(
@@ -124,11 +131,19 @@ fun CrearMetaScreen(
     fun snapshot() = listOf(categoria, nombre, comoSeMide, objetivoTexto, habitoVinculadoId, areaDeVidaId, fechaLimite, nivelRecordatorio)
     var snapshotInicial by remember { mutableStateOf(snapshot()) }
 
+    val context = LocalContext.current
     val guardado by viewModel.guardado.collectAsState()
     val habitosDisponibles by viewModel.habitosDisponibles.collectAsState()
     val areasDisponibles by viewModel.areasDisponibles.collectAsState()
     val estadoInicial by viewModel.estadoInicial.collectAsState()
+    val mensajeError by viewModel.mensajeError.collectAsState()
     LaunchedEffect(guardado) { if (guardado) onGuardado() }
+    LaunchedEffect(mensajeError) {
+        mensajeError?.let {
+            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
+            viewModel.errorMostrado()
+        }
+    }
     DescartarCambiosAlSalir(
         hayContenidoSinGuardar = snapshotInicial != snapshot() && !guardado,
         onDescartar = onSalirSinGuardar,

@@ -1,5 +1,6 @@
 package com.aqpseller.lulaapp.features.profile
 
+import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -12,18 +13,24 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.credentials.exceptions.GetCredentialException
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.aqpseller.lulaapp.R
+import com.aqpseller.lulaapp.core.auth.obtenerGoogleIdToken
 import com.aqpseller.lulaapp.core.ui.ConfirmarEliminarDialog
 import com.aqpseller.lulaapp.core.ui.HoraSelector
 import com.aqpseller.lulaapp.core.ui.SectionLinkRow
@@ -31,9 +38,11 @@ import com.aqpseller.lulaapp.core.ui.TarjetaSeccion
 import com.aqpseller.lulaapp.core.utils.DateTimeUtils
 import com.aqpseller.lulaapp.core.utils.reiniciarApp
 import com.aqpseller.lulaapp.domain.legal.TipoDocumentoLegal
+import com.aqpseller.lulaapp.domain.model.MetodoLogin
 import com.aqpseller.lulaapp.ui.theme.LulaAsistenteContainerLight
 import com.aqpseller.lulaapp.ui.theme.LulaFamiliaContainerLight
 import com.aqpseller.lulaapp.ui.theme.LulaPrimaryContainerLight
+import kotlinx.coroutines.launch
 
 /**
  * "Mi perfil" (CUENTA en el menú "⋮"), separada de Ajustes (CONFIGURACIÓN) por `02-pantallas.md`.
@@ -53,8 +62,17 @@ fun ProfileScreen(
     viewModel: ProfileViewModel = hiltViewModel(),
 ) {
     val usuario by viewModel.usuario.collectAsState()
+    val mensajeCuenta by viewModel.mensajeCuenta.collectAsState()
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     var mostrarConfirmarEliminar by remember { mutableStateOf(false) }
+
+    LaunchedEffect(mensajeCuenta) {
+        mensajeCuenta?.let {
+            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
+            viewModel.mensajeCuentaMostrado()
+        }
+    }
 
     Column(modifier = modifier.padding(16.dp).verticalScroll(rememberScrollState())) {
         Text(text = "Mi perfil", style = MaterialTheme.typography.titleLarge)
@@ -67,6 +85,49 @@ fun ProfileScreen(
             )
             u.correo?.let { correo ->
                 Text(text = correo, style = MaterialTheme.typography.bodySmall)
+            }
+        }
+
+        TarjetaSeccion(titulo = "🔑 Cuenta") {
+            if (usuario?.metodoLogin == MetodoLogin.GOOGLE) {
+                Text(
+                    text = "✅ Vinculada con Google",
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(top = 8.dp),
+                )
+                Text(
+                    text = "Necesaria para compartir con Familia y Círculo de cuidado entre dispositivos.",
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
+                OutlinedButton(
+                    onClick = viewModel::cerrarSesionGoogle,
+                    modifier = Modifier.padding(top = 8.dp).fillMaxWidth(),
+                ) {
+                    Text("Cerrar sesión de Google")
+                }
+            } else {
+                Text(
+                    text = "Tu cuenta vive solo en este dispositivo. Vincúlala con Google para " +
+                        "poder compartir con Familia y Círculo de cuidado.",
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
+                Button(
+                    onClick = {
+                        scope.launch {
+                            try {
+                                val idToken = obtenerGoogleIdToken(context, context.getString(R.string.default_web_client_id))
+                                viewModel.reclamarCuentaConGoogle(idToken)
+                            } catch (e: GetCredentialException) {
+                                Toast.makeText(context, "No se pudo iniciar sesión con Google", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    },
+                    modifier = Modifier.padding(top = 8.dp).fillMaxWidth(),
+                ) {
+                    Text("🔵 Continuar con Google")
+                }
             }
         }
 

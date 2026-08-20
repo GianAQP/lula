@@ -34,6 +34,13 @@ class CrearRetoFamiliarViewModel @Inject constructor(
     private val _guardado = MutableStateFlow(false)
     val guardado: StateFlow<Boolean> = _guardado.asStateFlow()
 
+    private val _mensajeError = MutableStateFlow<String?>(null)
+    val mensajeError: StateFlow<String?> = _mensajeError.asStateFlow()
+
+    fun errorMostrado() {
+        _mensajeError.value = null
+    }
+
     init {
         viewModelScope.launch {
             val sesionActual = obtenerSesionActualUseCase()
@@ -60,7 +67,14 @@ class CrearRetoFamiliarViewModel @Inject constructor(
     }
 
     fun guardar(nombre: String, objetivo: String, frecuencia: FrecuenciaRetoFamiliar, recompensa: String?) {
-        if (nombre.isBlank() || objetivo.isBlank()) return
+        if (nombre.isBlank()) {
+            _mensajeError.value = "Escribe el nombre del reto"
+            return
+        }
+        if (objetivo.isBlank()) {
+            _mensajeError.value = "Escribe el objetivo del reto"
+            return
+        }
         val participantes = _miembros.value.filter { it.seleccionado }.map { it.usuarioId }
         viewModelScope.launch {
             val sesionActual = sesion ?: obtenerSesionActualUseCase().also { sesion = it }

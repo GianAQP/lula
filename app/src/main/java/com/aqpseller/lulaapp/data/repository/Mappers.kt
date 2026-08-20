@@ -100,6 +100,7 @@ fun UsuarioEntity.toDomain() = Usuario(
     confirmoMayorDe13 = confirmoMayorDe13,
     terminosAceptadosEn = terminosAceptadosEn,
     consentimientoDatosSaludEn = consentimientoDatosSaludEn,
+    firebaseUid = firebaseUid,
 )
 
 fun Usuario.toEntity() = UsuarioEntity(
@@ -116,6 +117,7 @@ fun Usuario.toEntity() = UsuarioEntity(
     confirmoMayorDe13 = confirmoMayorDe13,
     terminosAceptadosEn = terminosAceptadosEn,
     consentimientoDatosSaludEn = consentimientoDatosSaludEn,
+    firebaseUid = firebaseUid,
 )
 
 // --- Espacio ---

@@ -51,6 +51,13 @@ class CrearRutinaViewModel @Inject constructor(
     private val _guardado = MutableStateFlow(false)
     val guardado: StateFlow<Boolean> = _guardado.asStateFlow()
 
+    private val _mensajeError = MutableStateFlow<String?>(null)
+    val mensajeError: StateFlow<String?> = _mensajeError.asStateFlow()
+
+    fun errorMostrado() {
+        _mensajeError.value = null
+    }
+
     private var sesion: SesionActual? = null
 
     init {
@@ -84,7 +91,14 @@ class CrearRutinaViewModel @Inject constructor(
     }
 
     fun guardar(nombre: String, momentoDelDia: MomentoDelDia, actividadesIncluidasIds: List<String>) {
-        if (nombre.isBlank() || actividadesIncluidasIds.isEmpty()) return
+        if (nombre.isBlank()) {
+            _mensajeError.value = "Escribe el nombre de la rutina"
+            return
+        }
+        if (actividadesIncluidasIds.isEmpty()) {
+            _mensajeError.value = "Elige al menos un hábito o tarea para la rutina"
+            return
+        }
         viewModelScope.launch {
             val sesionActual = sesionActual()
             val id = actividadId

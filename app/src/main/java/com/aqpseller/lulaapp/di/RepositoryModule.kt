@@ -3,7 +3,7 @@ package com.aqpseller.lulaapp.di
 import com.aqpseller.lulaapp.data.preferences.AjustesRepositoryImpl
 import com.aqpseller.lulaapp.data.preferences.PrivacidadRepositoryImpl
 import com.aqpseller.lulaapp.data.repository.ActividadRepositoryImpl
-import com.aqpseller.lulaapp.data.repository.AuthRepositoryLocalImpl
+import com.aqpseller.lulaapp.data.repository.AuthRepositoryFirebaseImpl
 import com.aqpseller.lulaapp.data.repository.ConexionRepositoryImpl
 import com.aqpseller.lulaapp.data.repository.EntradaDiarioRepositoryImpl
 import com.aqpseller.lulaapp.data.repository.EspacioRepositoryImpl
@@ -46,7 +46,7 @@ abstract class RepositoryModule {
 
     @Binds
     @Singleton
-    abstract fun bindAuthRepository(impl: AuthRepositoryLocalImpl): AuthRepository
+    abstract fun bindAuthRepository(impl: AuthRepositoryFirebaseImpl): AuthRepository
 
     @Binds
     @Singleton

@@ -969,6 +969,34 @@ muestra ingresos Y egresos de hoy (antes solo egresos, por eso un ingreso regist
 aparecía"). Compiló e instaló en el dispositivo real. Detalle completo en
 `Plan/08-decisiones-tecnicas.md`.
 
+**Ronda de 6 puntos de uso real** (2026-08-17): (1) Alarma sin duración configurable — hoy suena
+en loop indefinido, quedó como propuesta a confirmar. (2) Aclarado cómo modelar un evento
+recurrente-pero-irregular (mercado sábado/domingo, a veces entre semana): Hábito con días
+específicos para el caso regular, Tarea puntual para lo irregular — ya soportado, sin código
+nuevo. (3) Arreglado: la sección "¿Acompaña a un medicamento o cita?" en Crear Tarea vivía
+siempre desplegada y se veía muy cargada — ahora colapsada con el mismo patrón `SelectorRow` que
+el resto del formulario. (4) Arreglado: crear un Hábito/Tarea sin nombre fallaba en silencio, sin
+avisar — ahora muestra un mensaje. (6) Se evaluó (y se recomendó no adoptar tal cual) una
+propuesta de ChatGPT para las 6 preguntas de Metas — no encaja con lo liviano que es hoy ese
+selector. Además, diagnóstico completo de un reporte de "no sale mensaje al cerrar el día" —
+resultó no ser un bug (racha real confirmada en 7, hito ya celebrado antes, sin crashes en el
+log). Detalle completo en `Plan/08-decisiones-tecnicas.md`.
+
+**Duración máxima de Alarma + ejemplos de las 6 preguntas de Metas** (2026-08-17): nueva opción
+en Ajustes "⏱️ Silenciar alarma después de" (1/5/10/15/20/25 min o Nunca, igual que el reloj
+nativo de Android) — antes el nivel Alarma sonaba en loop sin límite. De paso, los ejemplos de
+las 6 preguntas de Metas (Hacer/Ser/Ver/Tener/Ir/Compartir) pasaron de ser muy específicos de un
+perfil emprendedor a ejemplos más universales, mismo estilo "Yo..." de siempre. Compiló e
+instaló en el dispositivo real. Detalle completo en `Plan/08-decisiones-tecnicas.md`.
+
+**Confirmado con captura: el mensaje de cierre de día sí funcionaba** (2026-08-17): 3 días de
+diagnóstico terminaron con el usuario mandando una captura donde se ve "Otro día a tu favor."
+justo arriba de la racha — nunca hubo bug, el mensaje corto se confundía visualmente con la
+píldora de racha de al lado. Además, se completó el punto 4 de la ronda anterior: las 10
+pantallas "Crear X" de la app (faltaban Meta, Rutina, Lista, Reto familiar, Movimiento
+financiero) ahora avisan con un Toast qué campo obligatorio falta, en vez de fallar en silencio.
+Compiló e instaló en el dispositivo real. Detalle completo en `Plan/08-decisiones-tecnicas.md`.
+
 **Racha en 0 al empezar el día + signo en gastos de la barra superior** (2026-08-15): el usuario
 confirmó el problema que había quedado como observación — "ayer tenía 3" y hoy antes de cerrar
 el día se veía "0". Ahora, si hoy todavía no se cerró/marcó, la racha (global y por hábito)
@@ -985,3 +1013,32 @@ la Fase 1 de la estrategia de gamificación guardada en memoria (ver
 `CerrarDiaScreen.kt` muestra una pantalla completa de celebración (plantita 🌱→🌿→🌳 que crece,
 mensaje al azar, botón fijo "Voy a seguir 🌱") en vez de la vista chica normal. Compiló e instaló
 en el dispositivo real. Detalle completo en `Plan/08-decisiones-tecnicas.md`.
+
+**Compartir una Lista como texto plano** (2026-08-15): de 4 formas de compartir una Lista que
+planteó el usuario, 2 necesitan cuentas reales (quedan en `10-pendientes.md`) y 1 (copiar vía
+QR/enlace) no necesita backend pero tampoco se construyó todavía. La que sí se construyó ahora:
+compartir/copiar la lista como texto plano (WhatsApp, correo, lo que sea), botones "📋 Copiar"/
+"📤 Compartir" en `ListDetailScreen.kt`, mismo patrón ya usado en Notas. Compiló e instaló en el
+dispositivo real. Detalle completo en `Plan/08-decisiones-tecnicas.md`.
+
+**Firebase Auth + Firestore: integración Gradle inicial** (2026-08-19): primer paso real hacia
+cuentas de usuario (Google Sign-In + enlace mágico por correo, sin contraseña clásica todavía),
+siguiendo `12-firebase-auth-y-sync.md`. Se conectó el SDK de Firebase al proyecto
+(`google-services.json`, BoM de Firebase, `firebase-auth`, `firebase-firestore`, Credential
+Manager para Google Sign-In) — todavía sin código de autenticación real, solo la base de Gradle.
+Compiló e instaló en el dispositivo real, la app arranca sin crash con Firebase inicializado.
+Detalle completo en `Plan/08-decisiones-tecnicas.md`.
+
+**Firebase Auth: login con Google real + "reclamar cuenta"** (2026-08-19): sobre la base de
+Gradle del paso anterior, ahora sí hay login real. `Usuario` gana `firebaseUid` (migración de
+Room v26→v27), `AuthRepositoryLocalImpl` se reemplazó por `AuthRepositoryFirebaseImpl`, y nueva
+tarjeta "🔑 Cuenta" en Perfil con botón "Continuar con Google" (Credential Manager, no la API
+vieja) que vincula la cuenta de Google al usuario semilla que ya existía — mismo `id` local,
+ningún FK se toca. Compiló, migración verificada en el dispositivo real (`PRAGMA table_info`). Al primer intento el
+botón falló ("No se pudo iniciar sesión con Google") — diagnosticado con logcat en vivo: al
+proyecto de Firebase le faltaba la huella SHA-1 del certificado de firma del APK. Con el SHA-1
+del debug keystore agregado en Firebase Console, el login funcionó — confirmado con logcat
+(`FirebaseAuth: Notifying id token listeners...`) y leyendo la base de datos real del
+dispositivo (correo/metodoLogin/firebaseUid quedaron seteados sobre la misma fila de siempre).
+Sigue pendiente correo mágico + sync de Firestore, y agregar el SHA-1 de release cuando se
+publique. Detalle completo en `Plan/08-decisiones-tecnicas.md`.

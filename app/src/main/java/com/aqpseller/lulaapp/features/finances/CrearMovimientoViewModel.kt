@@ -50,6 +50,13 @@ class CrearMovimientoViewModel @Inject constructor(
     private val _eliminado = MutableStateFlow(false)
     val eliminado: StateFlow<Boolean> = _eliminado.asStateFlow()
 
+    private val _mensajeError = MutableStateFlow<String?>(null)
+    val mensajeError: StateFlow<String?> = _mensajeError.asStateFlow()
+
+    fun errorMostrado() {
+        _mensajeError.value = null
+    }
+
     init {
         val id = movimientoId
         if (id != null) {
@@ -62,7 +69,14 @@ class CrearMovimientoViewModel @Inject constructor(
     }
 
     fun guardar(tipo: TipoMovimientoFinanciero, monto: Double, categoria: String, descripcion: String?, fecha: Long) {
-        if (monto <= 0.0 || categoria.isBlank()) return
+        if (categoria.isBlank()) {
+            _mensajeError.value = "Elige o escribe una categoría"
+            return
+        }
+        if (monto <= 0.0) {
+            _mensajeError.value = "Escribe un monto mayor a 0"
+            return
+        }
         viewModelScope.launch {
             val sesion = obtenerSesionActualUseCase()
             val id = movimientoId

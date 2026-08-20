@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "701514229384",
+    "project_id": "lula-app-aqp",
+    "storage_bucket": "lula-app-aqp.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:701514229384:android:b0d18f722b43aa7f52a13d",
+        "android_client_info": {
+          "package_name": "com.aqpseller.lulaapp"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "701514229384-677q8ah52l3saq4gdgbl4cv4as8q0lks.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAZWtUoUt187byLBa9op7qYo-WdU1i0nX8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "701514229384-677q8ah52l3saq4gdgbl4cv4as8q0lks.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

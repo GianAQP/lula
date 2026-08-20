@@ -1,5 +1,7 @@
 package com.aqpseller.lulaapp.features.lists
 
+import android.content.Intent
+import android.widget.Toast
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -21,6 +23,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -41,6 +46,8 @@ fun ListDetailScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val sonidoCheckHabilitado by sonidoCheckViewModel.habilitado.collectAsState()
+    val context = LocalContext.current
+    val clipboardManager = LocalClipboardManager.current
     var nuevoItem by remember { mutableStateOf("") }
     var itemPendienteEliminar by remember { mutableStateOf<ListaItem?>(null) }
     var mostrarConfirmacionLista by remember { mutableStateOf(false) }
@@ -104,7 +111,28 @@ fun ListDetailScreen(
             }
         }
 
+        // Compartir como texto plano — sirve incluso si la otra persona no tiene Lula instalada
+        // (WhatsApp, correo, lo que sea). No queda ningún vínculo entre las dos listas después:
+        // es una copia de una sola vez, no seguimiento en vivo — eso último necesita cuentas
+        // reales y queda pendiente (ver `Plan/08-decisiones-tecnicas.md`). A pedido del usuario.
         Row(modifier = Modifier.padding(top = 24.dp)) {
+            OutlinedButton(
+                onClick = {
+                    clipboardManager.setText(AnnotatedString(textoDeLista(uiState.nombre, uiState.items)))
+                    Toast.makeText(context, "Copiado", Toast.LENGTH_SHORT).show()
+                },
+                modifier = Modifier.padding(end = 8.dp),
+            ) { Text("📋 Copiar") }
+            OutlinedButton(onClick = {
+                val intent = Intent(Intent.ACTION_SEND).apply {
+                    type = "text/plain"
+                    putExtra(Intent.EXTRA_TEXT, textoDeLista(uiState.nombre, uiState.items))
+                }
+                runCatching { context.startActivity(Intent.createChooser(intent, "Compartir lista")) }
+            }) { Text("📤 Compartir") }
+        }
+
+        Row(modifier = Modifier.padding(top = 12.dp)) {
             OutlinedButton(onClick = viewModel::reiniciar, modifier = Modifier.padding(end = 8.dp)) {
                 Text("🔄 Reiniciar lista")
             }
@@ -131,4 +159,9 @@ fun ListDetailScreen(
             onCancelar = { mostrarConfirmacionLista = false },
         )
     }
+}
+
+private fun textoDeLista(nombre: String, items: List<ListaItem>): String {
+    val lineas = items.joinToString("\n") { item -> "${if (item.marcado) "☑" else "☐"} ${item.texto}" }
+    return "📋 $nombre\n\n$lineas"
 }

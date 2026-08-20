@@ -1,5 +1,6 @@
 package com.aqpseller.lulaapp.features.lists
 
+import android.widget.Toast
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
@@ -20,6 +21,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.aqpseller.lulaapp.core.ui.DescartarCambiosAlSalir
@@ -36,8 +38,16 @@ fun CrearListaScreen(
     var nombre by remember { mutableStateOf("") }
     var items by remember { mutableStateOf(listOf("")) }
 
+    val context = LocalContext.current
     val guardado by viewModel.guardado.collectAsState()
+    val mensajeError by viewModel.mensajeError.collectAsState()
     LaunchedEffect(guardado) { if (guardado) onGuardado() }
+    LaunchedEffect(mensajeError) {
+        mensajeError?.let {
+            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
+            viewModel.errorMostrado()
+        }
+    }
     DescartarCambiosAlSalir(
         hayContenidoSinGuardar = (nombre.isNotBlank() || items.any { it.isNotBlank() }) && !guardado,
         onDescartar = onSalirSinGuardar,

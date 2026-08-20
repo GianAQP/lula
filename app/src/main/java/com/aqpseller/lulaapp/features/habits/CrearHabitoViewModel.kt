@@ -47,6 +47,13 @@ class CrearHabitoViewModel @Inject constructor(
     private val _guardado = MutableStateFlow(false)
     val guardado: StateFlow<Boolean> = _guardado.asStateFlow()
 
+    private val _mensajeError = MutableStateFlow<String?>(null)
+    val mensajeError: StateFlow<String?> = _mensajeError.asStateFlow()
+
+    fun errorMostrado() {
+        _mensajeError.value = null
+    }
+
     init {
         val id = actividadId
         if (id != null) {
@@ -79,7 +86,12 @@ class CrearHabitoViewModel @Inject constructor(
         incrementoMin: Int?,
         frecuenciaRevisionDias: Int?,
     ) {
-        if (nombre.isBlank()) return
+        // Antes esto se salía en silencio, sin avisar nada. A pedido del usuario. Ver
+        // `Plan/08-decisiones-tecnicas.md`.
+        if (nombre.isBlank()) {
+            _mensajeError.value = "Falta el nombre del hábito"
+            return
+        }
         viewModelScope.launch {
             val sesion = obtenerSesionActualUseCase()
             val id = actividadId

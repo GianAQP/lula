@@ -17,6 +17,17 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.getSystemService
 import com.aqpseller.lulaapp.R
+import com.aqpseller.lulaapp.domain.repository.AjustesRepository
+import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 /**
  * Hace sonar el nivel Alarma en loop hasta que la persona lo corte — a diferencia de
@@ -26,15 +37,23 @@ import com.aqpseller.lulaapp.R
  * no lleva sonido propio (ver `NotificationChannels`) y este Service, arrancado en paralelo por
  * `RecordatorioReceiver`, es quien controla el loop con un `MediaPlayer` propio.
  *
- * Se puede cortar de 3 formas, todas terminan en `ACTION_DETENER`: el botón "🔕 Detener alarma"
- * de la notificación, tocar la notificación para abrir la app (`MainActivity`), o deslizarla
- * para descartarla (`setDeleteIntent`).
+ * Se puede cortar de 4 formas, las primeras 3 terminan en `ACTION_DETENER`: el botón
+ * "🔕 Detener alarma" de la notificación, tocar la notificación para abrir la app
+ * (`MainActivity`), deslizarla para descartarla (`setDeleteIntent`), o sola, si el usuario
+ * configuró una duración máxima en Ajustes (a pedido del usuario, mismo concepto que "Silenciar
+ * después de" del reloj nativo — antes sonaba en loop sin límite hasta apagarla a mano). Ver
+ * `Plan/08-decisiones-tecnicas.md`.
  */
+@AndroidEntryPoint
 class AlarmaSonidoService : Service() {
+
+    @Inject lateinit var ajustesRepository: AjustesRepository
 
     private var mediaPlayer: MediaPlayer? = null
     private var audioFocusRequest: AudioFocusRequest? = null
     private var wakeLock: PowerManager.WakeLock? = null
+    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+    private var jobDuracionMaxima: Job? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -100,6 +119,15 @@ class AlarmaSonidoService : Service() {
             // no había forma de enterarse; ahora al menos queda en Logcat para diagnosticar.
             Log.e(TAG, "No se pudo iniciar el sonido de la alarma", error)
         }
+
+        jobDuracionMaxima?.cancel()
+        jobDuracionMaxima = serviceScope.launch {
+            val minutos = ajustesRepository.observarDuracionMaximaAlarmaMin().first()
+            if (minutos != null) {
+                delay(minutos * 60_000L)
+                detener(claveNotificacion)
+            }
+        }
     }
 
     private fun solicitarAudioFocus(atributos: AudioAttributes) {
@@ -128,6 +156,8 @@ class AlarmaSonidoService : Service() {
     }
 
     private fun detener(claveNotificacion: Int) {
+        jobDuracionMaxima?.cancel()
+        jobDuracionMaxima = null
         detenerReproduccion()
         if (claveNotificacion != 0) {
             NotificationManagerCompat.from(this).cancel(claveNotificacion)
@@ -145,6 +175,8 @@ class AlarmaSonidoService : Service() {
     }
 
     override fun onDestroy() {
+        jobDuracionMaxima?.cancel()
+        serviceScope.cancel()
         detenerReproduccion()
         super.onDestroy()
     }

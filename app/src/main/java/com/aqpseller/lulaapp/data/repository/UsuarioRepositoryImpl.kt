@@ -4,6 +4,7 @@ import com.aqpseller.lulaapp.core.database.LulaDatabase
 import com.aqpseller.lulaapp.data.local.dao.UsuarioDao
 import com.aqpseller.lulaapp.data.local.entity.UsuarioEntity
 import com.aqpseller.lulaapp.domain.model.AccionAuditoria
+import com.aqpseller.lulaapp.domain.model.MetodoLogin
 import com.aqpseller.lulaapp.domain.model.Usuario
 import com.aqpseller.lulaapp.domain.repository.UsuarioRepository
 import kotlinx.coroutines.Dispatchers
@@ -78,5 +79,23 @@ class UsuarioRepositoryImpl @Inject constructor(
         withContext(Dispatchers.IO) {
             lulaDatabase.clearAllTables()
         }
+    }
+
+    override suspend fun vincularConGoogle(usuarioId: String, correo: String, firebaseUid: String) {
+        val actual = usuarioDao.obtenerUnico() ?: return
+        val actualizado = actual.copy(
+            correo = correo,
+            metodoLogin = MetodoLogin.GOOGLE.name,
+            firebaseUid = firebaseUid,
+        )
+        usuarioDao.upsert(actualizado)
+        auditLogger.registrar<UsuarioEntity>(
+            entidad = "usuario",
+            entidadId = usuarioId,
+            accion = AccionAuditoria.ACTUALIZAR,
+            antes = actual,
+            despues = actualizado,
+            usuarioId = usuarioId,
+        )
     }
 }

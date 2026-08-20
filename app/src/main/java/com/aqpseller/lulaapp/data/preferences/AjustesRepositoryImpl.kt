@@ -30,6 +30,7 @@ class AjustesRepositoryImpl @Inject constructor(
     private val bottomBarPosicion3Key = stringPreferencesKey("bottom_bar_posicion_3")
     private val bottomBarPosicion4Key = stringPreferencesKey("bottom_bar_posicion_4")
     private val ultimoHitoRachaCelebradoKey = intPreferencesKey("ultimo_hito_racha_celebrado")
+    private val duracionMaximaAlarmaMinKey = intPreferencesKey("duracion_maxima_alarma_min")
 
     /**
      * A propósito NO se guarda en DataStore (a diferencia de todo lo demás en esta clase): el
@@ -109,5 +110,14 @@ class AjustesRepositoryImpl @Inject constructor(
 
     override suspend fun setUltimoHitoRachaCelebrado(valor: Int) {
         context.ajustesDataStore.edit { it[ultimoHitoRachaCelebradoKey] = valor }
+    }
+
+    override fun observarDuracionMaximaAlarmaMin(): Flow<Int?> =
+        context.ajustesDataStore.data.map { it[duracionMaximaAlarmaMinKey] }
+
+    override suspend fun setDuracionMaximaAlarmaMin(minutos: Int?) {
+        context.ajustesDataStore.edit {
+            if (minutos != null) it[duracionMaximaAlarmaMinKey] = minutos else it.remove(duracionMaximaAlarmaMinKey)
+        }
     }
 }

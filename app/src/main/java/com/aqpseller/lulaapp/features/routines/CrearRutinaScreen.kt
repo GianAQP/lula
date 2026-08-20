@@ -1,5 +1,6 @@
 package com.aqpseller.lulaapp.features.routines
 
+import android.widget.Toast
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -20,6 +21,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.aqpseller.lulaapp.core.ui.DescartarCambiosAlSalir
@@ -43,10 +45,18 @@ fun CrearRutinaScreen(
     fun snapshot() = listOf(nombre, momento, seleccionadas)
     var snapshotInicial by remember { mutableStateOf(snapshot()) }
 
+    val context = LocalContext.current
     val guardado by viewModel.guardado.collectAsState()
     val formInicial by viewModel.formInicial.collectAsState()
     val actividadesDisponibles by viewModel.actividadesDisponibles.collectAsState()
+    val mensajeError by viewModel.mensajeError.collectAsState()
     LaunchedEffect(guardado) { if (guardado) onGuardado() }
+    LaunchedEffect(mensajeError) {
+        mensajeError?.let {
+            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
+            viewModel.errorMostrado()
+        }
+    }
     DescartarCambiosAlSalir(
         hayContenidoSinGuardar = snapshotInicial != snapshot() && !guardado,
         onDescartar = onSalirSinGuardar,
