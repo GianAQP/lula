@@ -16,6 +16,7 @@ data class EspacioEntity(
     val fechaCreacion: Long,
 )
 
+@Serializable
 @Entity(
     tableName = "espacio_miembro",
     primaryKeys = ["espacioId", "usuarioId"],

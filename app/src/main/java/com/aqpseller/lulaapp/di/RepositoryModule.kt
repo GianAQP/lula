@@ -4,6 +4,7 @@ import com.aqpseller.lulaapp.data.preferences.AjustesRepositoryImpl
 import com.aqpseller.lulaapp.data.preferences.PrivacidadRepositoryImpl
 import com.aqpseller.lulaapp.data.repository.ActividadRepositoryImpl
 import com.aqpseller.lulaapp.data.repository.AuthRepositoryFirebaseImpl
+import com.aqpseller.lulaapp.data.repository.CompartirSyncRepositoryImpl
 import com.aqpseller.lulaapp.data.repository.ConexionRepositoryImpl
 import com.aqpseller.lulaapp.data.repository.EntradaDiarioRepositoryImpl
 import com.aqpseller.lulaapp.data.repository.EspacioRepositoryImpl
@@ -20,6 +21,7 @@ import com.aqpseller.lulaapp.data.repository.UsuarioRepositoryImpl
 import com.aqpseller.lulaapp.domain.repository.ActividadRepository
 import com.aqpseller.lulaapp.domain.repository.AjustesRepository
 import com.aqpseller.lulaapp.domain.repository.AuthRepository
+import com.aqpseller.lulaapp.domain.repository.CompartirSyncRepository
 import com.aqpseller.lulaapp.domain.repository.ConexionRepository
 import com.aqpseller.lulaapp.domain.repository.EntradaDiarioRepository
 import com.aqpseller.lulaapp.domain.repository.EspacioRepository
@@ -111,4 +113,8 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindConexionRepository(impl: ConexionRepositoryImpl): ConexionRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindCompartirSyncRepository(impl: CompartirSyncRepositoryImpl): CompartirSyncRepository
 }

@@ -43,7 +43,8 @@ fun ListsScreen(
             EmptyState(
                 emoji = "📋",
                 titulo = "Todavía no tienes listas.",
-                subtitulo = "Crea una para cosas que preparas de vez en cuando (ej. \"Viaje\", \"Compras\") y reutilízala cada vez.",
+                subtitulo = "Crea una para cosas que preparas de vez en cuando (ej. \"Viaje\", \"Compras\") y reutilízala cada vez. " +
+                    "O escanea el código de una lista que te compartan (🔳 arriba).",
                 modifier = Modifier.padding(innerPadding),
             )
             return@Scaffold

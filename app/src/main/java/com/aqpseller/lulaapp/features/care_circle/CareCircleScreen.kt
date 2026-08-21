@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -26,6 +27,12 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.aqpseller.lulaapp.core.ui.ConfirmarEliminarDialog
 import com.aqpseller.lulaapp.domain.model.EstadoSolicitud
 import com.aqpseller.lulaapp.domain.model.PermisoCompartir
+import com.aqpseller.lulaapp.domain.model.TipoSolicitud
+
+private fun etiquetaElemento(elemento: String, tipo: TipoSolicitud, permiso: PermisoCompartir): String = when (tipo) {
+    TipoSolicitud.ESPACIO -> "🏠 Invitación a la Familia \"$elemento\""
+    TipoSolicitud.ACTIVIDAD -> "$elemento — ${etiquetaPermiso(permiso)}"
+}
 
 private fun etiquetaPermiso(permiso: PermisoCompartir): String = when (permiso) {
     PermisoCompartir.PUEDE_VER -> "puede ver"
@@ -73,7 +80,7 @@ fun CareCircleScreen(
                     )
                 }
             } else {
-                items(uiState.enviadas, key = { it.id }) { solicitud ->
+                items(uiState.enviadas, key = { "enviada-${it.id}" }) { solicitud ->
                     Card(
                         colors = CardDefaults.cardColors(),
                         modifier = Modifier
@@ -83,7 +90,7 @@ fun CareCircleScreen(
                         Column(modifier = Modifier.padding(12.dp)) {
                             Text(text = "👤 ${solicitud.contacto}", style = MaterialTheme.typography.bodyLarge)
                             Text(
-                                text = "${solicitud.elemento} — ${etiquetaPermiso(solicitud.permiso)}",
+                                text = etiquetaElemento(solicitud.elemento, solicitud.tipo, solicitud.permiso),
                                 style = MaterialTheme.typography.bodyMedium,
                                 modifier = Modifier.padding(top = 2.dp),
                             )
@@ -106,10 +113,45 @@ fun CareCircleScreen(
                 HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
                 Text(text = "PERSONAS QUE ACOMPAÑO", style = MaterialTheme.typography.titleSmall)
                 Text(
-                    text = "Acá vas a ver lo que otras personas compartan contigo, cuando puedan conectar su cuenta a Lula.",
+                    text = "Solicitudes que alguien más te envió a ti.",
                     style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.padding(top = 2.dp),
+                    modifier = Modifier.padding(top = 2.dp, bottom = 8.dp),
                 )
+            }
+            if (uiState.recibidas.isEmpty()) {
+                item {
+                    Text(
+                        text = "Nada por ahora. Necesitas vincular tu cuenta con Google (Perfil → \"🔑 Cuenta\") para poder recibir solicitudes.",
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+            } else {
+                items(uiState.recibidas, key = { "recibida-${it.id}" }) { solicitud ->
+                    Card(
+                        colors = CardDefaults.cardColors(),
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Text(text = "👤 ${solicitud.deNombre}", style = MaterialTheme.typography.bodyLarge)
+                            Text(
+                                text = etiquetaElemento(solicitud.elemento, solicitud.tipo, solicitud.permiso),
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.padding(top = 2.dp),
+                            )
+                            Row(modifier = Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.End) {
+                                OutlinedButton(onClick = { viewModel.rechazar(solicitud.id) }) {
+                                    Text("Rechazar")
+                                }
+                                Button(
+                                    onClick = { viewModel.aceptar(solicitud.id) },
+                                    modifier = Modifier.padding(start = 8.dp),
+                                ) {
+                                    Text("Aceptar")
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }

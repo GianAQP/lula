@@ -2,13 +2,19 @@ package com.aqpseller.lulaapp.features.lists
 
 import android.content.Intent
 import android.widget.Toast
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.QrCode
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -33,7 +39,9 @@ import com.aqpseller.lulaapp.core.ui.ConfirmarEliminarDialog
 import com.aqpseller.lulaapp.core.ui.DictationTextField
 import com.aqpseller.lulaapp.core.ui.LulaProgressBar
 import com.aqpseller.lulaapp.core.ui.SonidoCheckViewModel
+import com.aqpseller.lulaapp.core.utils.QrCodeGenerator
 import com.aqpseller.lulaapp.core.utils.SonidoUtils
+import com.aqpseller.lulaapp.core.utils.codificarListaQr
 import com.aqpseller.lulaapp.domain.model.ListaItem
 
 @Composable
@@ -51,6 +59,7 @@ fun ListDetailScreen(
     var nuevoItem by remember { mutableStateOf("") }
     var itemPendienteEliminar by remember { mutableStateOf<ListaItem?>(null) }
     var mostrarConfirmacionLista by remember { mutableStateOf(false) }
+    var mostrarQr by remember { mutableStateOf(false) }
     LaunchedEffect(uiState.eliminada) { if (uiState.eliminada) onEliminada() }
 
     if (uiState.cargando) return
@@ -130,6 +139,10 @@ fun ListDetailScreen(
                 }
                 runCatching { context.startActivity(Intent.createChooser(intent, "Compartir lista")) }
             }) { Text("📤 Compartir") }
+            OutlinedButton(onClick = { mostrarQr = true }, modifier = Modifier.padding(start = 8.dp)) {
+                Icon(Icons.Filled.QrCode, contentDescription = null, modifier = Modifier.size(18.dp))
+                Text(" Por código")
+            }
         }
 
         Row(modifier = Modifier.padding(top = 12.dp)) {
@@ -157,6 +170,26 @@ fun ListDetailScreen(
             mensaje = "Esto elimina la lista \"${uiState.nombre}\" y todos sus ítems para siempre.",
             onConfirmar = { mostrarConfirmacionLista = false; viewModel.eliminarLista() },
             onCancelar = { mostrarConfirmacionLista = false },
+        )
+    }
+    if (mostrarQr) {
+        val textoQr = codificarListaQr(uiState.nombre, uiState.items.map { it.texto })
+        val qr = remember(textoQr) { QrCodeGenerator.generar(textoQr) }
+        AlertDialog(
+            onDismissRequest = { mostrarQr = false },
+            confirmButton = { TextButton(onClick = { mostrarQr = false }) { Text("Listo") } },
+            title = { Text("Que la otra persona escanee este código") },
+            text = {
+                Column {
+                    Text(
+                        text = "Desde Listas en su Lula, con el botón \"📷\" — se crea una copia " +
+                            "en su teléfono, sin quedar vinculada con esta.",
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(bottom = 12.dp),
+                    )
+                    qr?.let { Image(bitmap = it, contentDescription = null, modifier = Modifier.size(220.dp)) }
+                }
+            },
         )
     }
 }

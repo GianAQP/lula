@@ -17,6 +17,8 @@ data class SolicitudCompartirEntity(
     val tieneCuenta: Boolean,
     val elementoId: String,
     val contexto: String,
+    val deNombre: String = "",
+    val tipo: String = "ACTIVIDAD",
     val permisos: String,
     val estado: String,
     val canalEnvio: String?,

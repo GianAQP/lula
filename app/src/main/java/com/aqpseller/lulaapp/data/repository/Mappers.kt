@@ -67,6 +67,7 @@ import com.aqpseller.lulaapp.domain.model.SyncStatus
 import com.aqpseller.lulaapp.domain.model.TipoActividad
 import com.aqpseller.lulaapp.domain.model.TipoAviso
 import com.aqpseller.lulaapp.domain.model.TipoConexion
+import com.aqpseller.lulaapp.domain.model.TipoSolicitud
 import com.aqpseller.lulaapp.domain.model.TipoEspacio
 import com.aqpseller.lulaapp.domain.model.TipoMovimientoFinanciero
 import com.aqpseller.lulaapp.domain.model.TomaMedicamento
@@ -541,6 +542,8 @@ fun SolicitudCompartir.toEntity() = SolicitudCompartirEntity(
     tieneCuenta = tieneCuenta,
     elementoId = elementoId,
     contexto = contexto,
+    deNombre = deNombre,
+    tipo = tipo.name,
     permisos = permisos.name,
     estado = estado.name,
     canalEnvio = canalEnvio?.name,
@@ -555,6 +558,8 @@ fun SolicitudCompartirEntity.toDomain() = SolicitudCompartir(
     tieneCuenta = tieneCuenta,
     elementoId = elementoId,
     contexto = contexto,
+    deNombre = deNombre,
+    tipo = runCatching { TipoSolicitud.valueOf(tipo) }.getOrDefault(TipoSolicitud.ACTIVIDAD),
     permisos = PermisoCompartir.valueOf(permisos),
     estado = EstadoSolicitud.valueOf(estado),
     canalEnvio = canalEnvio?.let { CanalEnvio.valueOf(it) },

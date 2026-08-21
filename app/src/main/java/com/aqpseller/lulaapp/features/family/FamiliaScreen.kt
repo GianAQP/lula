@@ -36,6 +36,7 @@ fun FamiliaScreen(
     val uiState by viewModel.uiState.collectAsState()
     var nombreNuevoEspacio by remember { mutableStateOf("") }
     var nombreRenombrar by remember { mutableStateOf("") }
+    var contactoInvitar by remember { mutableStateOf("") }
     var mostrarConfirmarEliminar by remember { mutableStateOf(false) }
     LaunchedEffect(uiState.espacioCambiado) { if (uiState.espacioCambiado) onEspacioCambiado() }
     LaunchedEffect(uiState.mostrarFormularioRenombrar) {
@@ -114,12 +115,32 @@ fun FamiliaScreen(
             uiState.miembros.forEach { miembro ->
                 Text(text = "🙋 ${miembro.nombre} — ${miembro.rol}", modifier = Modifier.padding(top = 4.dp))
             }
-            Text(
-                text = "Invitar a alguien de verdad todavía no se puede — necesita que exista tu " +
-                    "cuenta y la de la otra persona conectadas, algo que Lula no tiene aún.",
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.padding(top = 8.dp),
-            )
+            if (!uiState.cuentaVinculada) {
+                Text(
+                    text = "Para invitar a alguien de verdad, primero vincula tu cuenta con Google " +
+                        "(Perfil → \"🔑 Cuenta\").",
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(top = 8.dp),
+                )
+            } else if (uiState.mostrarFormularioInvitar) {
+                DictationTextField(
+                    value = contactoInvitar,
+                    onValueChange = { contactoInvitar = it },
+                    label = "Correo de la persona (o pega el que escaneaste con \"🔳\" arriba)",
+                    modifier = Modifier.padding(top = 12.dp),
+                )
+                Row(modifier = Modifier.padding(top = 8.dp)) {
+                    Button(
+                        onClick = { viewModel.invitar(contactoInvitar); contactoInvitar = "" },
+                        modifier = Modifier.padding(end = 8.dp),
+                    ) { Text("Enviar invitación") }
+                    TextButton(onClick = viewModel::ocultarFormularioInvitar) { Text("Cancelar") }
+                }
+            } else {
+                Button(onClick = viewModel::mostrarFormularioInvitar, modifier = Modifier.padding(top = 8.dp)) {
+                    Text("+ Invitar a alguien")
+                }
+            }
             TextButton(onClick = onVerRetosFamiliares, modifier = Modifier.padding(top = 16.dp).fillMaxWidth()) {
                 Text("🏆 Retos familiares")
             }

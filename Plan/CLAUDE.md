@@ -1042,3 +1042,46 @@ del debug keystore agregado en Firebase Console, el login funcionó — confirma
 dispositivo (correo/metodoLogin/firebaseUid quedaron seteados sobre la misma fila de siempre).
 Sigue pendiente correo mágico + sync de Firestore, y agregar el SHA-1 de release cuando se
 publique. Detalle completo en `Plan/08-decisiones-tecnicas.md`.
+
+**Círculo de cuidado: aceptar/rechazar real + sync a Firestore + reglas de seguridad**
+(2026-08-19): al ir a sincronizar `Conexion`/`SolicitudCompartir` apareció un hueco más grande
+de lo esperado — nada en la app aceptaba o rechazaba una solicitud todavía (diseñado en Fase 1.0,
+nunca conectado). Se construyó: aceptar/rechazar real (crea la `Conexion`, da acceso en la
+actividad si vive en este dispositivo), un bug real corregido de paso (`observarPendientesPara`
+filtraba por `usuarioId` en vez de por correo, nunca iba a encontrar nada), y sync completo a
+Firestore (`CompartirSyncRepository` nuevo, listener en vivo mientras Círculo de cuidado está
+abierta). Nuevo archivo `firestore.rules` en la raíz del repo — reemplaza la regla temporal de
+denegar-todo, el usuario debe pegarlo en Firebase Console. Compiló, migración a Room v28
+verificada en el dispositivo real, pantalla abierta sin crash con el listener corriendo.
+Deliberadamente fuera de esta ronda (documentado en `10-pendientes.md`): cuando aceptas una
+solicitud todavía no ves el contenido real del hábito/tarea compartido, solo la solicitud y la
+conexión sincronizan — mostrar el detalle real es un paso más grande aparte. Detalle completo en
+`Plan/08-decisiones-tecnicas.md`.
+
+**Invitar de verdad a un Espacio Familia** (2026-08-20): antes de sincronizar el contenido de
+Familia (paso 5 del plan) apareció el bloqueo real de siempre — no se podía invitar a nadie de
+verdad. Se construyó reutilizando toda la infraestructura de `SolicitudCompartir` de Círculo de
+cuidado (nuevo `TipoSolicitud` ACTIVIDAD/ESPACIO) en vez de duplicarla: `InvitarAEspacioUseCase`,
+`EspacioRepository.agregarMiembro`, `AceptarSolicitudCompartirUseCase` bifurcado por tipo,
+formulario real en `FamiliaScreen`. Bug real encontrado y arreglado con logcat en vivo: la app se
+cerraba al aceptar una invitación porque `EspacioMiembroEntity` nunca se había marcado
+`@Serializable` (nada la auditaba hasta ahora) — corregido, y se reparó a mano el dato que quedó
+a medias por el crash. Segundo intento: aceptar una invitación a Familia funcionó de punta a
+punta, verificado con la base de datos real del dispositivo (fila nueva en `espacio_miembro`).
+Detalle completo en `Plan/08-decisiones-tecnicas.md`.
+
+**Compartir por código QR: Listas, "mi código para conectar", botón global de escanear**
+(2026-08-20): comparando con Yape, el usuario pidió QR real (no solo generar, también escanear).
+Se construyó: compartir una Lista por QR (100% local, sin backend — el escaneo la importa como
+copia nueva), "mi código para conectar" en Perfil (QR con el correo, para no escribirlo a mano
+al compartir/invitar), y **un solo botón de escanear en la barra superior** (visible en toda la
+app) que detecta solo qué tipo de código es, en vez de un botón distinto por pantalla. Escaneo
+real vía Code Scanner de Google Play Services (sin permiso de cámara propio). Se aclaró una
+diferencia de diseño importante: escanear en persona SÍ puede saltarse "aceptar" para lo 100%
+local (Lista), pero conectar personas/Familia mantiene el paso de aceptar de siempre — abrir esa
+puerta necesitaría reglas de Firestore nuevas y, aun así, quien invita no se enteraría de nada
+hasta que el contenido del Espacio sincronice de verdad (sigue pendiente). Bug real corregido de
+paso: el aviso "📩" de la barra superior seguía filtrando por `usuarioId` en vez de correo. Los
+íconos de QR pasaron de emoji a íconos reales (`material-icons-extended`, solo para estos dos)
+porque el usuario mostró una app de referencia y el emoji no se entendía. Detalle completo en
+`Plan/08-decisiones-tecnicas.md`.

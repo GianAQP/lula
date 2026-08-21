@@ -15,9 +15,16 @@ data class SolicitudCompartir(
     val para: String,
     val tieneCuenta: Boolean,
     /** actividadId del elemento compartido. */
+    /** actividadId si [tipo] es ACTIVIDAD, espacioId si es ESPACIO. */
     val elementoId: String,
     /** Nombre del elemento, denormalizado para mostrar sin resolver un join. */
     val contexto: String,
+    /** Nombre de quien envía, denormalizado — para mostrarlo del lado del destinatario sin
+     * tener que resolver su perfil. */
+    val deNombre: String,
+    val tipo: TipoSolicitud = TipoSolicitud.ACTIVIDAD,
+    /** Solo tiene sentido si [tipo] es ACTIVIDAD — para ESPACIO, aceptar siempre agrega como
+     * `MIEMBRO` normal (ver `AceptarSolicitudCompartirUseCase`). */
     val permisos: PermisoCompartir,
     val estado: EstadoSolicitud,
     val canalEnvio: CanalEnvio?,

@@ -9,6 +9,7 @@ import com.aqpseller.lulaapp.domain.repository.UsuarioRepository
 import com.aqpseller.lulaapp.domain.usecase.espacio.CambiarEspacioActivoUseCase
 import com.aqpseller.lulaapp.domain.usecase.espacio.CrearEspacioFamiliaUseCase
 import com.aqpseller.lulaapp.domain.usecase.espacio.EliminarEspacioFamiliaUseCase
+import com.aqpseller.lulaapp.domain.usecase.espacio.InvitarAEspacioUseCase
 import com.aqpseller.lulaapp.domain.usecase.espacio.ObtenerEspaciosDeUsuarioUseCase
 import com.aqpseller.lulaapp.domain.usecase.espacio.ObtenerMiembrosEspacioUseCase
 import com.aqpseller.lulaapp.domain.usecase.espacio.RenombrarEspacioFamiliaUseCase
@@ -36,6 +37,7 @@ class FamiliaViewModel @Inject constructor(
     private val cambiarEspacioActivoUseCase: CambiarEspacioActivoUseCase,
     private val renombrarEspacioFamiliaUseCase: RenombrarEspacioFamiliaUseCase,
     private val eliminarEspacioFamiliaUseCase: EliminarEspacioFamiliaUseCase,
+    private val invitarAEspacioUseCase: InvitarAEspacioUseCase,
     private val usuarioRepository: UsuarioRepository,
 ) : ViewModel() {
 
@@ -49,6 +51,7 @@ class FamiliaViewModel @Inject constructor(
         viewModelScope.launch {
             usuarioRepository.observarUsuario().collect { usuario ->
                 nombreUsuarioActual = usuario?.nombrePreferido ?: "Tú"
+                _uiState.update { it.copy(cuentaVinculada = !usuario?.correo.isNullOrBlank()) }
             }
         }
         viewModelScope.launch {
@@ -134,6 +137,24 @@ class FamiliaViewModel @Inject constructor(
         val espacioId = _uiState.value.espacioFamiliaId ?: return
         viewModelScope.launch {
             eliminarEspacioFamiliaUseCase(espacioId, sesionActual().usuarioId)
+        }
+    }
+
+    fun mostrarFormularioInvitar() {
+        _uiState.update { it.copy(mostrarFormularioInvitar = true) }
+    }
+
+    fun ocultarFormularioInvitar() {
+        _uiState.update { it.copy(mostrarFormularioInvitar = false) }
+    }
+
+    fun invitar(contacto: String) {
+        if (contacto.isBlank()) return
+        val espacioId = _uiState.value.espacioFamiliaId ?: return
+        val nombreEspacio = _uiState.value.nombreEspacioFamilia
+        viewModelScope.launch {
+            invitarAEspacioUseCase(sesionActual().usuarioId, espacioId, nombreEspacio, contacto)
+            _uiState.update { it.copy(mostrarFormularioInvitar = false) }
         }
     }
 

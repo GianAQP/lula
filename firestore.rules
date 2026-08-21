@@ -1,0 +1,57 @@
+rules_version = '2';
+
+// Reglas reales de Firestore para Lula — reemplazan la regla temporal de "denegar todo" que
+// se usó mientras no había ningún cliente escribiendo. Se pegan a mano en Firebase Console
+// (Firestore Database → Reglas) porque no hay Firebase CLI instalado en este entorno; este
+// archivo es la fuente de verdad versionada, la consola solo la refleja.
+// Ver Plan/12-firebase-auth-y-sync.md.
+//
+// Nota importante: `de`/`para`/`usuarioA`/`usuarioB` son ids o contactos de la app (UUID local
+// de Room, o un correo/teléfono en texto libre) — NO son el uid de Firebase Auth, son sistemas
+// de identificación distintos. Por eso cada solicitud también guarda `deFirebaseUid` (el uid
+// real de quien la creó) para que estas reglas puedan verificarla contra `request.auth.uid`.
+// El lado del destinatario se valida con `request.auth.token.email` (el correo YA verificado
+// por Firebase, no un dato que cualquiera podría inventar) comparado contra `para`.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Perfil mínimo (nombre, correo) — cualquier usuario autenticado puede leer cualquier
+    // perfil (para mostrar "quién te invitó"), pero solo el dueño (mismo uid) escribe el suyo.
+    match /usuarios/{firebaseUid} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == firebaseUid;
+    }
+
+    // Solicitudes de Círculo de cuidado: solo el remitente (deFirebaseUid) y el destinatario
+    // (su correo verificado == para) pueden leer/actuar sobre una solicitud.
+    match /solicitudes_compartir/{solicitudId} {
+      allow read: if request.auth != null &&
+        (request.auth.uid == resource.data.deFirebaseUid || request.auth.token.email == resource.data.para);
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.deFirebaseUid;
+      allow update: if request.auth != null &&
+        (request.auth.uid == resource.data.deFirebaseUid || request.auth.token.email == resource.data.para);
+      allow delete: if request.auth != null && request.auth.uid == resource.data.deFirebaseUid;
+    }
+
+    // Conexion todavía no se lee en ninguna pantalla (ver Plan/10-pendientes.md) — regla
+    // provisional, solo exige estar autenticado. Se endurece cuando de verdad se muestre en la
+    // app (necesita guardar el uid de Firebase de ambos miembros, no solo su id local).
+    match /conexiones/{conexionId} {
+      allow read, write: if request.auth != null;
+    }
+
+    // Espacios Familia/Círculo de cuidado (paso 5 del plan): todavía no hay ningún código que
+    // lea ni escriba acá — denegado por completo hasta que exista.
+    match /espacios/{espacioId} {
+      allow read, write: if false;
+      match /{document=**} {
+        allow read, write: if false;
+      }
+    }
+
+    // Cualquier otra colección no listada arriba: denegada por defecto.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

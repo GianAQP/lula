@@ -59,6 +59,10 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
+    // Solo para los íconos de QR/escanear — el resto de la app sigue usando emojis a propósito
+    // (ver `Plan/08-decisiones-tecnicas.md`), pero acá un emoji no se entendía. R8 recorta los
+    // íconos no usados en el build de release, así que el costo real es mínimo.
+    implementation(libs.androidx.material.icons.extended)
 
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
@@ -74,6 +78,7 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.androidx.biometric)
     implementation(libs.zxing.core)
+    implementation(libs.play.services.code.scanner)
 
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.auth)

@@ -1,7 +1,9 @@
 package com.aqpseller.lulaapp.domain.usecase.usuario
 
 import com.aqpseller.lulaapp.domain.repository.AuthRepository
+import com.aqpseller.lulaapp.domain.repository.CompartirSyncRepository
 import com.aqpseller.lulaapp.domain.repository.UsuarioRepository
+import kotlinx.coroutines.flow.first
 import javax.inject.Inject
 
 /**
@@ -13,6 +15,7 @@ import javax.inject.Inject
 class ReclamarCuentaConGoogleUseCase @Inject constructor(
     private val authRepository: AuthRepository,
     private val usuarioRepository: UsuarioRepository,
+    private val compartirSyncRepository: CompartirSyncRepository,
 ) {
     suspend operator fun invoke(idToken: String) {
         val sesion = authRepository.iniciarSesionConGoogle(idToken)
@@ -22,5 +25,8 @@ class ReclamarCuentaConGoogleUseCase @Inject constructor(
             correo = checkNotNull(sesion.correo) { "La cuenta de Google no tiene correo" },
             firebaseUid = sesion.firebaseUid,
         )
+        usuarioRepository.observarUsuario().first()?.let { usuario ->
+            runCatching { compartirSyncRepository.subirPerfil(usuario) }
+        }
     }
 }

@@ -162,3 +162,22 @@ val MIGRATION_26_27 = object : Migration(26, 27) {
         db.execSQL("ALTER TABLE usuario ADD COLUMN firebaseUid TEXT DEFAULT NULL")
     }
 }
+
+/** `SolicitudCompartir` gana `deNombre` — nombre de quien envía, denormalizado para mostrarlo
+ * del lado del destinatario (que puede estar en otro dispositivo, sin forma de resolver un
+ * join contra el usuario que envió). Primer paso del sync real de Círculo de cuidado, ver
+ * `Plan/12-firebase-auth-y-sync.md`. */
+val MIGRATION_27_28 = object : Migration(27, 28) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE solicitud_compartir ADD COLUMN deNombre TEXT NOT NULL DEFAULT ''")
+    }
+}
+
+/** `SolicitudCompartir` gana `tipo` (ACTIVIDAD/ESPACIO) — reutiliza toda la infraestructura de
+ * solicitud+aceptación+sync ya construida para invitar a alguien a un Espacio Familia, no solo
+ * para compartir una actividad puntual. Ver `Plan/12-firebase-auth-y-sync.md`. */
+val MIGRATION_28_29 = object : Migration(28, 29) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE solicitud_compartir ADD COLUMN tipo TEXT NOT NULL DEFAULT 'ACTIVIDAD'")
+    }
+}

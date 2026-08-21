@@ -6,6 +6,7 @@ import com.aqpseller.lulaapp.domain.model.DiaHistorialHabito
 import com.aqpseller.lulaapp.domain.model.EstadoActividad
 import com.aqpseller.lulaapp.domain.model.EstadoActividadEnFecha
 import com.aqpseller.lulaapp.domain.model.ItemAgenda
+import com.aqpseller.lulaapp.domain.model.PermisoCompartir
 import com.aqpseller.lulaapp.domain.model.SesionCita
 import com.aqpseller.lulaapp.domain.model.TomaMedicamento
 import kotlinx.coroutines.flow.Flow
@@ -22,6 +23,11 @@ interface ActividadRepository {
      * "completado el {fecha}" con una fecha puntual en vez de siempre "ahora", para marcar desde
      * Calendario una tarea que se hizo un día distinto al de hoy. Null (default) = ahora mismo. */
     suspend fun marcarEstado(id: String, estado: EstadoActividad, usuarioId: String, fechaCompletado: Long? = null)
+
+    /** Al aceptar una `SolicitudCompartir`, agrega a [concederA] a `puedeVer[]` (y a
+     * `puedeRecordar[]` si el permiso lo incluye). No-op silencioso si la actividad no vive en
+     * este dispositivo (la compartieron conmigo, no yo). Ver `Plan/12-firebase-auth-y-sync.md`. */
+    suspend fun agregarPermisoCompartido(actividadId: String, concederA: String, permiso: PermisoCompartir, usuarioId: String)
 
     suspend fun actualizarHabito(actividadId: String, nombre: String, detalle: ActividadDetalle.Habito, usuarioId: String)
     suspend fun actualizarTarea(actividadId: String, nombre: String, detalle: ActividadDetalle.Tarea, usuarioId: String)

@@ -10,11 +10,15 @@ import com.aqpseller.lulaapp.data.local.dao.FinanzasDao
 import com.aqpseller.lulaapp.data.local.dao.ListaDao
 import com.aqpseller.lulaapp.data.local.dao.MetaDao
 import com.aqpseller.lulaapp.data.local.entity.EspacioEntity
+import com.aqpseller.lulaapp.data.local.entity.EspacioMiembroEntity
 import com.aqpseller.lulaapp.domain.model.AccionAuditoria
 import com.aqpseller.lulaapp.domain.model.AreaDeVida
 import com.aqpseller.lulaapp.domain.model.Espacio
 import com.aqpseller.lulaapp.domain.model.EspacioMiembro
+import com.aqpseller.lulaapp.domain.model.RolEnEspacio
+import com.aqpseller.lulaapp.domain.model.TipoEspacio
 import com.aqpseller.lulaapp.domain.repository.EspacioRepository
+import com.aqpseller.lulaapp.core.utils.DateTimeUtils
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
@@ -62,6 +66,31 @@ class EspacioRepositoryImpl @Inject constructor(
 
     override fun observarMiembros(espacioId: String): Flow<List<EspacioMiembro>> =
         espacioMiembroDao.observarMiembros(espacioId).map { lista -> lista.map { it.toDomain() } }
+
+    override suspend fun asegurarEspacioMinimo(espacioId: String, nombre: String, creadoPor: String, tipo: TipoEspacio) {
+        if (espacioDao.obtenerPorId(espacioId) != null) return
+        val entity = EspacioEntity(id = espacioId, tipo = tipo.name, nombre = nombre, creadoPor = creadoPor, fechaCreacion = DateTimeUtils.ahoraEpochMillis())
+        espacioDao.upsert(entity)
+        auditLogger.registrar<EspacioEntity>(
+            entidad = "espacio",
+            entidadId = espacioId,
+            accion = AccionAuditoria.CREAR,
+            despues = entity,
+            usuarioId = creadoPor,
+        )
+    }
+
+    override suspend fun agregarMiembro(espacioId: String, usuarioId: String, rol: RolEnEspacio) {
+        val entity = EspacioMiembro(espacioId = espacioId, usuarioId = usuarioId, rol = rol).toEntity()
+        espacioMiembroDao.upsert(entity)
+        auditLogger.registrar<EspacioMiembroEntity>(
+            entidad = "espacio_miembro",
+            entidadId = "$espacioId:$usuarioId",
+            accion = AccionAuditoria.CREAR,
+            despues = entity,
+            usuarioId = usuarioId,
+        )
+    }
 
     override suspend fun renombrarEspacio(espacioId: String, nuevoNombre: String, usuarioId: String) {
         val actual = espacioDao.obtenerPorId(espacioId) ?: return

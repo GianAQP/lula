@@ -6,6 +6,12 @@ pensado para leer "por qué se decidió X", no como lista de tareas). Cuando alg
 se construye, se borra de acá y el detalle de cómo se hizo queda en
 `08-decisiones-tecnicas.md` como siempre.
 
+**Prueba real con dos dispositivos**: todo el bloque de Firebase/Círculo de cuidado/Familia de
+esta sección se probó solo compartiendo con la propia cuenta (mismo dispositivo). Falta instalar
+el `.apk` de debug en un segundo teléfono para probar de punta a punta con dos cuentas reales —
+el usuario lo hará cuando el resto de esta lista esté más avanzado, para probar todo junto en
+vez de por partes. Ver 2026-08-20, `08-decisiones-tecnicas.md`.
+
 ## 1. Bloqueado por backend (necesita Firebase + algo de sync)
 
 Nada de esto se puede terminar de verdad mientras la app siga siendo un solo usuario semilla
@@ -26,38 +32,51 @@ falta activar en cuanto exista:
   hacer: crear el proyecto en Firebase Console y pasar el `google-services.json` (pasos exactos
   en la sección 7 de ese documento) — hasta que eso llegue, no se puede escribir el código de
   conexión real.
-- **Sync a Firestore** (`syncStatus` ya existe en el modelo, sin cliente de red todavía — el
-  backend real decidido es Firebase, no Sheets/n8n, ver `12-firebase-auth-y-sync.md`).
+- **Sync a Firestore de `Conexion`/`SolicitudCompartir` — construido (2026-08-19)**: aceptar/
+  rechazar real, `Conexion` se crea al aceptar, y todo sincroniza con Firestore mientras
+  Círculo de cuidado está abierta (`CompartirSyncRepository`). Ver `08-decisiones-tecnicas.md`.
+  Falta probar de punta a punta con una segunda cuenta/dispositivo real, y falta el sync de
+  Espacios Familia (paso 5 de `12-firebase-auth-y-sync.md`, todavía no construido).
+- **Ver el contenido real de lo que me compartieron** — al aceptar una solicitud hoy solo
+  sincroniza la solicitud y la conexión (la "capa social"), no el hábito/tarea/medicamento en
+  sí. Falta mapear cada tipo de actividad a un documento de Firestore + una pantalla nueva de
+  "lo que otros comparten conmigo" para que el destinatario vea el detalle real. Ver
+  `08-decisiones-tecnicas.md`, 2026-08-19.
 - **Invitación a personas sin la app instalada** (deep link + onboarding especial).
-- **Aceptar/rechazar una `SOLICITUD_COMPARTIR`** — solo tiene sentido cuando la otra persona
-  tiene cuenta propia.
-- **"Personas que acompaño"** en Mi círculo de cuidado (necesita los datos de otra persona
-  sincronizados a este dispositivo — hoy es un estado vacío honesto, no datos simulados).
-- **Estados `confirmado/sin_confirmar/omitido` visibles para quien acompaña**.
+- **Estados `confirmado/sin_confirmar/omitido` visibles para quien acompaña** — depende del
+  punto anterior (mostrar el contenido real primero).
 - **Buscar usuarios existentes por nombre/correo** (compartir) — no hay ningún directorio de
-  quién más usa Lula fuera del propio teléfono.
-- **Escanear el QR de invitación** (solo se construyó generarlo) — aunque se construya, el
-  otro lado nunca se entera de la aceptación sin un servidor.
-- **Aviso "📩" de invitación pendiente** — ya está conectado a la query real, pero va a
-  marcar 0 siempre hasta que haya backend.
-- **Fase 1.5 — Familia/Equipo, la mitad que necesita una segunda persona real**: invitar
-  miembros de verdad, que aparezcan como segundo `EspacioMiembro`, roles admin/miembro con
-  sentido real (hoy solo hay un admin), progreso de un Reto familiar con más de un
-  participante real. La base local (crear el espacio, selector Personal/Familia, tareas del
-  hogar, retos familiares con un solo participante) ya está construida — ver
-  `08-decisiones-tecnicas.md`, 2026-07-30.
+  quién más usa Lula fuera del propio teléfono; hoy compartir sigue siendo por contacto
+  (correo/teléfono) en texto libre.
+- **Escanear un QR para conectar/invitar y que quede aceptado automáticamente** (estilo Yape) —
+  se construyó la mitad que sí es segura hoy: escanear "mi código para conectar" solo copia el
+  correo al portapapeles, sigue habiendo un paso de aceptar (ver 2026-08-20,
+  `08-decisiones-tecnicas.md`). Saltarse ese paso necesitaría un "código canjeable" (reglas de
+  Firestore nuevas, cualquiera con el QR puede reclamarlo) y, aun así, quien invita no se
+  enteraría de nada hasta que el contenido del Espacio sincronice de verdad — no vale la pena
+  construirlo a medias.
+- **Aviso "📩" de invitación pendiente** — corregido dos veces el mismo bug (filtraba por
+  `usuarioId` en vez de por correo): primero en `observarPendientesPara` (DAO), después se
+  encontró que `TopBarStatsViewModel` seguía llamándolo con el id viejo (2026-08-20). Ya debería
+  activarse solo una vez haya una solicitud real pendiente — falta confirmarlo con una segunda
+  cuenta real.
+- **Fase 1.5 — Familia/Equipo**: **invitar miembros de verdad ya se construyó (2026-08-20)** —
+  reutiliza `SolicitudCompartir`/aceptación (`TipoSolicitud.ESPACIO`), agrega un
+  `EspacioMiembro` real al aceptar. Falta probar con una segunda cuenta/dispositivo real. Sigue
+  pendiente: roles admin/miembro con sentido real (hoy quien invita queda admin, quien acepta
+  siempre entra como `MIEMBRO` sin forma de cambiarlo), progreso de un Reto familiar con más de
+  un participante real, y sincronizar el *contenido* del espacio (paso 5 de
+  `12-firebase-auth-y-sync.md` — hoy el segundo miembro está en el espacio pero no ve las tareas
+  del hogar que ya existían ahí, solo lo que cree de ahora en adelante en su propio dispositivo,
+  que tampoco sincroniza todavía). Ver `08-decisiones-tecnicas.md`, 2026-08-20.
 - **Compartir una Lista en seguimiento conjunto con un amigo puntual** (no solo dentro de un
   espacio Familia) — mismo patrón que ya existe en Retos familiares ("X de Y ya cumplieron
   hoy"), aplicado a una Lista. Pedido por el usuario 2026-08-15, ver `08-decisiones-tecnicas.md`.
 
 ## 2. Piezas de UI que quedaron afuera de una fase ya "completa"
 
-- **Copiar una Lista a otra persona vía QR/enlace, sin quedar vinculadas después** — a
-  diferencia de todo lo demás en esta página, esto NO depende de backend (es una transferencia
-  de una sola vez, no una relación en curso que sincronizar), simplemente no se construyó
-  todavía. Es la continuación obvia de "compartir Lista como texto plano" (2026-08-15, ver
-  `08-decisiones-tecnicas.md`) para cuando la otra persona sí tiene Lula instalada y se quiere
-  algo más prolijo que pegar texto.
+**Copiar una Lista a otra persona vía QR — construido (2026-08-20)**, ver
+`08-decisiones-tecnicas.md`.
 
 - Rutinas dentro de Hoy mezcladas con hábitos/tareas sueltos (a propósito no están, para no
   duplicar la visualización).

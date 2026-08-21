@@ -24,6 +24,7 @@ import com.aqpseller.lulaapp.domain.model.DiaHistorialHabito
 import com.aqpseller.lulaapp.domain.model.EstadoActividad
 import com.aqpseller.lulaapp.domain.model.EstadoActividadEnFecha
 import com.aqpseller.lulaapp.domain.model.ItemAgenda
+import com.aqpseller.lulaapp.domain.model.PermisoCompartir
 import com.aqpseller.lulaapp.domain.model.SesionCita
 import com.aqpseller.lulaapp.domain.model.TipoActividad
 import com.aqpseller.lulaapp.domain.model.TomaMedicamento
@@ -172,6 +173,26 @@ class ActividadRepositoryImpl @Inject constructor(
                 usuarioId = usuarioId,
             )
         }
+    }
+
+    override suspend fun agregarPermisoCompartido(actividadId: String, concederA: String, permiso: PermisoCompartir, usuarioId: String) {
+        val actual = actividadDao.obtenerPorId(actividadId) ?: return
+        val puedeVer = (decodeStringList(actual.puedeVerJson) + concederA).distinct()
+        val puedeRecordar = if (permiso == PermisoCompartir.PUEDE_VER_Y_RECORDAR) {
+            (decodeStringList(actual.puedeRecordarJson) + concederA).distinct()
+        } else {
+            decodeStringList(actual.puedeRecordarJson)
+        }
+        val actualizado = actual.copy(puedeVerJson = encodeStringList(puedeVer), puedeRecordarJson = encodeStringList(puedeRecordar))
+        actividadDao.upsert(actualizado)
+        auditLogger.registrar<ActividadEntity>(
+            entidad = "actividad",
+            entidadId = actividadId,
+            accion = AccionAuditoria.ACTUALIZAR,
+            antes = actual,
+            despues = actualizado,
+            usuarioId = usuarioId,
+        )
     }
 
     override suspend fun actualizarHabito(actividadId: String, nombre: String, detalle: ActividadDetalle.Habito, usuarioId: String) {

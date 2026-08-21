@@ -3,6 +3,8 @@ package com.aqpseller.lulaapp.domain.repository
 import com.aqpseller.lulaapp.domain.model.AreaDeVida
 import com.aqpseller.lulaapp.domain.model.Espacio
 import com.aqpseller.lulaapp.domain.model.EspacioMiembro
+import com.aqpseller.lulaapp.domain.model.RolEnEspacio
+import com.aqpseller.lulaapp.domain.model.TipoEspacio
 import kotlinx.coroutines.flow.Flow
 
 interface EspacioRepository {
@@ -21,6 +23,16 @@ interface EspacioRepository {
     suspend fun obtenerEspacioSiEsMiembro(espacioId: String, usuarioId: String): Espacio?
 
     fun observarMiembros(espacioId: String): Flow<List<EspacioMiembro>>
+
+    /** Al aceptar una invitación real a un Espacio Familia — agrega a [usuarioId] como miembro
+     * con [rol]. Ver `Plan/12-firebase-auth-y-sync.md`. */
+    suspend fun agregarMiembro(espacioId: String, usuarioId: String, rol: RolEnEspacio)
+
+    /** Si acepto una invitación a un Espacio que vive en OTRO dispositivo (el de quien me
+     * invitó), ese Espacio no existe en mi base local — y `agregarMiembro` fallaría por la FK
+     * hacia `espacio`. Crea un mirror mínimo solo si no existe ya (nunca pisa uno real). Ver
+     * `Plan/12-firebase-auth-y-sync.md`. */
+    suspend fun asegurarEspacioMinimo(espacioId: String, nombre: String, creadoPor: String, tipo: TipoEspacio)
 
     suspend fun renombrarEspacio(espacioId: String, nuevoNombre: String, usuarioId: String)
 

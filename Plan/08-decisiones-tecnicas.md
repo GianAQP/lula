@@ -3742,3 +3742,182 @@ Console — el de debug no sirve para el APK firmado de Play Store.
 Sigue pendiente: correo mágico (passwordless), sync de `Conexion`/`SolicitudCompartir`/Espacios
 Familia a Firestore, y las reglas de seguridad reales (hoy Firestore sigue con la regla temporal
 de denegar-todo).
+
+## Círculo de cuidado: aceptar/rechazar real + sync a Firestore + reglas de seguridad (2026-08-19)
+
+Al ponerse a sincronizar `Conexion`/`SolicitudCompartir` (paso 4-6 del plan) apareció un hueco
+más grande de lo esperado: **nada en la app aceptaba o rechazaba una solicitud, ni se creaba
+nunca una `Conexion`** — solo existían "enviar" y "cancelar", diseñados en Fase 1.0 pero nunca
+conectados porque no había cómo emparejar cuentas reales. Se cerró ese círculo local primero,
+porque sincronizar solicitudes que nunca se pueden aceptar no serviría de nada.
+
+**Local — aceptar/rechazar:**
+- `SolicitudCompartirRepository.responder(solicitudId, estado, usuarioId)` (nuevo) — marca
+  `ACEPTADA`/`RECHAZADA` + `fechaRespuesta`.
+- `ActividadRepository.agregarPermisoCompartido(actividadId, concederA, permiso, usuarioId)`
+  (nuevo) — agrega a `puedeVer[]` (y a `puedeRecordar[]` si el permiso lo incluye) de la
+  `Actividad`; no-op silencioso si la actividad no vive en este dispositivo.
+- `AceptarSolicitudCompartirUseCase` (nuevo) — encadena `responder(ACEPTADA)` +
+  `ConexionRepository.crearSiNoExiste(...)` + `agregarPermisoCompartido(...)` + push a Firestore.
+- `RechazarSolicitudCompartirUseCase` (nuevo) — `responder(RECHAZADA)` + push a Firestore.
+- **Bug real corregido de paso**: `SolicitudCompartirDao.observarPendientesPara` filtraba por
+  `usuarioId`, pero `para` guarda un contacto de texto libre (correo/teléfono), no un id — nunca
+  iba a matchear nada. Ahora filtra por **correo** del usuario actual.
+- `SolicitudCompartir`/`SolicitudCompartirEntity` ganan `deNombre` (nombre de quien envía,
+  denormalizado — igual que `contexto` ya denormalizaba el nombre del elemento) para que el
+  destinatario vea "Juan te compartió..." en vez de un UUID. Migración `MIGRATION_27_28`
+  (`ALTER TABLE solicitud_compartir ADD COLUMN deNombre TEXT NOT NULL DEFAULT ''`),
+  `LulaDatabase.version = 28`. `CompartirActividadUseCase` ahora resuelve el nombre desde
+  `UsuarioRepository` en vez de requerirlo como parámetro (evita tocar los 6 sitios que ya la
+  llaman: Hábito/Tarea/Rutina/Medicamento/Cita/Meta).
+- `CareCircleScreen`/`ViewModel`/`UiState`: la sección "PERSONAS QUE ACOMPAÑO" (antes un texto
+  fijo) ahora lista solicitudes recibidas con botones "Aceptar"/"Rechazar".
+
+**Firestore — sync real:**
+- Nuevo `domain/repository/CompartirSyncRepository.kt` + `data/repository/CompartirSyncRepositoryImpl.kt`
+  (Firestore) — `subirPerfil`, `subirSolicitud`, `eliminarSolicitud`, `subirConexion`,
+  `escucharSolicitudes` (listener en vivo por `Filter.or(para == miCorreo, de == miUsuarioId)`).
+  Cada push es *best-effort*: envuelto en `runCatching {}` en el caso de uso que lo dispara,
+  nunca bloquea la acción local si Firestore falla o la cuenta no está vinculada — el
+  local-first sigue siendo la garantía real, la nube es un extra.
+- `SincronizarSolicitudesRecibidasUseCase` (nuevo) — corre mientras `CareCircleScreen` esté
+  abierta (`viewModelScope`, se cancela sola al cerrarla), upsertea en Room cada cambio remoto.
+  Room sigue siendo la única fuente de verdad para la UI; Firestore es solo transporte.
+- `ReclamarCuentaConGoogleUseCase` ahora también sube el perfil mínimo a
+  `usuarios/{firebaseUid}` justo después de vincular la cuenta.
+- `di/FirebaseModule.kt` gana `FirebaseFirestore.getInstance()`.
+
+**Problema de diseño real, encontrado y resuelto antes de escribir las reglas**: `de`/`para`/
+`usuarioA`/`usuarioB` son ids de la app (UUID local de Room) o contactos en texto libre — NO son
+el `uid` de Firebase Auth, son dos sistemas de identificación distintos. Las reglas de seguridad
+de Firestore solo pueden verificar contra `request.auth.uid`, así que una regla como
+`request.auth.uid == resource.data.de` nunca iba a funcionar. Solución: cada `SolicitudCompartir`
+subida a Firestore también guarda `deFirebaseUid` (leído de `firebaseAuth.currentUser?.uid` al
+momento de escribir, nunca inventado ni pasado desde afuera), y el lado del destinatario se
+verifica contra `request.auth.token.email` (el correo YA verificado por Firebase, no un dato que
+cualquiera podría falsificar) comparado contra `para`.
+
+**Reglas de seguridad — ahora versionadas en el repo**: nuevo archivo `firestore.rules` en la
+raíz (antes las reglas solo existían pegadas a mano en Firebase Console, sin ningún historial).
+Reemplaza la regla temporal de "denegar todo": `usuarios/{uid}` (lectura para cualquier
+autenticado, escritura solo del dueño), `solicitudes_compartir/{id}` (lectura/escritura solo
+para `deFirebaseUid` o quien tenga el correo de `para`), `conexiones/{id}` (regla provisional
+floja — solo exige estar autenticado, porque nada la lee todavía en ninguna pantalla),
+`espacios/**` (denegado por completo — paso 5 del plan, sin código todavía). **El usuario debe
+pegar el contenido de `firestore.rules` en Firebase Console → Firestore Database → Reglas** (no
+hay Firebase CLI instalado en este entorno para desplegarlo automáticamente).
+
+Compilado y verificado (`compileDebugKotlin`, `EXIT_CODE=0`) e instalado en el dispositivo real
+(moto g(9) plus) — migración a v28 confirmada con `PRAGMA table_info` (columna `deNombre`
+presente), pantalla Círculo de cuidado abierta sin crash con el nuevo listener de Firestore
+corriendo (logcat limpio, sin `FATAL EXCEPTION`/`AndroidRuntime`).
+
+**Deliberadamente fuera de esta ronda** (documentado, no a medias): cuando alguien acepta una
+solicitud que le compartieron, todavía **no ve el contenido real** del hábito/tarea/medicamento
+en su propio dispositivo — hoy solo se sincroniza la solicitud y la conexión (la "capa social"),
+no la actividad en sí. Mostrar el detalle real cruzando cuentas es un paso más grande (mapear
+cada tipo de actividad a un documento de Firestore + una pantalla nueva de "lo que otros
+comparten conmigo") que queda como siguiente pieza en `Plan/10-pendientes.md`. Tampoco se
+construyó todavía el sync de Espacios Familia (paso 5 del plan) ni se probó de punta a punta con
+dos cuentas reales — falta una segunda persona/dispositivo para eso.
+
+## Invitar de verdad a un Espacio Familia (2026-08-20)
+
+Antes de sincronizar el *contenido* de un Espacio Familia (paso 5 del plan), se confirmó un
+bloqueo real: `FamiliaScreen` decía explícitamente "Invitar a alguien de verdad todavía no se
+puede" — sincronizar el contenido de un espacio que nunca puede tener un segundo miembro real
+no serviría de nada. Se construyó la invitación real primero, **reutilizando toda la
+infraestructura de `SolicitudCompartir` de Círculo de cuidado en vez de duplicarla**:
+
+- `TipoSolicitud` (nuevo enum: `ACTIVIDAD`/`ESPACIO`) — `SolicitudCompartir.elementoId` ahora
+  puede ser un `actividadId` (como antes) o un `espacioId`; `permisos` solo tiene efecto para
+  `ACTIVIDAD`. Migración `MIGRATION_28_29`, `LulaDatabase.version = 29`.
+- `EspacioRepository.agregarMiembro(espacioId, usuarioId, rol)` (nuevo).
+- `InvitarAEspacioUseCase` (nuevo, en `domain/usecase/espacio/`) — mismo patrón que
+  `CompartirActividadUseCase`: crea una `SolicitudCompartir(tipo = ESPACIO)` y la sube a
+  Firestore.
+- `AceptarSolicitudCompartirUseCase` ahora bifurca por `solicitud.tipo`: `ACTIVIDAD` sigue dando
+  acceso en la actividad (como antes); `ESPACIO` agrega al usuario como `EspacioMiembro` real.
+  En ambos casos se crea la `Conexion`.
+- `CareCircleScreen` distingue visualmente una invitación a Familia ("🏠 Invitación a la Familia
+  ...") de una solicitud de actividad normal — se reutiliza la misma bandeja de "recibidas", no
+  se construyó una pantalla aparte.
+- `FamiliaScreen` gana el formulario real de invitar (pedir correo, botón "Enviar invitación"),
+  visible solo si la cuenta ya está vinculada con Google.
+
+**Bug real encontrado y arreglado en vivo, con logcat**: al aceptar la primera invitación a
+Familia, la app se cerraba. El log mostró la causa exacta:
+`kotlinx.serialization.SerializationException: Serializer for class 'EspacioMiembroEntity' is
+not found` — esa entidad nunca se había marcado `@Serializable` porque, hasta ahora, nada la
+auditaba (`AuditLogger` usa `kotlinx.serialization` para serializar antes/después). Se agregó
+`@Serializable` a `EspacioMiembroEntity`. Como el crash pasó a mitad del flujo (la solicitud ya
+había quedado `ACEPTADA` localmente antes de tronar, pero sin crear el `EspacioMiembro`), se
+corrigió el dato inconsistente a mano en el dispositivo (parar la app, sacar `lula.db`, revertir
+esa fila a `PENDIENTE` con `sqlite3` local, empujarla de vuelta, borrar `-wal`/`-shm` viejos)
+para poder reprobar limpio. **Nota para el futuro**: estos pasos (`responder` → `crearSiNoExiste`
+→ `agregarPermisoCompartido`/`agregarMiembro`) no corren en una sola transacción — si algo falla
+a mitad de camino puede dejar estado a medias, como pasó acá. No se envolvió en una transacción
+esta ronda (cruza tres repositorios distintos); queda como mejora pendiente si se repite.
+
+Segundo intento: compiló, se instaló, y **aceptar una invitación a Familia funcionó de punta a
+punta** — verificado con la base de datos real del dispositivo: la solicitud quedó `ACEPTADA` y
+apareció una fila nueva en `espacio_miembro` con `rol = MIEMBRO`, sin tocar la fila `ADMIN`
+original.
+
+## Compartir por código QR: Listas, "mi código para conectar", y botón global de escanear (2026-08-20)
+
+El usuario comparó con Yape (QR sin abrir la app, escanear = ya quedó hecho) y pidió avanzar esa
+dirección. Se aclaró primero una diferencia importante de diseño: escanear en persona SÍ puede
+saltarse el paso de "aceptar" (es la persona físicamente mostrando su código, no una solicitud
+remota sin revisar) — pero eso solo aplica a lo que es 100% local (Listas); para conectar
+personas/Familia se mantuvo el paso de aceptar que ya existe y está probado, porque abrir esa
+puerta requeriría reglas de Firestore nuevas (un "código canjeable" que cualquiera puede
+reclamar) y, aun resuelto eso, quien invita seguiría sin enterarse de que alguien se unió hasta
+que exista sync real del contenido del Espacio (pendiente, ver más abajo) — no vale la pena
+construir una función a medias.
+
+**Compartir una Lista por QR** — transferencia de una sola vez, 100% local, sin backend (ver
+`Plan/10-pendientes.md`):
+- `core/utils/ListaQrCodec.kt` (nuevo) — codifica `{nombre, items}` como JSON con prefijo
+  `LULA_LISTA_V1:`.
+- `ListDetailScreen.kt` — botón "Por código" muestra el QR (reutiliza `QrCodeGenerator` ya
+  existente, sin cambios).
+- `ImportarListaDesdeQrUseCase` (nuevo) — decodifica y llama a `ListaRepository.crear` (mismo
+  camino que crear una lista a mano).
+
+**Escanear real** — no existía nada de esto: sin permiso de cámara, sin librería de lectura.
+Se eligió el **Code Scanner de Google Play Services**
+(`com.google.android.gms:play-services-code-scanner`) en vez de CameraX+zxing manual o ML Kit
+embebido — da una UI de escaneo lista, y **no requiere declarar permiso de cámara en el
+manifiesto** (lo maneja el módulo de Play Services aparte). `core/utils/QrScanner.kt`
+(`escanearQr(context): String?`, suspend, wrapper sobre el `Task<Barcode>`).
+
+**"Mi código para conectar"** (`ProfileScreen.kt`, solo visible con cuenta vinculada) — un QR
+con el propio correo (`core/utils/ContactoQrCodec.kt`, prefijo `LULA_CONTACTO_V1:`), para que
+otra persona lo escanee y no tenga que escribirlo a mano al compartir/invitar.
+
+**Botón único de escanear, en la barra superior** (`LulaTopBar.kt`, visible en toda la app) —
+a pedido del usuario, en vez de un botón distinto enterrado en cada pantalla (Listas, Compartir,
+Invitar a Familia — todos esos botones sueltos se sacaron después de agregar este). Detecta
+solo qué tipo de código de Lula es: si es una Lista, la importa directo; si es un contacto, copia
+el correo al portapapeles con un aviso de dónde pegarlo. `TopBarStatsViewModel.escanear(...)`
+hace el enrutamiento.
+
+**Bug real encontrado de paso**: el aviso "📩" de solicitudes pendientes en la barra superior
+llamaba a `obtenerSolicitudesRecibidasUseCase` con el `usuarioId`, no con el correo — el mismo
+bug que ya se había corregido en el DAO la ronda pasada, pero que no se había propagado hasta
+`TopBarStatsViewModel`. Corregido (ahora resuelve el correo vía `UsuarioRepository` antes de
+llamar).
+
+**Íconos reales en vez de emoji** — el usuario mostró una captura de otra app (Alipay/similar)
+con íconos claros de "compartir por QR"/"escanear QR" y pidió lo mismo; un emoji (📷, 🔳) no se
+entendía o parecía "sacar foto". Se agregó `androidx.compose.material:material-icons-extended`
+**solo para estos dos íconos** (`Icons.Filled.QrCode`, `Icons.Filled.QrCodeScanner`) — el resto
+de la app sigue siendo 100% emoji a propósito (decisión de siempre, ver
+`Plan/02-pantallas.md`/`Plan/CLAUDE.md`). R8 recorta los íconos no usados en el build de
+release, así que el costo real en tamaño de APK es mínimo.
+
+Compilado y verificado (`compileDebugKotlin`, `EXIT_CODE=0`) e instalado en el dispositivo real
+en cada paso — sin crash. **No probado con un segundo dispositivo real todavía** (queda para
+cuando el usuario tenga el `.apk` de debug instalado en un segundo teléfono — ver
+`Plan/10-pendientes.md`).

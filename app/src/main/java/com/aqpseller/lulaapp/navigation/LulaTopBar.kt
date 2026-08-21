@@ -1,5 +1,6 @@
 package com.aqpseller.lulaapp.navigation
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -8,8 +9,11 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -19,18 +23,24 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.aqpseller.lulaapp.core.ui.StatPill
+import com.aqpseller.lulaapp.core.utils.escanearQr
 import com.aqpseller.lulaapp.ui.theme.LulaFamiliaContainerDark
 import com.aqpseller.lulaapp.ui.theme.LulaFamiliaContainerLight
 import com.aqpseller.lulaapp.ui.theme.LulaFinanzasContainerLight
 import com.aqpseller.lulaapp.ui.theme.LulaRachaContainerLight
 import com.aqpseller.lulaapp.ui.theme.lulaContainerColor
 import com.aqpseller.lulaapp.ui.theme.lulaContentColorSobreContainer
+import kotlinx.coroutines.launch
 
 /**
  * Fila fija en todas las pantallas (mismo nivel que el menú "⋮"): racha 🔥, gastos de hoy 💰 —
@@ -52,7 +62,22 @@ fun LulaTopBar(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var mostrarMenu by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val clipboardManager = LocalClipboardManager.current
+    val scope = rememberCoroutineScope()
     LaunchedEffect(currentRoute) { viewModel.refrescar() }
+    LaunchedEffect(uiState.mensaje) {
+        uiState.mensaje?.let {
+            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
+            viewModel.mensajeMostrado()
+        }
+    }
+    LaunchedEffect(uiState.correoParaCopiar) {
+        uiState.correoParaCopiar?.let {
+            clipboardManager.setText(AnnotatedString(it))
+            viewModel.correoCopiado()
+        }
+    }
 
     Column(modifier = Modifier.fillMaxWidth().statusBarsPadding()) {
         // Banda de color propio (nunca usado para otra cosa) para que se note en CUALQUIER
@@ -118,6 +143,14 @@ fun LulaTopBar(
                 IconButton(onClick = onAbrirCirculoDeCuidado) {
                     Text("📩", style = MaterialTheme.typography.titleLarge)
                 }
+            }
+
+            // Un solo botón de escanear, visible en toda la app — detecta solo qué tipo de
+            // código de Lula es (Lista, contacto para conectar) en vez de tener uno distinto
+            // enterrado en cada pantalla. A pedido del usuario, ver `08-decisiones-tecnicas.md`.
+            // Ícono real (no emoji) — un emoji de QR no se entendía, ver misma nota.
+            IconButton(onClick = { scope.launch { escanearQr(context)?.let { viewModel.escanear(it) } } }) {
+                Icon(Icons.Filled.QrCodeScanner, contentDescription = "Escanear código")
             }
 
             // El ancla de `DropdownMenu` es el layout que lo contiene directamente — envolver

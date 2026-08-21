@@ -97,9 +97,11 @@ interface SolicitudCompartirDao {
     @Query("SELECT * FROM solicitud_compartir WHERE de = :usuarioId ORDER BY fechaSolicitud DESC")
     fun observarEnviadasPor(usuarioId: String): Flow<List<SolicitudCompartirEntity>>
 
-    /** Para cuando exista aceptación real entre cuentas — hoy siempre vacío en un solo dispositivo. */
-    @Query("SELECT * FROM solicitud_compartir WHERE para = :usuarioId AND estado = 'PENDIENTE'")
-    fun observarPendientesPara(usuarioId: String): Flow<List<SolicitudCompartirEntity>>
+    /** `para` guarda un contacto (correo/teléfono) de texto libre, no un `usuarioId` — hay que
+     * filtrar por mi propio correo, no por mi id. Vacío hasta vincular la cuenta con Google
+     * (sin correo, nunca puede matchear). Ver `Plan/12-firebase-auth-y-sync.md`. */
+    @Query("SELECT * FROM solicitud_compartir WHERE para = :correo AND estado = 'PENDIENTE'")
+    fun observarPendientesPara(correo: String): Flow<List<SolicitudCompartirEntity>>
 
     @Query("DELETE FROM solicitud_compartir WHERE id = :id")
     suspend fun eliminar(id: String)

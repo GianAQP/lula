@@ -54,6 +54,11 @@ enum class PermisoCompartir { PUEDE_VER, PUEDE_VER_Y_RECORDAR }
 /** Ver `Plan/01-arquitectura.md` — compartir siempre es solicitud + aceptación, nunca automático. */
 enum class EstadoSolicitud { PENDIENTE, ACEPTADA, RECHAZADA, ESPERANDO_INSTALACION }
 
+/** Qué representa `SolicitudCompartir.elementoId` — un `actividadId` (compartir un hábito/tarea
+ * puntual) o un `espacioId` (invitar a un Espacio Familia). `permisos` solo aplica a ACTIVIDAD.
+ * Reutiliza toda la misma infraestructura de solicitud+aceptación+sync en vez de duplicarla. */
+enum class TipoSolicitud { ACTIVIDAD, ESPACIO }
+
 enum class CanalEnvio { CORREO, WHATSAPP, SMS }
 
 enum class OrigenCambio { LOCAL, SYNC }

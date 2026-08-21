@@ -1,10 +1,11 @@
-package com.aqpseller.lulaapp.domain.usecase.carecircle
+package com.aqpseller.lulaapp.domain.usecase.espacio
 
 import com.aqpseller.lulaapp.core.utils.DateTimeUtils
 import com.aqpseller.lulaapp.core.utils.IdGenerator
 import com.aqpseller.lulaapp.domain.model.EstadoSolicitud
 import com.aqpseller.lulaapp.domain.model.PermisoCompartir
 import com.aqpseller.lulaapp.domain.model.SolicitudCompartir
+import com.aqpseller.lulaapp.domain.model.TipoSolicitud
 import com.aqpseller.lulaapp.domain.repository.CompartirSyncRepository
 import com.aqpseller.lulaapp.domain.repository.SolicitudCompartirRepository
 import com.aqpseller.lulaapp.domain.repository.UsuarioRepository
@@ -12,34 +13,28 @@ import kotlinx.coroutines.flow.first
 import javax.inject.Inject
 
 /**
- * Envía una solicitud para compartir el seguimiento de una actividad con alguien — regla no
- * negociable: compartir es **solicitud + aceptación**, nunca automático (ver
- * `Plan/01-arquitectura.md`). Esta solicitud queda `PENDIENTE`; todavía no hay forma de que
- * la otra persona la acepte de verdad (necesita cuenta propia, ver `08-decisiones-tecnicas.md`),
- * así que **no** modifica `puedeVer[]`/`puedeRecordar[]` de la actividad todavía.
+ * Invita a una persona real a un Espacio Familia — reutiliza exactamente la misma
+ * infraestructura de solicitud + aceptación + sync de Círculo de cuidado
+ * (`SolicitudCompartir` con `tipo = ESPACIO`), en vez de duplicarla. Ver
+ * `Plan/12-firebase-auth-y-sync.md`.
  */
-class CompartirActividadUseCase @Inject constructor(
+class InvitarAEspacioUseCase @Inject constructor(
     private val solicitudCompartirRepository: SolicitudCompartirRepository,
     private val usuarioRepository: UsuarioRepository,
     private val compartirSyncRepository: CompartirSyncRepository,
 ) {
-    suspend operator fun invoke(
-        deUsuarioId: String,
-        actividadId: String,
-        nombreActividad: String,
-        contactoDestinatario: String,
-        permiso: PermisoCompartir,
-    ) {
+    suspend operator fun invoke(deUsuarioId: String, espacioId: String, nombreEspacio: String, contactoDestinatario: String) {
         val miNombre = usuarioRepository.observarUsuario().first()?.nombrePreferido ?: "Alguien"
         val solicitud = SolicitudCompartir(
             id = IdGenerator.newId(),
             de = deUsuarioId,
             para = contactoDestinatario,
             tieneCuenta = false,
-            elementoId = actividadId,
-            contexto = nombreActividad,
+            elementoId = espacioId,
+            contexto = nombreEspacio,
             deNombre = miNombre,
-            permisos = permiso,
+            tipo = TipoSolicitud.ESPACIO,
+            permisos = PermisoCompartir.PUEDE_VER_Y_RECORDAR, // sin efecto para ESPACIO, ver SolicitudCompartir
             estado = EstadoSolicitud.PENDIENTE,
             canalEnvio = null,
             fechaSolicitud = DateTimeUtils.ahoraEpochMillis(),

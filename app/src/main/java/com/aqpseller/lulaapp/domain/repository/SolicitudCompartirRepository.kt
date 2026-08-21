@@ -1,9 +1,12 @@
 package com.aqpseller.lulaapp.domain.repository
 
+import com.aqpseller.lulaapp.domain.model.EstadoSolicitud
 import com.aqpseller.lulaapp.domain.model.SolicitudCompartir
 import kotlinx.coroutines.flow.Flow
 
 interface SolicitudCompartirRepository {
+    /** También sirve para "recibir" una solicitud que llegó por Firestore (upsert por id) —
+     * ver `Plan/12-firebase-auth-y-sync.md`. */
     suspend fun crear(solicitud: SolicitudCompartir, usuarioId: String)
 
     /**
@@ -14,14 +17,15 @@ interface SolicitudCompartirRepository {
      */
     suspend fun cancelar(solicitudId: String, usuarioId: String)
 
+    /** Acepta o rechaza una solicitud que me enviaron — marca `estado` y `fechaRespuesta`. */
+    suspend fun responder(solicitudId: String, estado: EstadoSolicitud, usuarioId: String)
+
     fun observarEnviadasPor(usuarioId: String): Flow<List<SolicitudCompartir>>
 
     /**
-     * Solicitudes que alguien más me envió a mí, todavía sin responder — hoy siempre vacío en
-     * un solo dispositivo: `para` guarda un contacto (correo/teléfono) de texto libre, no un
-     * `usuarioId` real, porque no existe ninguna cuenta ni servidor que empareje ambos lados.
-     * Queda conectado igual para activarse solo en cuanto eso exista (ver
-     * `Plan/08-decisiones-tecnicas.md`).
+     * Solicitudes que alguien más me envió a mí, todavía sin responder — filtra por mi correo
+     * (`para` es un contacto de texto libre, no un `usuarioId`). Vacío hasta que la cuenta esté
+     * vinculada con Google. Ver `Plan/12-firebase-auth-y-sync.md`.
      */
-    fun observarPendientesPara(usuarioId: String): Flow<List<SolicitudCompartir>>
+    fun observarPendientesPara(correo: String): Flow<List<SolicitudCompartir>>
 }

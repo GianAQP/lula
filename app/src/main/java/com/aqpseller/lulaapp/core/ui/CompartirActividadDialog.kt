@@ -25,8 +25,9 @@ private fun etiquetaPermiso(permiso: PermisoCompartir): String = when (permiso) 
 /**
  * "Compartir seguimiento" desde el detalle de cualquier elemento — primer paso del flujo de
  * `Plan/02-pantallas.md` (Círculo de cuidado, fase 1.0). Crea una `SolicitudCompartir`
- * `PENDIENTE`; todavía no hay envío real (correo/WhatsApp/SMS) ni aceptación de la otra
- * persona — eso necesita cuentas reales, ver `Plan/08-decisiones-tecnicas.md`.
+ * `PENDIENTE`; se sincroniza con Firestore si la otra persona tiene cuenta vinculada — ver
+ * `Plan/12-firebase-auth-y-sync.md`. El correo se puede pegar directo (escaneado con el botón
+ * "🔳" de la barra superior en vez de escribirlo a mano).
  */
 @Composable
 fun CompartirActividadDialog(

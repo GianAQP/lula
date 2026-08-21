@@ -1,20 +1,27 @@
 package com.aqpseller.lulaapp.features.profile
 
 import android.widget.Toast
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.QrCode
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -36,6 +43,8 @@ import com.aqpseller.lulaapp.core.ui.HoraSelector
 import com.aqpseller.lulaapp.core.ui.SectionLinkRow
 import com.aqpseller.lulaapp.core.ui.TarjetaSeccion
 import com.aqpseller.lulaapp.core.utils.DateTimeUtils
+import com.aqpseller.lulaapp.core.utils.QrCodeGenerator
+import com.aqpseller.lulaapp.core.utils.codificarContactoQr
 import com.aqpseller.lulaapp.core.utils.reiniciarApp
 import com.aqpseller.lulaapp.domain.legal.TipoDocumentoLegal
 import com.aqpseller.lulaapp.domain.model.MetodoLogin
@@ -105,6 +114,33 @@ fun ProfileScreen(
                     modifier = Modifier.padding(top = 8.dp).fillMaxWidth(),
                 ) {
                     Text("Cerrar sesión de Google")
+                }
+                usuario?.correo?.let { correo ->
+                    var mostrarCodigo by remember { mutableStateOf(false) }
+                    TextButton(onClick = { mostrarCodigo = true }, modifier = Modifier.padding(top = 4.dp)) {
+                        Icon(Icons.Filled.QrCode, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Text(" Mi código para conectar")
+                    }
+                    if (mostrarCodigo) {
+                        val textoQr = remember(correo) { codificarContactoQr(correo, usuario?.nombrePreferido ?: "Alguien") }
+                        val qr = remember(textoQr) { QrCodeGenerator.generar(textoQr) }
+                        AlertDialog(
+                            onDismissRequest = { mostrarCodigo = false },
+                            confirmButton = { TextButton(onClick = { mostrarCodigo = false }) { Text("Listo") } },
+                            title = { Text("Que te escaneen para conectar") },
+                            text = {
+                                Column {
+                                    Text(
+                                        text = "Al compartir o invitar a Familia, la otra persona puede escanear " +
+                                            "esto en vez de escribir tu correo a mano.",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        modifier = Modifier.padding(bottom = 12.dp),
+                                    )
+                                    qr?.let { Image(bitmap = it, contentDescription = null, modifier = Modifier.size(220.dp)) }
+                                }
+                            },
+                        )
+                    }
                 }
             } else {
                 Text(
