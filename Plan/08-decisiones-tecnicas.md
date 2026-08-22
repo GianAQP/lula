@@ -4034,3 +4034,89 @@ Firestore muestra por defecto un aviso de vencimiento de 30 días cuando se crea
 prueba" (reglas abiertas), pero esa etapa ya se superó hace varias rondas cuando se pegaron las
 primeras reglas reales de verdad (deny-all, después las granulares). El plan Spark (gratis) no
 tiene fecha de vencimiento — no hay nada pendiente de migrar.
+
+## Restaurar membresía a Espacios Familia en un celular nuevo (2026-08-21)
+
+El usuario preguntó explícitamente "¿recupero lo de Familia si cambio de celular?" — la
+respuesta honesta fue "el contenido sí está en la nube, pero tu membresía no se restaura sola
+todavía", exactamente el hueco identificado unas rondas atrás. Se cerró ahora.
+
+**Problema de diseño resuelto**: para saber "en qué Espacios Familia soy miembro" en un celular
+nuevo, la opción obvia (`collectionGroup("miembros").where("firebaseUid", "==", miUid)`)
+necesita un índice compuesto que Firestore no crea solo — hay que configurarlo a mano en la
+consola o con Firebase CLI, que no está instalado en este entorno. Se evitó ese problema con un
+diseño más simple: un puntero liviano en el propio perfil,
+`usuarios/{miFirebaseUid}/misEspacios/{espacioId}`, que cada quien escribe sobre sí mismo al
+crear o aceptar unirse a un Espacio Familia — descubrirlos es una consulta directa sin índices
+especiales.
+
+- `EspacioSyncRepository` gana `subirPunteroMiEspacio(espacioId)` y
+  `descubrirMisEspacios(): List<Pair<Espacio, EspacioMiembro>>`.
+- Se escribe el puntero en `CrearEspacioFamiliaUseCase`, en `AceptarSolicitudCompartirUseCase`
+  (rama ESPACIO), y en el "respaldo" de `SincronizarEspacioFamiliaUseCase` (así un Espacio
+  Familia viejo, creado antes de que este puntero existiera, también se auto-repara la próxima
+  vez que se visita — mismo patrón que el respaldo de membresía de la ronda pasada).
+- `RestaurarEspaciosFamiliaUseCase` (nuevo) — descubre mis espacios, asegura el mirror local
+  mínimo + mi membresía, y trae el contenido (Tareas/Retos) de una sola vez (reutiliza los
+  mismos `escuchar*` de `EspacioSyncRepository`, tomando solo la primera emisión con `.first()`
+  en vez de quedarse escuchando — el listener en vivo lo retoma `TopBarStatsViewModel` recién
+  cuando de verdad se entra a ese espacio). Se llama al vincular la cuenta con Google y en cada
+  apertura de la app (igual que `RestaurarDatosPersonalesUseCase`).
+- Reglas de seguridad nuevas para `usuarios/{uid}/misEspacios/{espacioId}`.
+
+Confirmado con Firebase Console: el documento `usuarios/{uid}/misEspacios/{espacioId}` con el
+`espacioId` de "Familia Vllca" — el puntero se creó correctamente al cambiar de espacio activo
+(donde vive el "respaldo" que también lo escribe). Sin crash, sin errores de permisos en el
+segundo intento (el primero falló porque las reglas nuevas no estaban publicadas todavía —
+mismo patrón de esta sesión: error real, se corrige, se confirma).
+
+## Respaldo del Espacio Personal — Finanzas, Diario, Notas, Metas, Listas y Mi propósito (2026-08-22)
+
+Continuación directa de la ronda anterior ("recuperar la cuenta por completo"): el usuario
+preguntó explícitamente si Finanzas/Notas/Diario se guardaban al cambiar de celular — la
+respuesta fue "todavía no, solo Hábitos/Tareas" — y pidió cerrar ese hueco. Mismo patrón ya
+probado de `PersonalSyncRepository` (subir en cada escritura con `runCatching`, restaurar una
+sola vez al vincular cuenta / abrir la app), extendido a los 6 tipos que faltaban del Espacio
+Personal. Quedan fuera a propósito, mismo patrón para cuando haga falta: Medicamentos, Citas,
+Fechas importantes.
+
+**Firestore**: un tipo, una colección — `usuarios/{uid}/movimientosFinancieros`,
+`/entradasDiario`, `/notas`, `/metas`, `/listas` (cada Lista guarda sus ítems como array
+embebido de mapas, no como subcolección — no hace falta un `.get()` extra para leerlos) y
+`/proposito` (documento único `"unico"`, no una colección de muchos). Reglas: mismo patrón
+privado que `actividadesPersonales` — solo `request.auth.uid == firebaseUid`.
+
+**Restauración por tipo — reglas distintas según qué tan idempotente era ya cada repositorio**:
+- Finanzas, Diario, Notas, Metas: sus métodos `crear`/`registrar` ya eran upsert-por-id-real
+  (`@Upsert` de Room), así que `RestaurarDatosPersonalesUseCase` los reutiliza tal cual — no
+  hizo falta ningún método nuevo en esos repositorios.
+- Listas: `ListaRepository.crear()` siempre genera un id nuevo (pensado para "crear una lista
+  nueva desde cero", no para restaurar una que ya existe) — no servía para restaurar sin
+  duplicar. Se agregó `ListaRepository.mergeRemota(espacioId, lista, usuarioId)`: upsert por
+  el id original tanto de la `ListaEntity` como de cada `ListaItemEntity`, preservando
+  `fechaCreacion`/`orden` si la lista ya existía localmente.
+- Mi propósito: `guardarRespuesta` ya mezcla una respuesta a la vez sobre el mapa existente, así
+  que restaurar es simplemente iterar `respuestas.forEach { guardarRespuesta(...) }` — tampoco
+  hizo falta un método nuevo.
+
+**Push desde las pantallas — mismo problema repetido en Listas**: la mayoría de casos de uso
+(`CrearNotaUseCase`, `RegistrarMovimientoUseCase`, etc.) ya construyen el objeto completo antes
+de guardarlo, así que pushearlo es directo. Los casos de uso de ítems de Lista
+(`MarcarItemListaUseCase`, `EliminarItemListaUseCase`) en cambio solo reciben el `itemId`, no la
+`Lista` completa que hay que subir — se agregó `ListaRepository.obtenerListaIdDeItem(itemId)`
+para encontrar a qué lista pertenece y volver a leerla completa (`observarConItems(listaId)
+.first()`) antes de subirla. En `EliminarItemListaUseCase` el id de la lista se lee **antes** de
+borrar el ítem (después ya no se puede reconstruir la relación).
+
+**Decisión de privacidad explícita, confirmada con el usuario**: Diario vive documentado dentro
+de "Zona Privada" (gateado con huella/biometría, nunca salía del celular). Se le preguntó
+directamente si quería que Diario se respaldara igual que el resto — confirmó que sí. Diferencia
+importante a tener presente: localmente sigue protegido por biometría, pero en la nube queda
+protegido por la cuenta de Google, no por la huella del teléfono.
+
+**Bug real encontrado y arreglado con logcat, mismo patrón que todas las rondas anteriores**: el
+primer intento de guardar una respuesta de Mi propósito falló con `PERMISSION_DENIED` en
+`usuarios/{uid}/proposito/unico` porque las reglas nuevas todavía no estaban publicadas. Se le
+pasaron al usuario, las publicó, y el reintento (Meta + Lista + Propósito juntos) pasó limpio —
+sin `PERMISSION_DENIED`, sin excepciones — confirmado con logcat y visualmente en Firebase
+Console.

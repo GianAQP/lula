@@ -33,8 +33,11 @@ Hábitos, tareas, finanzas y cuidado no son módulos sueltos: son piezas que ali
   proyecto en Firebase Console.
 - **Autenticación**: Firebase Authentication (Google Sign-In + enlace mágico por correo,
   sin contraseñas clásicas) — diseñado, no construido; hoy la app usa un usuario semilla local.
-- **Modelo de datos**: local-first, sincronización a la nube en segundo plano (solo espacios
-  Familia/Conexiones — los espacios Personales nunca suben, ver `Plan/12-firebase-auth-y-sync.md`)
+- **Modelo de datos**: local-first, sincronización a la nube en segundo plano — Familia/
+  Conexiones (varias personas, listener en vivo) y, desde 2026-08-22, también el Espacio
+  Personal (Hábitos, Tareas, Finanzas, Diario, Notas, Metas, Listas, Mi propósito — un solo
+  dispositivo activo a la vez, push+restaurar-una-vez, sin restricción de premium todavía). Ver
+  `Plan/12-firebase-auth-y-sync.md` y `Plan/08-decisiones-tecnicas.md`.
 
 ## Regla de diseño no negociable
 

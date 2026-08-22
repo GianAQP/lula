@@ -5,10 +5,12 @@ import com.aqpseller.lulaapp.domain.model.MovimientoFinanciero
 import com.aqpseller.lulaapp.domain.model.Privacidad
 import com.aqpseller.lulaapp.domain.model.TipoMovimientoFinanciero
 import com.aqpseller.lulaapp.domain.repository.FinanzasRepository
+import com.aqpseller.lulaapp.domain.repository.PersonalSyncRepository
 import javax.inject.Inject
 
 class RegistrarMovimientoUseCase @Inject constructor(
     private val finanzasRepository: FinanzasRepository,
+    private val personalSyncRepository: PersonalSyncRepository,
 ) {
     suspend operator fun invoke(
         espacioId: String,
@@ -30,5 +32,6 @@ class RegistrarMovimientoUseCase @Inject constructor(
             privacidad = Privacidad.SOLO_YO,
         )
         finanzasRepository.registrarMovimiento(movimiento, usuarioId)
+        runCatching { personalSyncRepository.subirMovimientoFinanciero(movimiento) }
     }
 }

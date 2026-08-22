@@ -14,6 +14,7 @@ import com.aqpseller.lulaapp.domain.model.RetoFamiliar
 import com.aqpseller.lulaapp.domain.model.RolEnEspacio
 import com.aqpseller.lulaapp.domain.model.SyncStatus
 import com.aqpseller.lulaapp.domain.model.TipoActividad
+import com.aqpseller.lulaapp.domain.model.TipoEspacio
 import com.aqpseller.lulaapp.domain.repository.EspacioSyncRepository
 import com.aqpseller.lulaapp.domain.repository.RegistroRetoRemoto
 import com.google.firebase.auth.FirebaseAuth
@@ -55,6 +56,36 @@ class EspacioSyncRepositoryImpl @Inject constructor(
         val datos = mapOf("usuarioIdLocal" to miembro.usuarioId, "rol" to miembro.rol.name)
         firestore.collection(COLECCION_ESPACIOS).document(espacioId)
             .collection("miembros").document(miFirebaseUid).set(datos).await()
+    }
+
+    override suspend fun subirPunteroMiEspacio(espacioId: String) {
+        val miFirebaseUid = firebaseAuth.currentUser?.uid ?: return
+        firestore.collection("usuarios").document(miFirebaseUid)
+            .collection("misEspacios").document(espacioId).set(mapOf("espacioId" to espacioId)).await()
+    }
+
+    override suspend fun descubrirMisEspacios(): List<Pair<Espacio, EspacioMiembro>> {
+        val miFirebaseUid = firebaseAuth.currentUser?.uid ?: return emptyList()
+        val punteros = firestore.collection("usuarios").document(miFirebaseUid)
+            .collection("misEspacios").get().await()
+        return punteros.documents.mapNotNull { puntero ->
+            val espacioId = puntero.id
+            val espacioDoc = firestore.collection(COLECCION_ESPACIOS).document(espacioId).get().await()
+            if (!espacioDoc.exists()) return@mapNotNull null
+            val miembroDoc = firestore.collection(COLECCION_ESPACIOS).document(espacioId)
+                .collection("miembros").document(miFirebaseUid).get().await()
+            if (!miembroDoc.exists()) return@mapNotNull null
+            val espacio = Espacio(
+                id = espacioId,
+                tipo = runCatching { TipoEspacio.valueOf(espacioDoc.getString("tipo") ?: "") }.getOrDefault(TipoEspacio.FAMILIA),
+                nombre = espacioDoc.getString("nombre") ?: "",
+                creadoPor = espacioDoc.getString("creadoPor") ?: "",
+                fechaCreacion = espacioDoc.getLong("fechaCreacion") ?: 0L,
+            )
+            val usuarioIdLocal = miembroDoc.getString("usuarioIdLocal") ?: return@mapNotNull null
+            val rol = runCatching { RolEnEspacio.valueOf(miembroDoc.getString("rol") ?: "") }.getOrDefault(RolEnEspacio.MIEMBRO)
+            espacio to EspacioMiembro(espacioId = espacioId, usuarioId = usuarioIdLocal, rol = rol)
+        }
     }
 
     override suspend fun subirTarea(espacioId: String, actividad: Actividad, detalle: ActividadDetalle.Tarea) {

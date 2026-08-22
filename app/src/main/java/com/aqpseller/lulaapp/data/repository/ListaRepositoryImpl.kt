@@ -97,6 +97,9 @@ class ListaRepositoryImpl @Inject constructor(
         )
     }
 
+    override suspend fun obtenerListaIdDeItem(itemId: String): String? =
+        listaItemDao.obtenerPorId(itemId)?.listaId
+
     override suspend fun eliminarItem(itemId: String, usuarioId: String) {
         val actual = listaItemDao.obtenerPorId(itemId) ?: return
         listaItemDao.eliminar(itemId)
@@ -140,6 +143,30 @@ class ListaRepositoryImpl @Inject constructor(
             entidadId = listaId,
             accion = AccionAuditoria.ELIMINAR,
             antes = actual,
+            usuarioId = usuarioId,
+        )
+    }
+
+    override suspend fun mergeRemota(espacioId: String, lista: ListaConItems, usuarioId: String) {
+        val existente = listaDao.obtenerPorId(lista.id)
+        val orden = existente?.orden ?: (listaDao.obtenerMayorOrden(espacioId) + 1)
+        val entity = ListaEntity(
+            id = lista.id,
+            espacioId = espacioId,
+            nombre = lista.nombre,
+            fechaCreacion = existente?.fechaCreacion ?: DateTimeUtils.ahoraEpochMillis(),
+            orden = orden,
+        )
+        listaDao.upsert(entity)
+        lista.items.forEach { item ->
+            listaItemDao.upsert(ListaItemEntity(id = item.id, listaId = lista.id, texto = item.texto, marcado = item.marcado, orden = item.orden))
+        }
+        auditLogger.registrar<ListaEntity>(
+            entidad = "lista",
+            entidadId = lista.id,
+            accion = if (existente == null) AccionAuditoria.CREAR else AccionAuditoria.ACTUALIZAR,
+            antes = existente,
+            despues = entity,
             usuarioId = usuarioId,
         )
     }

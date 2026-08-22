@@ -30,6 +30,36 @@ service cloud.firestore {
       match /registrosHabito/{registroId} {
         allow read, write: if request.auth != null && request.auth.uid == firebaseUid;
       }
+
+      // Puntero liviano a cada Espacio Familia del que soy miembro — para descubrirlos en un
+      // celular nuevo sin necesitar una collectionGroup query (necesitaría un índice compuesto
+      // que no se puede crear sin Firebase CLI en este entorno). Ver
+      // `Plan/12-firebase-auth-y-sync.md`.
+      match /misEspacios/{espacioId} {
+        allow read, write: if request.auth != null && request.auth.uid == firebaseUid;
+      }
+
+      // Resto de lo Personal (Finanzas, Diario, Notas, Metas, Listas, Mi propósito) — mismo
+      // patrón privado que arriba: solo el dueño de la cuenta lee/escribe. Ver
+      // `Plan/12-firebase-auth-y-sync.md`.
+      match /movimientosFinancieros/{movimientoId} {
+        allow read, write: if request.auth != null && request.auth.uid == firebaseUid;
+      }
+      match /entradasDiario/{entradaId} {
+        allow read, write: if request.auth != null && request.auth.uid == firebaseUid;
+      }
+      match /notas/{notaId} {
+        allow read, write: if request.auth != null && request.auth.uid == firebaseUid;
+      }
+      match /metas/{metaId} {
+        allow read, write: if request.auth != null && request.auth.uid == firebaseUid;
+      }
+      match /listas/{listaId} {
+        allow read, write: if request.auth != null && request.auth.uid == firebaseUid;
+      }
+      match /proposito/{propositoId} {
+        allow read, write: if request.auth != null && request.auth.uid == firebaseUid;
+      }
     }
 
     // Solicitudes de Círculo de cuidado: solo el remitente (deFirebaseUid) y el destinatario

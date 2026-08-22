@@ -6,11 +6,13 @@ import com.aqpseller.lulaapp.domain.model.ComoSeMideMeta
 import com.aqpseller.lulaapp.domain.model.Meta
 import com.aqpseller.lulaapp.domain.model.NivelRecordatorio
 import com.aqpseller.lulaapp.domain.repository.MetaRepository
+import com.aqpseller.lulaapp.domain.repository.PersonalSyncRepository
 import javax.inject.Inject
 
 class ActualizarMetaUseCase @Inject constructor(
     private val metaRepository: MetaRepository,
     private val recordatorioScheduler: RecordatorioScheduler,
+    private val personalSyncRepository: PersonalSyncRepository,
 ) {
     suspend operator fun invoke(
         metaId: String,
@@ -44,6 +46,7 @@ class ActualizarMetaUseCase @Inject constructor(
             nivelRecordatorio = nivelRecordatorio,
         )
         metaRepository.actualizar(meta, usuarioId)
+        runCatching { personalSyncRepository.subirMeta(meta) }
         // Se cancela y reprograma siempre (más simple y seguro que comparar qué cambió) — la
         // hora fija (09:00) hace que reprogramar sea barato, no hay nada que perder si no cambió
         // nada de verdad.

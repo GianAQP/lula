@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.aqpseller.lulaapp.core.security.SesionPrivadaState
 import com.aqpseller.lulaapp.domain.repository.AjustesRepository
 import com.aqpseller.lulaapp.domain.repository.UsuarioRepository
+import com.aqpseller.lulaapp.domain.usecase.espacio.RestaurarEspaciosFamiliaUseCase
 import com.aqpseller.lulaapp.domain.usecase.notificaciones.ReprogramarTodosLosRecordatoriosUseCase
 import com.aqpseller.lulaapp.domain.usecase.usuario.AsegurarDatosSemillaUseCase
 import com.aqpseller.lulaapp.domain.usecase.usuario.RestaurarDatosPersonalesUseCase
@@ -28,6 +29,7 @@ class AppViewModel @Inject constructor(
     private val asegurarDatosSemillaUseCase: AsegurarDatosSemillaUseCase,
     private val reprogramarTodosLosRecordatoriosUseCase: ReprogramarTodosLosRecordatoriosUseCase,
     private val restaurarDatosPersonalesUseCase: RestaurarDatosPersonalesUseCase,
+    private val restaurarEspaciosFamiliaUseCase: RestaurarEspaciosFamiliaUseCase,
     private val usuarioRepository: UsuarioRepository,
     sesionPrivadaState: SesionPrivadaState,
     ajustesRepository: AjustesRepository,
@@ -69,6 +71,7 @@ class AppViewModel @Inject constructor(
             val usuario = usuarioRepository.observarUsuario().first()
             if (usuario?.correo != null) {
                 runCatching { restaurarDatosPersonalesUseCase(usuario.id) }
+                runCatching { restaurarEspaciosFamiliaUseCase(usuario.id) }
             }
         }
     }

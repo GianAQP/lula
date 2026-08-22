@@ -12,6 +12,8 @@ interface ListaRepository {
     suspend fun agregarItem(listaId: String, texto: String, usuarioId: String)
     suspend fun marcarItem(itemId: String, marcado: Boolean, usuarioId: String)
     suspend fun eliminarItem(itemId: String, usuarioId: String)
+    /** Para respaldar en la nube tras marcar/eliminar un ítem, que solo conocen el itemId. */
+    suspend fun obtenerListaIdDeItem(itemId: String): String?
     /** Flechas ▲▼ para reordenar los títulos de lista (no los ítems de adentro, esos se
      * autoordenan por marcado) — mismo patrón que Notas (`NotaRepository.actualizarOrden`). */
     suspend fun actualizarOrdenLista(listaId: String, nuevoOrden: Int, usuarioId: String)
@@ -19,4 +21,9 @@ interface ListaRepository {
     suspend fun reiniciar(listaId: String, usuarioId: String)
     suspend fun eliminarLista(listaId: String, usuarioId: String)
     fun observarHistorial(listaId: String): Flow<List<ListaEjecucion>>
+
+    /** Aplica el estado remoto de una Lista respaldada en la nube — upsert puro sobre los ids
+     * originales (a diferencia de [crear], que siempre genera ids nuevos). Ver
+     * `Plan/12-firebase-auth-y-sync.md`. */
+    suspend fun mergeRemota(espacioId: String, lista: ListaConItems, usuarioId: String)
 }

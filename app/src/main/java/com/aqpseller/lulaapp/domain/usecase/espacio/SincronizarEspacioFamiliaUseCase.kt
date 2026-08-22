@@ -63,6 +63,7 @@ class SincronizarEspacioFamiliaUseCase @Inject constructor(
                 ?: EspacioMiembro(espacioId = espacioId, usuarioId = miUsuarioId, rol = RolEnEspacio.MIEMBRO)
             espacioSyncRepository.subirEspacio(espacio)
             espacioSyncRepository.subirMiembro(espacioId, miMiembro)
+            espacioSyncRepository.subirPunteroMiEspacio(espacioId)
         }
     }
 }

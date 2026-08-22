@@ -7,11 +7,13 @@ import com.aqpseller.lulaapp.domain.model.ComoSeMideMeta
 import com.aqpseller.lulaapp.domain.model.Meta
 import com.aqpseller.lulaapp.domain.model.NivelRecordatorio
 import com.aqpseller.lulaapp.domain.repository.MetaRepository
+import com.aqpseller.lulaapp.domain.repository.PersonalSyncRepository
 import javax.inject.Inject
 
 class CrearMetaUseCase @Inject constructor(
     private val metaRepository: MetaRepository,
     private val recordatorioScheduler: RecordatorioScheduler,
+    private val personalSyncRepository: PersonalSyncRepository,
 ) {
     suspend operator fun invoke(
         espacioId: String,
@@ -39,6 +41,7 @@ class CrearMetaUseCase @Inject constructor(
             nivelRecordatorio = nivelRecordatorio,
         )
         metaRepository.crear(meta, usuarioId)
+        runCatching { personalSyncRepository.subirMeta(meta) }
         if (fechaLimite != null) {
             recordatorioScheduler.programarMeta(meta.id, nombre, fechaLimite, nivelRecordatorio)
         }

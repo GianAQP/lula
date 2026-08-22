@@ -69,6 +69,7 @@ class AceptarSolicitudCompartirUseCase @Inject constructor(
                         solicitud.elementoId,
                         EspacioMiembro(espacioId = solicitud.elementoId, usuarioId = miUsuarioId, rol = RolEnEspacio.MIEMBRO),
                     )
+                    espacioSyncRepository.subirPunteroMiEspacio(solicitud.elementoId)
                 }
             }
         }

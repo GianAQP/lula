@@ -36,6 +36,7 @@ class CrearEspacioFamiliaUseCase @Inject constructor(
         runCatching {
             espacioSyncRepository.subirEspacio(espacio)
             espacioSyncRepository.subirMiembro(espacio.id, miembro)
+            espacioSyncRepository.subirPunteroMiEspacio(espacio.id)
         }
         return espacio
     }

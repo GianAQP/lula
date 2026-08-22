@@ -29,6 +29,16 @@ interface EspacioSyncRepository {
     suspend fun subirReto(espacioId: String, reto: RetoFamiliar)
     suspend fun subirRegistroReto(espacioId: String, registro: RegistroRetoRemoto)
 
+    /** Deja un puntero liviano en mi propio perfil (`usuarios/{miFirebaseUid}/misEspacios/{id}`)
+     * — así, en un celular nuevo, puedo saber en qué Espacios Familia soy miembro sin tener que
+     * buscar en toda la base (una `collectionGroup` query necesitaría un índice compuesto que no
+     * se puede crear sin Firebase CLI en este entorno). Ver `Plan/12-firebase-auth-y-sync.md`. */
+    suspend fun subirPunteroMiEspacio(espacioId: String)
+
+    /** Todos los Espacios Familia en los que aparezco como miembro — para restaurarlos en un
+     * celular nuevo al vincular la cuenta. Pensado para correr una sola vez, no un listener. */
+    suspend fun descubrirMisEspacios(): List<Pair<Espacio, EspacioMiembro>>
+
     fun escucharMiembros(espacioId: String): Flow<List<EspacioMiembro>>
     fun escucharTareas(espacioId: String): Flow<List<Pair<Actividad, ActividadDetalle.Tarea>>>
     fun escucharRetos(espacioId: String): Flow<List<RetoFamiliar>>

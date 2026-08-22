@@ -2,14 +2,24 @@ package com.aqpseller.lulaapp.data.repository
 
 import com.aqpseller.lulaapp.domain.model.Actividad
 import com.aqpseller.lulaapp.domain.model.ActividadDetalle
+import com.aqpseller.lulaapp.domain.model.CategoriaMeta
+import com.aqpseller.lulaapp.domain.model.ComoSeMideMeta
+import com.aqpseller.lulaapp.domain.model.EntradaDiario
 import com.aqpseller.lulaapp.domain.model.EstadoActividad
 import com.aqpseller.lulaapp.domain.model.FrecuenciaHabito
+import com.aqpseller.lulaapp.domain.model.ListaConItems
+import com.aqpseller.lulaapp.domain.model.ListaItem
+import com.aqpseller.lulaapp.domain.model.Meta
 import com.aqpseller.lulaapp.domain.model.MomentoDelDia
+import com.aqpseller.lulaapp.domain.model.MovimientoFinanciero
 import com.aqpseller.lulaapp.domain.model.NivelRecordatorio
+import com.aqpseller.lulaapp.domain.model.Nota
 import com.aqpseller.lulaapp.domain.model.Privacidad
+import com.aqpseller.lulaapp.domain.model.PropositoPersonal
 import com.aqpseller.lulaapp.domain.model.RecurrenciaTarea
 import com.aqpseller.lulaapp.domain.model.SyncStatus
 import com.aqpseller.lulaapp.domain.model.TipoActividad
+import com.aqpseller.lulaapp.domain.model.TipoMovimientoFinanciero
 import com.aqpseller.lulaapp.domain.repository.PersonalSyncRepository
 import com.aqpseller.lulaapp.domain.repository.RegistroHabitoRemoto
 import com.google.firebase.auth.FirebaseAuth
@@ -21,6 +31,12 @@ import javax.inject.Inject
 private const val COLECCION_USUARIOS = "usuarios"
 private const val SUBCOLECCION_ACTIVIDADES = "actividadesPersonales"
 private const val SUBCOLECCION_REGISTROS = "registrosHabito"
+private const val SUBCOLECCION_FINANZAS = "movimientosFinancieros"
+private const val SUBCOLECCION_DIARIO = "entradasDiario"
+private const val SUBCOLECCION_NOTAS = "notas"
+private const val SUBCOLECCION_METAS = "metas"
+private const val SUBCOLECCION_LISTAS = "listas"
+private const val SUBCOLECCION_PROPOSITO = "proposito"
 
 /**
  * `usuarios/{miFirebaseUid}/actividadesPersonales/{actividadId}` (Hábitos y Tareas, discriminados
@@ -42,6 +58,9 @@ class PersonalSyncRepositoryImpl @Inject constructor(
         firebaseAuth.currentUser?.uid?.let {
             firestore.collection(COLECCION_USUARIOS).document(it).collection(SUBCOLECCION_REGISTROS)
         }
+
+    private fun coleccion(nombre: String) =
+        firebaseAuth.currentUser?.uid?.let { firestore.collection(COLECCION_USUARIOS).document(it).collection(nombre) }
 
     override suspend fun subirHabito(actividad: Actividad, detalle: ActividadDetalle.Habito) {
         val coleccion = coleccionActividades() ?: return
@@ -181,5 +200,204 @@ class PersonalSyncRepositoryImpl @Inject constructor(
             )
             actividad to detalle
         }
+    }
+
+    override suspend fun subirMovimientoFinanciero(movimiento: MovimientoFinanciero) {
+        val coleccion = coleccion(SUBCOLECCION_FINANZAS) ?: return
+        val datos = mapOf(
+            "tipo" to movimiento.tipo.name,
+            "monto" to movimiento.monto,
+            "categoria" to movimiento.categoria,
+            "descripcion" to movimiento.descripcion,
+            "fecha" to movimiento.fecha,
+            "privacidad" to movimiento.privacidad.name,
+        )
+        coleccion.document(movimiento.id).set(datos).await()
+    }
+
+    override suspend fun eliminarMovimientoFinanciero(movimientoId: String) {
+        coleccion(SUBCOLECCION_FINANZAS)?.document(movimientoId)?.delete()?.await()
+    }
+
+    override suspend fun restaurarMovimientosFinancieros(): List<MovimientoFinanciero> {
+        val coleccion = coleccion(SUBCOLECCION_FINANZAS) ?: return emptyList()
+        return coleccion.get().await().documents.mapNotNull { doc ->
+            MovimientoFinanciero(
+                id = doc.id,
+                espacioId = "",
+                tipo = runCatching { TipoMovimientoFinanciero.valueOf(doc.getString("tipo") ?: "") }
+                    .getOrDefault(TipoMovimientoFinanciero.EGRESO),
+                monto = doc.getDouble("monto") ?: 0.0,
+                categoria = doc.getString("categoria") ?: "",
+                descripcion = doc.getString("descripcion"),
+                fecha = doc.getLong("fecha") ?: 0L,
+                privacidad = runCatching { Privacidad.valueOf(doc.getString("privacidad") ?: "") }.getOrDefault(Privacidad.SOLO_YO),
+            )
+        }
+    }
+
+    override suspend fun subirEntradaDiario(entrada: EntradaDiario) {
+        val coleccion = coleccion(SUBCOLECCION_DIARIO) ?: return
+        val datos = mapOf(
+            "propietario" to entrada.propietario,
+            "titulo" to entrada.titulo,
+            "texto" to entrada.texto,
+            "areaDeVidaId" to entrada.areaDeVidaId,
+            "fecha" to entrada.fecha,
+            "privacidad" to entrada.privacidad.name,
+            "fotos" to entrada.fotos,
+        )
+        coleccion.document(entrada.id).set(datos).await()
+    }
+
+    override suspend fun eliminarEntradaDiario(entradaId: String) {
+        coleccion(SUBCOLECCION_DIARIO)?.document(entradaId)?.delete()?.await()
+    }
+
+    override suspend fun restaurarEntradasDiario(): List<EntradaDiario> {
+        val coleccion = coleccion(SUBCOLECCION_DIARIO) ?: return emptyList()
+        return coleccion.get().await().documents.mapNotNull { doc ->
+            EntradaDiario(
+                id = doc.id,
+                espacioId = "",
+                propietario = doc.getString("propietario") ?: "",
+                titulo = doc.getString("titulo"),
+                texto = doc.getString("texto") ?: "",
+                areaDeVidaId = doc.getString("areaDeVidaId"),
+                fecha = doc.getLong("fecha") ?: 0L,
+                privacidad = runCatching { Privacidad.valueOf(doc.getString("privacidad") ?: "") }.getOrDefault(Privacidad.SOLO_YO),
+                fotos = (doc.get("fotos") as? List<*>)?.filterIsInstance<String>() ?: emptyList(),
+            )
+        }
+    }
+
+    override suspend fun subirNota(nota: Nota) {
+        val coleccion = coleccion(SUBCOLECCION_NOTAS) ?: return
+        val datos = mapOf(
+            "propietario" to nota.propietario,
+            "titulo" to nota.titulo,
+            "contenido" to nota.contenido,
+            "fechaCreacion" to nota.fechaCreacion,
+            "fechaEdicion" to nota.fechaEdicion,
+            "orden" to nota.orden,
+        )
+        coleccion.document(nota.id).set(datos).await()
+    }
+
+    override suspend fun eliminarNota(notaId: String) {
+        coleccion(SUBCOLECCION_NOTAS)?.document(notaId)?.delete()?.await()
+    }
+
+    override suspend fun restaurarNotas(): List<Nota> {
+        val coleccion = coleccion(SUBCOLECCION_NOTAS) ?: return emptyList()
+        return coleccion.get().await().documents.mapNotNull { doc ->
+            Nota(
+                id = doc.id,
+                espacioId = "",
+                propietario = doc.getString("propietario") ?: "",
+                titulo = doc.getString("titulo"),
+                contenido = doc.getString("contenido") ?: "",
+                fechaCreacion = doc.getLong("fechaCreacion") ?: 0L,
+                fechaEdicion = doc.getLong("fechaEdicion") ?: 0L,
+                orden = doc.getLong("orden")?.toInt() ?: 0,
+            )
+        }
+    }
+
+    override suspend fun subirMeta(meta: Meta) {
+        val coleccion = coleccion(SUBCOLECCION_METAS) ?: return
+        val datos = mapOf(
+            "nombre" to meta.nombre,
+            "areaDeVidaId" to meta.areaDeVidaId,
+            "fechaLimite" to meta.fechaLimite,
+            "comoSeMide" to meta.comoSeMide.name,
+            "valorObjetivo" to meta.valorObjetivo,
+            "valorActual" to meta.valorActual,
+            "actividadesVinculadasIds" to meta.actividadesVinculadasIds,
+            "ultimoHitoCelebrado" to meta.ultimoHitoCelebrado,
+            "categoria" to meta.categoria?.name,
+            "nivelRecordatorio" to meta.nivelRecordatorio.name,
+        )
+        coleccion.document(meta.id).set(datos).await()
+    }
+
+    override suspend fun eliminarMeta(metaId: String) {
+        coleccion(SUBCOLECCION_METAS)?.document(metaId)?.delete()?.await()
+    }
+
+    override suspend fun restaurarMetas(): List<Meta> {
+        val coleccion = coleccion(SUBCOLECCION_METAS) ?: return emptyList()
+        return coleccion.get().await().documents.mapNotNull { doc ->
+            Meta(
+                id = doc.id,
+                espacioId = "",
+                nombre = doc.getString("nombre") ?: "",
+                areaDeVidaId = doc.getString("areaDeVidaId"),
+                fechaLimite = doc.getLong("fechaLimite"),
+                comoSeMide = runCatching { ComoSeMideMeta.valueOf(doc.getString("comoSeMide") ?: "") }
+                    .getOrDefault(ComoSeMideMeta.MANUAL),
+                valorObjetivo = doc.getDouble("valorObjetivo") ?: 0.0,
+                valorActual = doc.getDouble("valorActual") ?: 0.0,
+                actividadesVinculadasIds = (doc.get("actividadesVinculadasIds") as? List<*>)?.filterIsInstance<String>() ?: emptyList(),
+                ultimoHitoCelebrado = doc.getLong("ultimoHitoCelebrado")?.toInt() ?: 0,
+                categoria = doc.getString("categoria")?.let { runCatching { CategoriaMeta.valueOf(it) }.getOrNull() },
+                nivelRecordatorio = runCatching { NivelRecordatorio.valueOf(doc.getString("nivelRecordatorio") ?: "") }
+                    .getOrDefault(NivelRecordatorio.SONIDO),
+            )
+        }
+    }
+
+    override suspend fun subirLista(lista: ListaConItems) {
+        val coleccion = coleccion(SUBCOLECCION_LISTAS) ?: return
+        val datos = mapOf(
+            "nombre" to lista.nombre,
+            "items" to lista.items.map { item ->
+                mapOf("id" to item.id, "texto" to item.texto, "marcado" to item.marcado, "orden" to item.orden)
+            },
+        )
+        coleccion.document(lista.id).set(datos).await()
+    }
+
+    override suspend fun eliminarLista(listaId: String) {
+        coleccion(SUBCOLECCION_LISTAS)?.document(listaId)?.delete()?.await()
+    }
+
+    override suspend fun restaurarListas(): List<ListaConItems> {
+        val coleccion = coleccion(SUBCOLECCION_LISTAS) ?: return emptyList()
+        return coleccion.get().await().documents.mapNotNull { doc ->
+            val items = (doc.get("items") as? List<*>)?.mapNotNull { raw ->
+                val mapa = raw as? Map<*, *> ?: return@mapNotNull null
+                ListaItem(
+                    id = mapa["id"] as? String ?: return@mapNotNull null,
+                    listaId = doc.id,
+                    texto = mapa["texto"] as? String ?: "",
+                    marcado = mapa["marcado"] as? Boolean ?: false,
+                    orden = (mapa["orden"] as? Number)?.toInt() ?: 0,
+                )
+            } ?: emptyList()
+            ListaConItems(id = doc.id, nombre = doc.getString("nombre") ?: "", items = items)
+        }
+    }
+
+    override suspend fun subirProposito(proposito: PropositoPersonal) {
+        val miFirebaseUid = firebaseAuth.currentUser?.uid ?: return
+        val datos = mapOf("respuestas" to proposito.respuestas, "fechaEdicion" to proposito.fechaEdicion)
+        firestore.collection(COLECCION_USUARIOS).document(miFirebaseUid)
+            .collection(SUBCOLECCION_PROPOSITO).document("unico").set(datos).await()
+    }
+
+    override suspend fun restaurarProposito(): PropositoPersonal? {
+        val miFirebaseUid = firebaseAuth.currentUser?.uid ?: return null
+        val doc = firestore.collection(COLECCION_USUARIOS).document(miFirebaseUid)
+            .collection(SUBCOLECCION_PROPOSITO).document("unico").get().await()
+        if (!doc.exists()) return null
+        @Suppress("UNCHECKED_CAST")
+        val respuestas = (doc.get("respuestas") as? Map<String, String>) ?: emptyMap()
+        return PropositoPersonal(
+            espacioId = "",
+            propietario = "",
+            respuestas = respuestas,
+            fechaEdicion = doc.getLong("fechaEdicion") ?: 0L,
+        )
     }
 }
