@@ -8,16 +8,19 @@ import com.aqpseller.lulaapp.domain.model.RolEnEspacio
 import com.aqpseller.lulaapp.domain.model.TipoEspacio
 import com.aqpseller.lulaapp.domain.repository.AjustesRepository
 import com.aqpseller.lulaapp.domain.repository.EspacioRepository
+import com.aqpseller.lulaapp.domain.repository.EspacioSyncRepository
 import javax.inject.Inject
 
 /**
  * Crea el espacio Familia con el usuario actual como único admin (base local de Fase 1.5, ver
  * `Plan/08-decisiones-tecnicas.md`) y lo deja como espacio activo de una — no tendría sentido
- * crearlo y seguir viendo Personal.
+ * crearlo y seguir viendo Personal. Sube el espacio y mi propia membresía a Firestore para que
+ * pueda recibir invitados reales (ver `Plan/12-firebase-auth-y-sync.md`).
  */
 class CrearEspacioFamiliaUseCase @Inject constructor(
     private val espacioRepository: EspacioRepository,
     private val ajustesRepository: AjustesRepository,
+    private val espacioSyncRepository: EspacioSyncRepository,
 ) {
     suspend operator fun invoke(nombre: String, usuarioId: String): Espacio {
         val espacio = Espacio(
@@ -27,11 +30,13 @@ class CrearEspacioFamiliaUseCase @Inject constructor(
             creadoPor = usuarioId,
             fechaCreacion = DateTimeUtils.ahoraEpochMillis(),
         )
-        espacioRepository.crearEspacio(
-            espacio = espacio,
-            miembro = EspacioMiembro(espacioId = espacio.id, usuarioId = usuarioId, rol = RolEnEspacio.ADMIN),
-        )
+        val miembro = EspacioMiembro(espacioId = espacio.id, usuarioId = usuarioId, rol = RolEnEspacio.ADMIN)
+        espacioRepository.crearEspacio(espacio = espacio, miembro = miembro)
         ajustesRepository.setEspacioActivoId(espacio.id)
+        runCatching {
+            espacioSyncRepository.subirEspacio(espacio)
+            espacioSyncRepository.subirMiembro(espacio.id, miembro)
+        }
         return espacio
     }
 }

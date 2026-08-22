@@ -29,6 +29,11 @@ interface ActividadRepository {
      * este dispositivo (la compartieron conmigo, no yo). Ver `Plan/12-firebase-auth-y-sync.md`. */
     suspend fun agregarPermisoCompartido(actividadId: String, concederA: String, permiso: PermisoCompartir, usuarioId: String)
 
+    /** Aplica el estado remoto de una Tarea de un Espacio Familia compartido — upsert puro
+     * (crea o actualiza), nunca vuelve a subir a Firestore (evitaría un loop de sync). Ver
+     * `Plan/12-firebase-auth-y-sync.md`. */
+    suspend fun mergeTareaRemota(actividad: Actividad, detalle: ActividadDetalle.Tarea)
+
     suspend fun actualizarHabito(actividadId: String, nombre: String, detalle: ActividadDetalle.Habito, usuarioId: String)
     suspend fun actualizarTarea(actividadId: String, nombre: String, detalle: ActividadDetalle.Tarea, usuarioId: String)
     suspend fun actualizarRutina(actividadId: String, nombre: String, detalle: ActividadDetalle.Rutina, usuarioId: String)

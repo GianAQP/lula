@@ -35,13 +35,16 @@ falta activar en cuanto exista:
 - **Sync a Firestore de `Conexion`/`SolicitudCompartir` — construido (2026-08-19)**: aceptar/
   rechazar real, `Conexion` se crea al aceptar, y todo sincroniza con Firestore mientras
   Círculo de cuidado está abierta (`CompartirSyncRepository`). Ver `08-decisiones-tecnicas.md`.
-  Falta probar de punta a punta con una segunda cuenta/dispositivo real, y falta el sync de
-  Espacios Familia (paso 5 de `12-firebase-auth-y-sync.md`, todavía no construido).
-- **Ver el contenido real de lo que me compartieron** — al aceptar una solicitud hoy solo
-  sincroniza la solicitud y la conexión (la "capa social"), no el hábito/tarea/medicamento en
-  sí. Falta mapear cada tipo de actividad a un documento de Firestore + una pantalla nueva de
-  "lo que otros comparten conmigo" para que el destinatario vea el detalle real. Ver
-  `08-decisiones-tecnicas.md`, 2026-08-19.
+  Falta probar de punta a punta con una segunda cuenta/dispositivo real.
+- **Sync de contenido de Espacios Familia — construido (2026-08-21)**: Tareas del hogar y Retos
+  familiares (paso 5 de `12-firebase-auth-y-sync.md`), `EspacioSyncRepository` nuevo. Ver
+  `08-decisiones-tecnicas.md`. Falta confirmarlo con una segunda cuenta/dispositivo real.
+- **Ver el contenido real de lo que me compartieron por Círculo de cuidado** (compartir puntual
+  de un hábito/tarea con un contacto, distinto de un Espacio Familia) — al aceptar una solicitud
+  hoy solo sincroniza la solicitud y la conexión (la "capa social"), no el hábito/tarea/
+  medicamento en sí. Sigue sin resolverse (a diferencia de Espacios Familia, que ya sincroniza
+  su contenido) — necesitaría el mismo tipo de mapeo por Firestore + una pantalla nueva de "lo
+  que otros comparten conmigo". Ver `08-decisiones-tecnicas.md`, 2026-08-19.
 - **Invitación a personas sin la app instalada** (deep link + onboarding especial).
 - **Estados `confirmado/sin_confirmar/omitido` visibles para quien acompaña** — depende del
   punto anterior (mostrar el contenido real primero).
@@ -60,15 +63,13 @@ falta activar en cuanto exista:
   encontró que `TopBarStatsViewModel` seguía llamándolo con el id viejo (2026-08-20). Ya debería
   activarse solo una vez haya una solicitud real pendiente — falta confirmarlo con una segunda
   cuenta real.
-- **Fase 1.5 — Familia/Equipo**: **invitar miembros de verdad ya se construyó (2026-08-20)** —
-  reutiliza `SolicitudCompartir`/aceptación (`TipoSolicitud.ESPACIO`), agrega un
-  `EspacioMiembro` real al aceptar. Falta probar con una segunda cuenta/dispositivo real. Sigue
-  pendiente: roles admin/miembro con sentido real (hoy quien invita queda admin, quien acepta
-  siempre entra como `MIEMBRO` sin forma de cambiarlo), progreso de un Reto familiar con más de
-  un participante real, y sincronizar el *contenido* del espacio (paso 5 de
-  `12-firebase-auth-y-sync.md` — hoy el segundo miembro está en el espacio pero no ve las tareas
-  del hogar que ya existían ahí, solo lo que cree de ahora en adelante en su propio dispositivo,
-  que tampoco sincroniza todavía). Ver `08-decisiones-tecnicas.md`, 2026-08-20.
+- **Fase 1.5 — Familia/Equipo**: invitar miembros de verdad (2026-08-20) y sincronizar el
+  contenido — Tareas y Retos familiares (2026-08-21) — ya están construidos. Falta probar todo
+  junto con una segunda cuenta/dispositivo real. Sigue pendiente: roles admin/miembro con
+  sentido real (hoy quien invita queda admin, quien acepta siempre entra como `MIEMBRO` sin
+  forma de cambiarlo), progreso de un Reto familiar con más de un participante real (falta
+  probarlo con alguien de verdad), y sincronizar Hábitos/Medicamentos/Citas dentro de un Espacio
+  Familia (a propósito fuera de alcance — son de uso personal, ver `08-decisiones-tecnicas.md`).
 - **Compartir una Lista en seguimiento conjunto con un amigo puntual** (no solo dentro de un
   espacio Familia) — mismo patrón que ya existe en Retos familiares ("X de Y ya cumplieron
   hoy"), aplicado a una Lista. Pedido por el usuario 2026-08-15, ver `08-decisiones-tecnicas.md`.

@@ -52,7 +52,9 @@ class RetosFamiliaresViewModel @Inject constructor(
     }
 
     fun marcarCumplidoHoy(retoId: String, cumplido: Boolean) {
-        val usuarioId = sesion?.usuarioId ?: return
-        viewModelScope.launch { marcarRetoFamiliarCumplidoUseCase(retoId, usuarioId, cumplido) }
+        val sesionActual = sesion ?: return
+        viewModelScope.launch {
+            marcarRetoFamiliarCumplidoUseCase(sesionActual.espacioId, retoId, sesionActual.usuarioId, cumplido)
+        }
     }
 }

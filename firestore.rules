@@ -40,12 +40,37 @@ service cloud.firestore {
       allow read, write: if request.auth != null;
     }
 
-    // Espacios Familia/Círculo de cuidado (paso 5 del plan): todavía no hay ningún código que
-    // lea ni escriba acá — denegado por completo hasta que exista.
+    // Espacios Familia: contenido compartido (paso 5 del plan) — Tareas del hogar y Retos
+    // familiares. `miembros` se guarda por uid de Firebase (no por el id local de la app) para
+    // poder verificarlo acá — cada quien solo puede escribir su PROPIA membresía, nunca en
+    // nombre de otro. El resto de las subcolecciones exige ser miembro (`esMiembro()`).
     match /espacios/{espacioId} {
-      allow read, write: if false;
-      match /{document=**} {
-        allow read, write: if false;
+      function esMiembro() {
+        return request.auth != null &&
+          exists(/databases/$(database)/documents/espacios/$(espacioId)/miembros/$(request.auth.uid));
+      }
+
+      allow read: if esMiembro();
+      // Cualquier autenticado puede crear un espacio nuevo (con su propio id, un UUID) — recién
+      // ahí se agrega a sí mismo como miembro y empieza a poder leerlo.
+      allow create: if request.auth != null;
+      allow update, delete: if esMiembro();
+
+      match /miembros/{miembroFirebaseUid} {
+        allow read: if esMiembro();
+        allow write: if request.auth != null && request.auth.uid == miembroFirebaseUid;
+      }
+
+      match /actividades/{actividadId} {
+        allow read, write: if esMiembro();
+      }
+
+      match /retos/{retoId} {
+        allow read, write: if esMiembro();
+      }
+
+      match /registrosReto/{registroId} {
+        allow read, write: if esMiembro();
       }
     }
 

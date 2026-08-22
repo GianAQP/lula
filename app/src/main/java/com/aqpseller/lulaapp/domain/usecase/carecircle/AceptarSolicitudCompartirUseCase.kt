@@ -7,10 +7,12 @@ import com.aqpseller.lulaapp.domain.model.SolicitudCompartir
 import com.aqpseller.lulaapp.domain.model.TipoConexion
 import com.aqpseller.lulaapp.domain.model.TipoEspacio
 import com.aqpseller.lulaapp.domain.model.TipoSolicitud
+import com.aqpseller.lulaapp.domain.model.EspacioMiembro
 import com.aqpseller.lulaapp.domain.repository.ActividadRepository
 import com.aqpseller.lulaapp.domain.repository.CompartirSyncRepository
 import com.aqpseller.lulaapp.domain.repository.ConexionRepository
 import com.aqpseller.lulaapp.domain.repository.EspacioRepository
+import com.aqpseller.lulaapp.domain.repository.EspacioSyncRepository
 import com.aqpseller.lulaapp.domain.repository.SolicitudCompartirRepository
 import javax.inject.Inject
 
@@ -31,6 +33,7 @@ class AceptarSolicitudCompartirUseCase @Inject constructor(
     private val espacioRepository: EspacioRepository,
     private val conexionRepository: ConexionRepository,
     private val compartirSyncRepository: CompartirSyncRepository,
+    private val espacioSyncRepository: EspacioSyncRepository,
 ) {
     suspend operator fun invoke(solicitud: SolicitudCompartir, miUsuarioId: String) {
         solicitudCompartirRepository.responder(solicitud.id, EstadoSolicitud.ACEPTADA, miUsuarioId)
@@ -61,6 +64,12 @@ class AceptarSolicitudCompartirUseCase @Inject constructor(
                     usuarioId = miUsuarioId,
                     rol = RolEnEspacio.MIEMBRO,
                 )
+                runCatching {
+                    espacioSyncRepository.subirMiembro(
+                        solicitud.elementoId,
+                        EspacioMiembro(espacioId = solicitud.elementoId, usuarioId = miUsuarioId, rol = RolEnEspacio.MIEMBRO),
+                    )
+                }
             }
         }
         runCatching {

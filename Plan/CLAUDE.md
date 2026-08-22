@@ -1085,3 +1085,16 @@ paso: el aviso "📩" de la barra superior seguía filtrando por `usuarioId` en 
 íconos de QR pasaron de emoji a íconos reales (`material-icons-extended`, solo para estos dos)
 porque el usuario mostró una app de referencia y el emoji no se entendía. Detalle completo en
 `Plan/08-decisiones-tecnicas.md`.
+
+**Sync de contenido de Espacio Familia — Tareas y Retos familiares** (2026-08-21): último paso
+grande del plan de Firebase. Solo se sincroniza lo que Familia ya ofrece hoy (Tareas del hogar,
+Retos familiares) — Hábitos/Medicamentos/Citas se quedan fuera a propósito. Nuevo
+`EspacioSyncRepository` (push al crear/actualizar/marcar, listener en vivo mientras el Espacio
+Familia sea el activo, alojado en `TopBarStatsViewModel` que es efectivamente global). Reglas de
+seguridad reales para `espacios/**` (antes bloqueado por completo) — cada quien solo escribe su
+propia membresía, el resto exige ser miembro. Bug real encontrado con logcat: un Espacio Familia
+creado en una sesión anterior (antes de que este sync existiera) no tenía membresía en Firestore
+y todo fallaba con `PERMISSION_DENIED` — se agregó un respaldo que sube el Espacio + mi
+membresía antes de escuchar, así uno viejo también funciona sin recrearlo. Confirmado con
+Firebase Console: el documento del espacio, la subcolección `miembros`, y una Tarea nueva con
+todos sus campos, todo verificado ahí. Detalle completo en `Plan/08-decisiones-tecnicas.md`.

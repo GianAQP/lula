@@ -195,6 +195,19 @@ class ActividadRepositoryImpl @Inject constructor(
         )
     }
 
+    override suspend fun mergeTareaRemota(actividad: Actividad, detalle: ActividadDetalle.Tarea) {
+        val entity = actividad.toEntity()
+        actividadDao.upsert(entity)
+        tareaDetalleDao.upsert(detalle.toEntity(actividad.id))
+        auditLogger.registrar<ActividadEntity>(
+            entidad = "actividad",
+            entidadId = actividad.id,
+            accion = AccionAuditoria.ACTUALIZAR,
+            despues = entity,
+            usuarioId = actividad.propietario,
+        )
+    }
+
     override suspend fun actualizarHabito(actividadId: String, nombre: String, detalle: ActividadDetalle.Habito, usuarioId: String) {
         val actual = actividadDao.obtenerPorId(actividadId) ?: return
         val actualizado = actual.copy(nombre = nombre, momentoDelDia = detalle.momentoDelDia.name)

@@ -5,15 +5,18 @@ import androidx.lifecycle.viewModelScope
 import com.aqpseller.lulaapp.core.utils.DateTimeUtils
 import com.aqpseller.lulaapp.core.utils.decodificarContactoQr
 import com.aqpseller.lulaapp.core.utils.decodificarListaQr
+import com.aqpseller.lulaapp.domain.model.TipoEspacio
 import com.aqpseller.lulaapp.domain.model.TipoMovimientoFinanciero
 import com.aqpseller.lulaapp.domain.repository.EspacioRepository
 import com.aqpseller.lulaapp.domain.repository.UsuarioRepository
 import com.aqpseller.lulaapp.domain.usecase.carecircle.ObtenerSolicitudesRecibidasUseCase
+import com.aqpseller.lulaapp.domain.usecase.espacio.SincronizarEspacioFamiliaUseCase
 import com.aqpseller.lulaapp.domain.usecase.finanzas.ObtenerBalanceMesUseCase
 import com.aqpseller.lulaapp.domain.usecase.lista.ImportarListaDesdeQrUseCase
 import com.aqpseller.lulaapp.domain.usecase.registrodiario.ObtenerProgresoDeHoyUseCase
 import com.aqpseller.lulaapp.domain.usecase.usuario.ObtenerSesionActualUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -46,10 +49,14 @@ class TopBarStatsViewModel @Inject constructor(
     private val espacioRepository: EspacioRepository,
     private val usuarioRepository: UsuarioRepository,
     private val importarListaDesdeQrUseCase: ImportarListaDesdeQrUseCase,
+    private val sincronizarEspacioFamiliaUseCase: SincronizarEspacioFamiliaUseCase,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(TopBarStatsUiState())
     val uiState: StateFlow<TopBarStatsUiState> = _uiState.asStateFlow()
+
+    private var espacioIdSincronizado: String? = null
+    private var jobSincronizacionEspacio: Job? = null
 
     init {
         viewModelScope.launch {
@@ -130,11 +137,22 @@ class TopBarStatsViewModel @Inject constructor(
 
     private suspend fun refrescarEspacioActivo(espacioId: String, usuarioId: String) {
         val personal = espacioRepository.obtenerEspacioPersonal(usuarioId)
-        val nombre = if (personal != null && personal.id != espacioId) {
-            espacioRepository.obtenerEspacioSiEsMiembro(espacioId, usuarioId)?.nombre
-        } else {
-            null
+        val esPersonal = personal == null || personal.id == espacioId
+        val espacio = if (esPersonal) null else espacioRepository.obtenerEspacioSiEsMiembro(espacioId, usuarioId)
+        _uiState.update { it.copy(nombreEspacioActivo = espacio?.nombre) }
+        actualizarSincronizacionEspacio(espacioId, espacio?.tipo, usuarioId)
+    }
+
+    /** Sync de contenido de Espacio Familia (paso 5, `Plan/12-firebase-auth-y-sync.md`) — corre
+     * mientras ese espacio siga siendo el activo; se cancela sola al cambiar de espacio o cerrar
+     * la app (el listener de Firestore vive dentro de este `Job`). */
+    private fun actualizarSincronizacionEspacio(espacioId: String, tipo: TipoEspacio?, usuarioId: String) {
+        if (espacioId == espacioIdSincronizado) return
+        jobSincronizacionEspacio?.cancel()
+        espacioIdSincronizado = espacioId
+        if (tipo != TipoEspacio.FAMILIA) return
+        jobSincronizacionEspacio = viewModelScope.launch {
+            runCatching { sincronizarEspacioFamiliaUseCase(espacioId, usuarioId) }
         }
-        _uiState.update { it.copy(nombreEspacioActivo = nombre) }
     }
 }

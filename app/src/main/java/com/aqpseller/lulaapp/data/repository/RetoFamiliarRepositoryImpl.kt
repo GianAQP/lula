@@ -72,4 +72,25 @@ class RetoFamiliarRepositoryImpl @Inject constructor(
             usuarioId = usuarioId,
         )
     }
+
+    override suspend fun mergeRemoto(reto: RetoFamiliar) {
+        val entity = reto.toEntity()
+        retoFamiliarDao.upsert(entity)
+        reto.participantesIds.forEach { usuarioId ->
+            retoFamiliarDao.upsertParticipante(RetoFamiliarParticipanteEntity(retoId = reto.id, usuarioId = usuarioId))
+        }
+    }
+
+    override suspend fun mergeRegistroRemoto(retoId: String, usuarioId: String, fecha: Long, estado: EstadoActividad) {
+        val existente = retoFamiliarDao.obtenerRegistro(retoId, usuarioId, fecha)
+        retoFamiliarDao.upsertRegistro(
+            RetoFamiliarRegistroEntity(
+                id = existente?.id ?: IdGenerator.newId(),
+                retoId = retoId,
+                usuarioId = usuarioId,
+                fecha = fecha,
+                estado = estado.name,
+            ),
+        )
+    }
 }

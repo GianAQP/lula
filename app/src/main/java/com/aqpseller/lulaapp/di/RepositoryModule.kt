@@ -8,6 +8,7 @@ import com.aqpseller.lulaapp.data.repository.CompartirSyncRepositoryImpl
 import com.aqpseller.lulaapp.data.repository.ConexionRepositoryImpl
 import com.aqpseller.lulaapp.data.repository.EntradaDiarioRepositoryImpl
 import com.aqpseller.lulaapp.data.repository.EspacioRepositoryImpl
+import com.aqpseller.lulaapp.data.repository.EspacioSyncRepositoryImpl
 import com.aqpseller.lulaapp.data.repository.FinanzasRepositoryImpl
 import com.aqpseller.lulaapp.data.repository.ListaRepositoryImpl
 import com.aqpseller.lulaapp.data.repository.MetaRepositoryImpl
@@ -25,6 +26,7 @@ import com.aqpseller.lulaapp.domain.repository.CompartirSyncRepository
 import com.aqpseller.lulaapp.domain.repository.ConexionRepository
 import com.aqpseller.lulaapp.domain.repository.EntradaDiarioRepository
 import com.aqpseller.lulaapp.domain.repository.EspacioRepository
+import com.aqpseller.lulaapp.domain.repository.EspacioSyncRepository
 import com.aqpseller.lulaapp.domain.repository.FinanzasRepository
 import com.aqpseller.lulaapp.domain.repository.ListaRepository
 import com.aqpseller.lulaapp.domain.repository.MetaRepository
@@ -117,4 +119,8 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindCompartirSyncRepository(impl: CompartirSyncRepositoryImpl): CompartirSyncRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindEspacioSyncRepository(impl: EspacioSyncRepositoryImpl): EspacioSyncRepository
 }

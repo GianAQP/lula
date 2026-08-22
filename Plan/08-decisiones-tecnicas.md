@@ -3921,3 +3921,71 @@ Compilado y verificado (`compileDebugKotlin`, `EXIT_CODE=0`) e instalado en el d
 en cada paso — sin crash. **No probado con un segundo dispositivo real todavía** (queda para
 cuando el usuario tenga el `.apk` de debug instalado en un segundo teléfono — ver
 `Plan/10-pendientes.md`).
+
+## Sync de contenido de Espacio Familia — Tareas y Retos familiares (paso 5, 2026-08-21)
+
+Último paso grande del plan de Firebase: hasta ahora solo se sincronizaba la "capa social"
+(solicitudes, conexiones, membresía). Esta ronda sincroniza el contenido real de un Espacio
+Familia — **solo Tareas y Retos familiares**, que es lo que `FamiliaScreen` ya ofrece hoy
+("tareas del hogar y los retos familiares"). Hábitos/Medicamentos/Citas/Fechas importantes
+quedan fuera a propósito (son de uso personal, Círculo de Cuidado es la función pensada para
+esos) — evita construir 6 veces el mismo mapeo para tipos que Familia no usa en la práctica.
+
+**Nuevo `EspacioSyncRepository`** (`domain`/`data`) — espejo en Firestore:
+```
+espacios/{espacioId}                         — nombre, tipo, creadoPor, fechaCreacion
+espacios/{espacioId}/miembros/{firebaseUid}  — usuarioIdLocal, rol
+espacios/{espacioId}/actividades/{actividadId} — solo tipo TAREA, campos base + detalle aplanado
+espacios/{espacioId}/retos/{retoId}          — RetoFamiliar
+espacios/{espacioId}/registrosReto/{retoId}_{usuarioId}_{fecha} — "cumplido hoy" de cada quien
+```
+`miembros` se guarda por **uid de Firebase**, no por el id local de la app — mismo motivo que
+`deFirebaseUid` en `solicitudes_compartir`: las reglas de seguridad solo pueden verificar contra
+`request.auth.uid`. `registrosReto` es una colección plana bajo el espacio (no anidada dentro de
+cada reto) a propósito — anidarla hubiera necesitado un `collectionGroup` query con índice
+compuesto para poder escuchar todos los registros a la vez, que no se puede crear solo con este
+archivo de reglas (necesita la consola o Firebase CLI, que no está instalado acá).
+
+**Local → Firestore** (push, siempre `runCatching`, nunca bloquea la acción local): sale de
+`CrearTareaUseCase`/`ActualizarTareaUseCase`/`MarcarActividadUseCase` (solo si el Espacio de la
+Tarea es tipo `FAMILIA` — revisa con `EspacioRepository.obtenerEspacioSiEsMiembro`) y de
+`CrearRetoFamiliarUseCase`/`MarcarRetoFamiliarCumplidoUseCase` (un Reto familiar por definición
+siempre vive en un Espacio Familia, no hace falta revisar el tipo). `CrearEspacioFamiliaUseCase`
+ahora también sube el Espacio y la membresía del admin al crearlo (antes no subía nada).
+`AceptarSolicitudCompartirUseCase` (rama `ESPACIO`) también sube mi propia membresía real al
+aceptar una invitación, además del mirror local que ya hacía.
+
+**Firestore → Local** (`SincronizarEspacioFamiliaUseCase`, nuevo): escucha mientras el Espacio
+Familia sea el activo — vive en `TopBarStatsViewModel` (ya es efectivamente el único ViewModel
+de toda la sesión, hospedado en el `Scaffold` que envuelve el `NavHost`, no por pantalla) con un
+`Job` que se cancela y reinicia solo cuando cambia el espacio activo. `ActividadRepository`
+gana `mergeTareaRemota` y `RetoFamiliarRepository` gana `mergeRemoto`/`mergeRegistroRemoto` —
+upserts puros en Room, nunca vuelven a subir a Firestore (evita un loop de sync).
+
+**Reglas de seguridad reales para `espacios/**`** (antes completamente bloqueado) — cada quien
+solo puede escribir su propia membresía (`miembros/{miFirebaseUid}`); leer/escribir cualquier
+otra cosa del espacio exige ser miembro (`exists(.../miembros/$(request.auth.uid))`, una función
+`esMiembro()` reusada en cada subcolección).
+
+**Bug real encontrado con logcat en vivo, no adivinado**: al probar, la primera Tarea creada
+falló con `PERMISSION_DENIED` en todas las lecturas Y en la escritura — el Espacio Familia usado
+para la prueba se había creado en una sesión anterior, **antes de que existiera este sync**, así
+que nunca tuvo membresía subida a Firestore y `esMiembro()` daba falso, correctamente, para las
+reglas nuevas. Se agregó un "respaldo" (`SincronizarEspacioFamiliaUseCase.respaldarMiPresenciaRemota`):
+antes de empezar a escuchar, si soy miembro local de ese espacio, sube el Espacio + mi propia
+membresía (idempotente, no pisa nada si ya existía) — así un Espacio Familia viejo (o uno cuyo
+push original falló por estar sin conexión) también empieza a funcionar sin tener que recrearlo.
+
+Confirmado con evidencia real, no solo con la ausencia de errores: se verificó en Firebase
+Console que el documento `espacios/{id}` tiene sus campos (nombre, tipo, creadoPor), que existen
+las subcolecciones `miembros` y `actividades`, y que la Tarea creada después del arreglo aparece
+completa con todos sus campos (`tipo: "TAREA"`, `nombre`, `propietario`, `puedeVer`,
+`puedeRecordar`, `responsables`, el detalle aplanado). Compilado, instalado en el dispositivo
+real, sin crash en ningún intento.
+
+**Sigue pendiente**: el segundo miembro de un Espacio Familia todavía no ve el contenido que ya
+existía ahí ANTES de unirse (el listener solo trae cambios desde que empieza a escuchar hacia
+adelante, no hace un "catch-up" histórico completo — aunque en la práctica `addSnapshotListener`
+de Firestore sí entrega el estado actual completo al conectarse por primera vez, así que esto
+debería funcionar solo; falta confirmarlo con una segunda cuenta real). Probar de punta a punta
+con un segundo dispositivo real sigue pendiente — ver `Plan/10-pendientes.md`.

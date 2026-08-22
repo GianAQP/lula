@@ -11,12 +11,17 @@ import com.aqpseller.lulaapp.domain.model.Privacidad
 import com.aqpseller.lulaapp.domain.model.RecurrenciaTarea
 import com.aqpseller.lulaapp.domain.model.SyncStatus
 import com.aqpseller.lulaapp.domain.model.TipoActividad
+import com.aqpseller.lulaapp.domain.model.TipoEspacio
 import com.aqpseller.lulaapp.domain.repository.ActividadRepository
+import com.aqpseller.lulaapp.domain.repository.EspacioRepository
+import com.aqpseller.lulaapp.domain.repository.EspacioSyncRepository
 import javax.inject.Inject
 
 class CrearTareaUseCase @Inject constructor(
     private val actividadRepository: ActividadRepository,
     private val recordatorioScheduler: RecordatorioScheduler,
+    private val espacioRepository: EspacioRepository,
+    private val espacioSyncRepository: EspacioSyncRepository,
 ) {
     suspend operator fun invoke(
         espacioId: String,
@@ -63,6 +68,11 @@ class CrearTareaUseCase @Inject constructor(
         actividadRepository.crearTarea(actividad, detalle, propietario)
         if (fechaLimite != null && horaRecordatorio != null) {
             recordatorioScheduler.programarTarea(id, nombre, fechaLimite, horaRecordatorio, nivelRecordatorio)
+        }
+        // Solo las tareas de un Espacio Familia se sincronizan — lo Personal se queda 100%
+        // local (ver `Plan/12-firebase-auth-y-sync.md`).
+        if (espacioRepository.obtenerEspacioSiEsMiembro(espacioId, propietario)?.tipo == TipoEspacio.FAMILIA) {
+            runCatching { espacioSyncRepository.subirTarea(espacioId, actividad, detalle) }
         }
     }
 }
