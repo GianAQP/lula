@@ -34,6 +34,13 @@ interface ActividadRepository {
      * `Plan/12-firebase-auth-y-sync.md`. */
     suspend fun mergeTareaRemota(actividad: Actividad, detalle: ActividadDetalle.Tarea)
 
+    /** Igual que [mergeTareaRemota] pero para restaurar un Hábito del respaldo personal en la
+     * nube (cambio de celular) — ver `Plan/12-firebase-auth-y-sync.md`. */
+    suspend fun mergeHabitoRemoto(actividad: Actividad, detalle: ActividadDetalle.Habito)
+
+    /** Igual que [mergeHabitoRemoto] pero para un día del historial de cumplimiento (la racha). */
+    suspend fun mergeRegistroHabitoRemoto(actividadId: String, fecha: Long, estado: EstadoActividad)
+
     suspend fun actualizarHabito(actividadId: String, nombre: String, detalle: ActividadDetalle.Habito, usuarioId: String)
     suspend fun actualizarTarea(actividadId: String, nombre: String, detalle: ActividadDetalle.Tarea, usuarioId: String)
     suspend fun actualizarRutina(actividadId: String, nombre: String, detalle: ActividadDetalle.Rutina, usuarioId: String)

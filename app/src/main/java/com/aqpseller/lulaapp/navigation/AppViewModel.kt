@@ -4,13 +4,16 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aqpseller.lulaapp.core.security.SesionPrivadaState
 import com.aqpseller.lulaapp.domain.repository.AjustesRepository
+import com.aqpseller.lulaapp.domain.repository.UsuarioRepository
 import com.aqpseller.lulaapp.domain.usecase.notificaciones.ReprogramarTodosLosRecordatoriosUseCase
 import com.aqpseller.lulaapp.domain.usecase.usuario.AsegurarDatosSemillaUseCase
+import com.aqpseller.lulaapp.domain.usecase.usuario.RestaurarDatosPersonalesUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -24,6 +27,8 @@ import javax.inject.Inject
 class AppViewModel @Inject constructor(
     private val asegurarDatosSemillaUseCase: AsegurarDatosSemillaUseCase,
     private val reprogramarTodosLosRecordatoriosUseCase: ReprogramarTodosLosRecordatoriosUseCase,
+    private val restaurarDatosPersonalesUseCase: RestaurarDatosPersonalesUseCase,
+    private val usuarioRepository: UsuarioRepository,
     sesionPrivadaState: SesionPrivadaState,
     ajustesRepository: AjustesRepository,
 ) : ViewModel() {
@@ -55,6 +60,16 @@ class AppViewModel @Inject constructor(
         // esperar a un reinicio real. Ver `Plan/08-decisiones-tecnicas.md`.
         viewModelScope.launch {
             runCatching { reprogramarTodosLosRecordatoriosUseCase() }
+        }
+        // Respaldo/restauración de lo Personal (Hábitos/Tareas) — best-effort en cada apertura
+        // de la app, no un listener en vivo: si vinculé la cuenta en otro dispositivo mientras
+        // tanto, esto lo trae. No-op si la cuenta no está vinculada (sin correo, no hay nada que
+        // restaurar). Ver `Plan/12-firebase-auth-y-sync.md`.
+        viewModelScope.launch {
+            val usuario = usuarioRepository.observarUsuario().first()
+            if (usuario?.correo != null) {
+                runCatching { restaurarDatosPersonalesUseCase(usuario.id) }
+            }
         }
     }
 }

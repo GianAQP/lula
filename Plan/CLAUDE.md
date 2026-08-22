@@ -1098,3 +1098,15 @@ y todo fallaba con `PERMISSION_DENIED` — se agregó un respaldo que sube el Es
 membresía antes de escuchar, así uno viejo también funciona sin recrearlo. Confirmado con
 Firebase Console: el documento del espacio, la subcolección `miembros`, y una Tarea nueva con
 todos sus campos, todo verificado ahí. Detalle completo en `Plan/08-decisiones-tecnicas.md`.
+
+**Respaldo del Espacio Personal — Hábitos y Tareas** (2026-08-21): a raíz de la pregunta "¿qué
+pasa si cambio de celular?", se construyó el respaldo real de lo Personal — sin restringirlo a
+premium todavía (el cobro no existe aún; se corta cuando llegue, con las mismas reglas de
+seguridad). A diferencia de Familia (varias personas, necesita escuchar en vivo), lo Personal es
+de un solo dispositivo a la vez — nuevo `PersonalSyncRepository` sube cada cambio y **restaura
+una sola vez** (no listener) al vincular la cuenta y en cada apertura de la app. Alcance de esta
+ronda: Hábitos (con su historial día a día, la racha) y Tareas — lo que más dolería perder.
+Bug real corregido con logcat en vivo: reglas de Firestore nuevas sin publicar causaron
+`PERMISSION_DENIED` en el primer intento. Confirmado con Firebase Console: el Hábito con todos
+sus campos y su registro de racha, verificados ahí. Detalle completo en
+`Plan/08-decisiones-tecnicas.md`.

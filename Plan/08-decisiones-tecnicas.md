@@ -3989,3 +3989,48 @@ adelante, no hace un "catch-up" histórico completo — aunque en la práctica `
 de Firestore sí entrega el estado actual completo al conectarse por primera vez, así que esto
 debería funcionar solo; falta confirmarlo con una segunda cuenta real). Probar de punta a punta
 con un segundo dispositivo real sigue pendiente — ver `Plan/10-pendientes.md`.
+
+## Respaldo del Espacio Personal — Hábitos y Tareas, sin restricción todavía (2026-08-21)
+
+El usuario preguntó qué pasaría si cambia de celular hoy — la respuesta honesta fue "casi todo
+se pierde", porque la decisión de privacidad del 1 de agosto dice que lo Personal nunca
+sincroniza. Se decidió construir el respaldo real ahora, **sin cortarlo detrás de un muro de
+pago todavía** (el sistema de cobros no existe aún) — la idea es que quien prueba la app ahora
+no pierda su avance, y cuando exista premium, se corte con las mismas reglas de seguridad que ya
+sabemos escribir (nada que rediseñar).
+
+**Decisión de arquitectura clave**: a diferencia de `EspacioSyncRepository` (Familia, varias
+personas editando lo mismo en simultáneo → necesita escuchar en vivo), lo Personal es de **un
+solo dispositivo activo a la vez** — no hace falta un listener permanente. Nuevo
+`PersonalSyncRepository`: sube cada cambio (`subirHabito`/`subirTarea`/`subirRegistroHabito`,
+siempre `runCatching`) y **restaura una sola vez** (`restaurarHabitos`/`restaurarTareas`/
+`restaurarRegistrosHabito`, un `.get()` puntual, no `addSnapshotListener`) — se llama al vincular
+la cuenta con Google (`ReclamarCuentaConGoogleUseCase`) y, por si se agregó algo desde otro
+dispositivo mientras tanto, también best-effort en cada apertura de la app (`AppViewModel`).
+Idempotente por diseño: cada fila se aplica por upsert sobre su id original, así que llamarlo
+varias veces nunca duplica nada.
+
+**Alcance de esta ronda**: Hábitos (con su historial día por día — la racha, que es justo el
+"avance" que más le dolería perder a alguien) y Tareas del Espacio Personal. Medicamentos,
+Citas, Fechas importantes, Finanzas, Diario, Notas, Mi propósito, Metas y Listas quedan fuera a
+propósito — se agregarán en rondas siguientes si hace falta, mismo patrón ya probado.
+
+**Firestore**: `usuarios/{firebaseUid}/actividadesPersonales/{actividadId}` (Hábito y Tarea
+comparten la colección, discriminados por campo `tipo`, igual que Familia) y
+`usuarios/{firebaseUid}/registrosHabito/{actividadId}_{fecha}`. A diferencia del perfil
+(`usuarios/{uid}`, legible por cualquier autenticado), estas subcolecciones son privadas — reglas
+nuevas: solo el dueño (`request.auth.uid == firebaseUid`) puede leer o escribir.
+
+**Bug real encontrado y arreglado con logcat en vivo**: el primer intento de push falló con
+`PERMISSION_DENIED` porque las reglas nuevas todavía no estaban publicadas — se le pasaron al
+usuario, las publicó, y el segundo intento funcionó. Confirmado con Firebase Console: el
+documento del Hábito con todos sus campos (`tipo`, `nombre`, `detalleFrecuencia`,
+`detalleNivelRecordatorio`, etc.) y la subcolección `registrosHabito` con el día marcado,
+verificado ahí en vivo.
+
+**Aclaración importante sobre "30 días" de Firebase**: el usuario preguntó si el proyecto de
+Firebase se creó con algún vencimiento de 30 días que había que "migrar a permanente". No —
+Firestore muestra por defecto un aviso de vencimiento de 30 días cuando se crea en "modo
+prueba" (reglas abiertas), pero esa etapa ya se superó hace varias rondas cuando se pegaron las
+primeras reglas reales de verdad (deny-all, después las granulares). El plan Spark (gratis) no
+tiene fecha de vencimiento — no hay nada pendiente de migrar.

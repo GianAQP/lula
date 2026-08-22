@@ -8,6 +8,7 @@ import com.aqpseller.lulaapp.domain.model.TipoEspacio
 import com.aqpseller.lulaapp.domain.repository.ActividadRepository
 import com.aqpseller.lulaapp.domain.repository.EspacioRepository
 import com.aqpseller.lulaapp.domain.repository.EspacioSyncRepository
+import com.aqpseller.lulaapp.domain.repository.PersonalSyncRepository
 import javax.inject.Inject
 
 class ActualizarTareaUseCase @Inject constructor(
@@ -15,6 +16,7 @@ class ActualizarTareaUseCase @Inject constructor(
     private val recordatorioScheduler: RecordatorioScheduler,
     private val espacioRepository: EspacioRepository,
     private val espacioSyncRepository: EspacioSyncRepository,
+    private val personalSyncRepository: PersonalSyncRepository,
 ) {
     suspend operator fun invoke(
         actividadId: String,
@@ -44,8 +46,10 @@ class ActualizarTareaUseCase @Inject constructor(
             recordatorioScheduler.cancelar(actividadId)
         }
         val actividad = actividadRepository.obtenerConDetalle(actividadId) ?: return
-        if (espacioRepository.obtenerEspacioSiEsMiembro(actividad.espacioId, usuarioId)?.tipo == TipoEspacio.FAMILIA) {
-            runCatching { espacioSyncRepository.subirTarea(actividad.espacioId, actividad, detalle) }
+        when (espacioRepository.obtenerEspacioSiEsMiembro(actividad.espacioId, usuarioId)?.tipo) {
+            TipoEspacio.FAMILIA -> runCatching { espacioSyncRepository.subirTarea(actividad.espacioId, actividad, detalle) }
+            TipoEspacio.PERSONAL -> runCatching { personalSyncRepository.subirTarea(actividad, detalle) }
+            else -> {}
         }
     }
 }

@@ -12,6 +12,12 @@ el `.apk` de debug en un segundo teléfono para probar de punta a punta con dos 
 el usuario lo hará cuando el resto de esta lista esté más avanzado, para probar todo junto en
 vez de por partes. Ver 2026-08-20, `08-decisiones-tecnicas.md`.
 
+**Respaldo del Espacio Personal — construido para Hábitos y Tareas (2026-08-21)**, sin
+restricción todavía (se corta detrás de premium cuando exista el cobro). Falta extenderlo a
+Medicamentos, Citas, Fechas importantes, Finanzas, Diario, Notas, Mi propósito, Metas y Listas —
+mismo patrón ya probado (`PersonalSyncRepository`), se agrega cuando haga falta. Ver
+`08-decisiones-tecnicas.md`.
+
 ## 1. Bloqueado por backend (necesita Firebase + algo de sync)
 
 Nada de esto se puede terminar de verdad mientras la app siga siendo un solo usuario semilla

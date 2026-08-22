@@ -20,6 +20,16 @@ service cloud.firestore {
     match /usuarios/{firebaseUid} {
       allow read: if request.auth != null;
       allow write: if request.auth != null && request.auth.uid == firebaseUid;
+
+      // Respaldo de lo Personal (Hábitos/Tareas + historial de racha) — a diferencia del
+      // perfil, esto es privado: ni siquiera otro usuario autenticado puede leerlo, solo el
+      // dueño de la cuenta. Ver `Plan/12-firebase-auth-y-sync.md`.
+      match /actividadesPersonales/{actividadId} {
+        allow read, write: if request.auth != null && request.auth.uid == firebaseUid;
+      }
+      match /registrosHabito/{registroId} {
+        allow read, write: if request.auth != null && request.auth.uid == firebaseUid;
+      }
     }
 
     // Solicitudes de Círculo de cuidado: solo el remitente (deFirebaseUid) y el destinatario

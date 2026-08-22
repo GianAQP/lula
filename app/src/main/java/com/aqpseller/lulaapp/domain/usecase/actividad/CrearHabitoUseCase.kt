@@ -13,12 +13,17 @@ import com.aqpseller.lulaapp.domain.model.NivelRecordatorio
 import com.aqpseller.lulaapp.domain.model.Privacidad
 import com.aqpseller.lulaapp.domain.model.SyncStatus
 import com.aqpseller.lulaapp.domain.model.TipoActividad
+import com.aqpseller.lulaapp.domain.model.TipoEspacio
 import com.aqpseller.lulaapp.domain.repository.ActividadRepository
+import com.aqpseller.lulaapp.domain.repository.EspacioRepository
+import com.aqpseller.lulaapp.domain.repository.PersonalSyncRepository
 import javax.inject.Inject
 
 class CrearHabitoUseCase @Inject constructor(
     private val actividadRepository: ActividadRepository,
     private val recordatorioScheduler: RecordatorioScheduler,
+    private val espacioRepository: EspacioRepository,
+    private val personalSyncRepository: PersonalSyncRepository,
 ) {
     suspend operator fun invoke(
         espacioId: String,
@@ -72,6 +77,11 @@ class CrearHabitoUseCase @Inject constructor(
         actividadRepository.crearHabito(actividad, detalle, propietario)
         if (horaRecordatorio != null) {
             recordatorioScheduler.programarHabito(id, nombre, horaRecordatorio, nivelRecordatorio)
+        }
+        // Respaldo en la nube — solo Personal esta ronda (Familia sincroniza Tareas/Retos, no
+        // Hábitos todavía). Ver `Plan/12-firebase-auth-y-sync.md`.
+        if (espacioRepository.obtenerEspacioSiEsMiembro(espacioId, propietario)?.tipo == TipoEspacio.PERSONAL) {
+            runCatching { personalSyncRepository.subirHabito(actividad, detalle) }
         }
     }
 }
