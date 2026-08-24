@@ -34,6 +34,7 @@ data class EspacioMiembroEntity(
     val espacioId: String,
     val usuarioId: String,
     val rol: String,
+    val nombre: String? = null,
 )
 
 @Entity(tableName = "area_de_vida")

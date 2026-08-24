@@ -80,8 +80,9 @@ class EspacioRepositoryImpl @Inject constructor(
         )
     }
 
-    override suspend fun agregarMiembro(espacioId: String, usuarioId: String, rol: RolEnEspacio) {
-        val entity = EspacioMiembro(espacioId = espacioId, usuarioId = usuarioId, rol = rol).toEntity()
+    override suspend fun agregarMiembro(espacioId: String, usuarioId: String, rol: RolEnEspacio, nombre: String?) {
+        val existente = espacioMiembroDao.obtenerMiembro(espacioId, usuarioId)
+        val entity = EspacioMiembro(espacioId = espacioId, usuarioId = usuarioId, rol = rol, nombre = nombre ?: existente?.nombre).toEntity()
         espacioMiembroDao.upsert(entity)
         auditLogger.registrar<EspacioMiembroEntity>(
             entidad = "espacio_miembro",

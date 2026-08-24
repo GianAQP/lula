@@ -24,4 +24,12 @@ data class UsuarioEntity(
      * null mientras siga siendo solo el usuario semilla local. Ver
      * `Plan/12-firebase-auth-y-sync.md`. */
     val firebaseUid: String? = null,
+    /** null = todavía no pasó por el registro/preguntas iniciales — gatilla mostrar
+     * `OnboardingScreen` en vez de entrar directo a Hoy. Ver `Plan/06-onboarding.md`. */
+    val onboardingCompletadoEn: Long? = null,
+    /** Respuestas del onboarding — JSON vía `encodeStringList`/lista simple. Ver `Plan/06-onboarding.md`. */
+    val queMejorarJson: String = "[]",
+    val comoEmpezar: String? = null,
+    val momentoDelDiaPreferido: String? = null,
+    val porQueEmpezar: String? = null,
 )

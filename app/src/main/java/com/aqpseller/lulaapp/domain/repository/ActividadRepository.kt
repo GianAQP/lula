@@ -41,6 +41,17 @@ interface ActividadRepository {
     /** Igual que [mergeHabitoRemoto] pero para un día del historial de cumplimiento (la racha). */
     suspend fun mergeRegistroHabitoRemoto(actividadId: String, fecha: Long, estado: EstadoActividad)
 
+    /** Igual que [mergeHabitoRemoto] pero para Rutina/Medicamento/Cita/Fecha importante — mismo
+     * patrón, restaurar un respaldo de la nube (cambio de celular). */
+    suspend fun mergeRutinaRemota(actividad: Actividad, detalle: ActividadDetalle.Rutina)
+    suspend fun mergeMedicamentoRemoto(actividad: Actividad, detalle: ActividadDetalle.Medicamento)
+    suspend fun mergeCitaRemota(actividad: Actividad, detalle: ActividadDetalle.Cita)
+    suspend fun mergeFechaImportanteRemota(actividad: Actividad, detalle: ActividadDetalle.FechaImportante)
+
+    /** Igual que [mergeRegistroHabitoRemoto] pero para una toma de Medicamento (hay varias por
+     * día, `horario` distingue cuál). */
+    suspend fun mergeTomaMedicamentoRemota(actividadId: String, fecha: Long, horario: String, estado: EstadoActividad)
+
     suspend fun actualizarHabito(actividadId: String, nombre: String, detalle: ActividadDetalle.Habito, usuarioId: String)
     suspend fun actualizarTarea(actividadId: String, nombre: String, detalle: ActividadDetalle.Tarea, usuarioId: String)
     suspend fun actualizarRutina(actividadId: String, nombre: String, detalle: ActividadDetalle.Rutina, usuarioId: String)

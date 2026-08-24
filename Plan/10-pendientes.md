@@ -6,17 +6,39 @@ pensado para leer "por qué se decidió X", no como lista de tareas). Cuando alg
 se construye, se borra de acá y el detalle de cómo se hizo queda en
 `08-decisiones-tecnicas.md` como siempre.
 
-**Prueba real con dos dispositivos**: todo el bloque de Firebase/Círculo de cuidado/Familia de
-esta sección se probó solo compartiendo con la propia cuenta (mismo dispositivo). Falta instalar
-el `.apk` de debug en un segundo teléfono para probar de punta a punta con dos cuentas reales —
-el usuario lo hará cuando el resto de esta lista esté más avanzado, para probar todo junto en
-vez de por partes. Ver 2026-08-20, `08-decisiones-tecnicas.md`.
+**Prueba real con dos dispositivos — hecha (2026-08-23)**: primera vez probando con dos cuentas
+de Google reales en dos celulares (Familia, código de invitación). Salieron 3 bugs reales, los 3
+arreglados el mismo día — ver `08-decisiones-tecnicas.md`. Círculo de cuidado (compartir una
+Tarea/Medicamento puntual) todavía no se probó así — sigue bloqueado por el mismo hueco de "ver
+contenido compartido" de abajo.
 
-**Respaldo del Espacio Personal — construido para Hábitos, Tareas, Finanzas, Diario, Notas,
-Metas, Listas y Mi propósito (2026-08-22)**, sin restricción todavía (se corta detrás de premium
-cuando exista el cobro). Falta extenderlo a Medicamentos, Citas y Fechas importantes — mismo
-patrón ya probado (`PersonalSyncRepository`), se agrega cuando haga falta. Ver
+**Respaldo del Espacio Personal — completo (2026-08-22)**: Hábitos, Tareas, Rutinas,
+Medicamentos (con tomas), Citas (con sesiones de curso), Fechas importantes, Finanzas, Diario,
+Notas, Metas, Listas, Mi propósito, y el historial de Cerrar mi día/Revisión semanal. Sin
+restricción todavía (se corta detrás de premium cuando exista el cobro). Ya no queda ningún tipo
+del Espacio Personal sin respaldar.
+
+**Registro obligatorio + preguntas de onboarding — construido (2026-08-23)**: bienvenida, cuenta
+(Google, correo mágico como "próximamente"), privacidad, 5 preguntas para conocerte, resumen.
+Falta: el paso "Hábitos sugeridos" del diseño original (`Plan/06-onboarding.md`, elegir 2-5
+hábitos según las respuestas 4a/4b) — quedó fuera de esta ronda a propósito, es lógica de
+producto separada del gate de registro en sí. Y el enlace mágico por correo sigue sin poder
+completarse de verdad: necesita un dominio propio configurado en Firebase (Dynamic Links, la
+forma vieja de resolver esto sin dominio, fue dado de baja por Google) — bloqueado hasta que el
+usuario tenga/configure uno.
+
+**Código de invitación a Espacio Familia con tiempo de vida corto — construido (2026-08-23)**:
+escanear y quedar dentro al instante, sin paso de aceptar, código de 60s que se renueva solo.
+Falta el mismo mecanismo para Círculo de cuidado (compartir una Tarea/Medicamento puntual) —
+decidido con el usuario: se hace cuando se resuelva el hueco de "ver contenido compartido" de
+abajo, para no construir una aceptación que no muestra nada real del otro lado. Ver
 `08-decisiones-tecnicas.md`.
+
+**Logo/ícono de la app — sin construir**: el usuario propuso un ícono que evoluciona solo con el
+tiempo (semilla → brote → plantita, 3 etapas) usando el mismo mecanismo que apps como Genshin
+Impact (varios íconos declarados, activados por código). Técnicamente viable, pero necesita 3
+imágenes de ícono ya diseñadas/exportadas que Claude no puede generar — bloqueado hasta que
+alguien las diseñe.
 
 ## 1. Bloqueado por backend (necesita Firebase + algo de sync)
 
@@ -58,12 +80,11 @@ falta activar en cuanto exista:
   quién más usa Lula fuera del propio teléfono; hoy compartir sigue siendo por contacto
   (correo/teléfono) en texto libre.
 - **Escanear un QR para conectar/invitar y que quede aceptado automáticamente** (estilo Yape) —
-  se construyó la mitad que sí es segura hoy: escanear "mi código para conectar" solo copia el
-  correo al portapapeles, sigue habiendo un paso de aceptar (ver 2026-08-20,
-  `08-decisiones-tecnicas.md`). Saltarse ese paso necesitaría un "código canjeable" (reglas de
-  Firestore nuevas, cualquiera con el QR puede reclamarlo) y, aun así, quien invita no se
-  enteraría de nada hasta que el contenido del Espacio sincronice de verdad — no vale la pena
-  construirlo a medias.
+  **construido para Espacio Familia (2026-08-23)**, con código de tiempo de vida corto (60s,
+  se renueva solo) en vez de uno permanente, para que guardar una foto del QR no sirva después.
+  Ver `08-decisiones-tecnicas.md`. Para Círculo de cuidado (compartir una Tarea/Medicamento
+  puntual) sigue pendiente — construirlo ahí requeriría antes resolver el punto de arriba (ver
+  contenido real compartido), si no, aceptar no mostraría nada del otro lado.
 - **Aviso "📩" de invitación pendiente** — corregido dos veces el mismo bug (filtraba por
   `usuarioId` en vez de por correo): primero en `observarPendientesPara` (DAO), después se
   encontró que `TopBarStatsViewModel` seguía llamándolo con el id viejo (2026-08-20). Ya debería

@@ -28,4 +28,18 @@ interface UsuarioRepository {
      * actualiza la misma fila (mismo `id`), nunca crea una nueva ni toca ningún FK. Ver
      * `Plan/12-firebase-auth-y-sync.md`, sección 5. */
     suspend fun vincularConGoogle(usuarioId: String, correo: String, firebaseUid: String)
+
+    /** Guarda las respuestas del registro inicial — cada parámetro null deja el valor actual sin
+     * tocar (mismo criterio que [actualizarConsentimientos]). Ver `Plan/06-onboarding.md`. */
+    suspend fun guardarRespuestasOnboarding(
+        usuarioId: String,
+        queMejorar: List<String>? = null,
+        comoEmpezar: String? = null,
+        momentoDelDiaPreferido: String? = null,
+        nombrePreferido: String? = null,
+        porQueEmpezar: String? = null,
+    )
+
+    /** Marca terminado el registro inicial — de acá en más la app entra directo a Hoy. */
+    suspend fun completarOnboarding(usuarioId: String)
 }

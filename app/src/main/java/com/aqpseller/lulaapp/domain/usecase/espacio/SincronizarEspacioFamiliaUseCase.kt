@@ -6,6 +6,7 @@ import com.aqpseller.lulaapp.domain.repository.ActividadRepository
 import com.aqpseller.lulaapp.domain.repository.EspacioRepository
 import com.aqpseller.lulaapp.domain.repository.EspacioSyncRepository
 import com.aqpseller.lulaapp.domain.repository.RetoFamiliarRepository
+import com.aqpseller.lulaapp.domain.repository.UsuarioRepository
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -23,13 +24,14 @@ class SincronizarEspacioFamiliaUseCase @Inject constructor(
     private val espacioRepository: EspacioRepository,
     private val actividadRepository: ActividadRepository,
     private val retoFamiliarRepository: RetoFamiliarRepository,
+    private val usuarioRepository: UsuarioRepository,
 ) {
     suspend operator fun invoke(espacioId: String, miUsuarioId: String) = coroutineScope {
         respaldarMiPresenciaRemota(espacioId, miUsuarioId)
 
         launch {
             espacioSyncRepository.escucharMiembros(espacioId).collect { miembros ->
-                miembros.forEach { espacioRepository.agregarMiembro(it.espacioId, it.usuarioId, it.rol) }
+                miembros.forEach { espacioRepository.agregarMiembro(it.espacioId, it.usuarioId, it.rol, it.nombre) }
             }
         }
         launch {
@@ -58,12 +60,19 @@ class SincronizarEspacioFamiliaUseCase @Inject constructor(
     private suspend fun respaldarMiPresenciaRemota(espacioId: String, miUsuarioId: String) {
         runCatching {
             val espacio = espacioRepository.obtenerEspacioSiEsMiembro(espacioId, miUsuarioId) ?: return
-            val miMiembro = espacioRepository.observarMiembros(espacioId).first()
-                .find { it.usuarioId == miUsuarioId }
-                ?: EspacioMiembro(espacioId = espacioId, usuarioId = miUsuarioId, rol = RolEnEspacio.MIEMBRO)
+            val encontrado = espacioRepository.observarMiembros(espacioId).first().find { it.usuarioId == miUsuarioId }
+            // Si mi fila de miembro es de antes de que existiera `nombre` (o nunca se guardó),
+            // se autorrepara acá mismo con mi nombre actual — mismo criterio que el resto de
+            // este método (arreglar espacios/membresías viejas de paso, sin migración especial).
+            val miNombre = encontrado?.nombre ?: usuarioRepository.observarUsuario().first()?.nombrePreferido
+            val miMiembro = (encontrado ?: EspacioMiembro(espacioId = espacioId, usuarioId = miUsuarioId, rol = RolEnEspacio.MIEMBRO))
+                .copy(nombre = miNombre)
             espacioSyncRepository.subirEspacio(espacio)
             espacioSyncRepository.subirMiembro(espacioId, miMiembro)
             espacioSyncRepository.subirPunteroMiEspacio(espacioId)
+            if (encontrado?.nombre == null && miNombre != null) {
+                espacioRepository.agregarMiembro(espacioId, miUsuarioId, miMiembro.rol, miNombre)
+            }
         }
     }
 }

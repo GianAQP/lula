@@ -2,7 +2,10 @@ package com.aqpseller.lulaapp.data.repository
 
 import com.aqpseller.lulaapp.domain.model.Actividad
 import com.aqpseller.lulaapp.domain.model.ActividadDetalle
+import com.aqpseller.lulaapp.domain.model.AnticipacionRecordatorio
 import com.aqpseller.lulaapp.domain.model.CategoriaMeta
+import com.aqpseller.lulaapp.domain.model.Comida
+import com.aqpseller.lulaapp.domain.model.ComidaRelacionada
 import com.aqpseller.lulaapp.domain.model.ComoSeMideMeta
 import com.aqpseller.lulaapp.domain.model.EntradaDiario
 import com.aqpseller.lulaapp.domain.model.EstadoActividad
@@ -10,18 +13,27 @@ import com.aqpseller.lulaapp.domain.model.FrecuenciaHabito
 import com.aqpseller.lulaapp.domain.model.ListaConItems
 import com.aqpseller.lulaapp.domain.model.ListaItem
 import com.aqpseller.lulaapp.domain.model.Meta
+import com.aqpseller.lulaapp.domain.model.ModoFrecuenciaMedicamento
 import com.aqpseller.lulaapp.domain.model.MomentoDelDia
+import com.aqpseller.lulaapp.domain.model.MomentoRelativoComida
 import com.aqpseller.lulaapp.domain.model.MovimientoFinanciero
 import com.aqpseller.lulaapp.domain.model.NivelRecordatorio
 import com.aqpseller.lulaapp.domain.model.Nota
 import com.aqpseller.lulaapp.domain.model.Privacidad
 import com.aqpseller.lulaapp.domain.model.PropositoPersonal
+import com.aqpseller.lulaapp.domain.model.RecordatorioCita
+import com.aqpseller.lulaapp.domain.model.Recurrencia
 import com.aqpseller.lulaapp.domain.model.RecurrenciaTarea
+import com.aqpseller.lulaapp.domain.model.RegistroDiario
+import com.aqpseller.lulaapp.domain.model.RegistroSemanal
+import com.aqpseller.lulaapp.domain.model.SesionCita
 import com.aqpseller.lulaapp.domain.model.SyncStatus
 import com.aqpseller.lulaapp.domain.model.TipoActividad
+import com.aqpseller.lulaapp.domain.model.TipoAviso
 import com.aqpseller.lulaapp.domain.model.TipoMovimientoFinanciero
 import com.aqpseller.lulaapp.domain.repository.PersonalSyncRepository
 import com.aqpseller.lulaapp.domain.repository.RegistroHabitoRemoto
+import com.aqpseller.lulaapp.domain.repository.TomaMedicamentoRemota
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
@@ -31,12 +43,16 @@ import javax.inject.Inject
 private const val COLECCION_USUARIOS = "usuarios"
 private const val SUBCOLECCION_ACTIVIDADES = "actividadesPersonales"
 private const val SUBCOLECCION_REGISTROS = "registrosHabito"
+private const val SUBCOLECCION_TOMAS = "tomasMedicamento"
+private const val SUBCOLECCION_SESIONES_CITA = "sesionesCita"
 private const val SUBCOLECCION_FINANZAS = "movimientosFinancieros"
 private const val SUBCOLECCION_DIARIO = "entradasDiario"
 private const val SUBCOLECCION_NOTAS = "notas"
 private const val SUBCOLECCION_METAS = "metas"
 private const val SUBCOLECCION_LISTAS = "listas"
 private const val SUBCOLECCION_PROPOSITO = "proposito"
+private const val SUBCOLECCION_REGISTROS_DIARIOS = "registrosDiarios"
+private const val SUBCOLECCION_REGISTROS_SEMANALES = "registrosSemanales"
 
 /**
  * `usuarios/{miFirebaseUid}/actividadesPersonales/{actividadId}` (Hábitos y Tareas, discriminados
@@ -199,6 +215,261 @@ class PersonalSyncRepositoryImpl @Inject constructor(
                 actividadVinculadaId = doc.getString("detalleActividadVinculadaId"),
             )
             actividad to detalle
+        }
+    }
+
+    override suspend fun subirRutina(actividad: Actividad, detalle: ActividadDetalle.Rutina) {
+        val coleccion = coleccionActividades() ?: return
+        val datos = mapOf(
+            "tipo" to actividad.tipo.name,
+            "nombre" to actividad.nombre,
+            "propietario" to actividad.propietario,
+            "estado" to actividad.estado.name,
+            "privacidad" to actividad.privacidad.name,
+            "esPremiumFeature" to actividad.esPremiumFeature,
+            "areaDeVidaId" to actividad.areaDeVidaId,
+            "momentoDelDia" to actividad.momentoDelDia?.name,
+            "fechaCreacion" to actividad.fechaCreacion,
+            "activa" to actividad.activa,
+            "detalleActividadesIncluidasIds" to detalle.actividadesIncluidasIds,
+        )
+        coleccion.document(actividad.id).set(datos).await()
+    }
+
+    override suspend fun restaurarRutinas(): List<Pair<Actividad, ActividadDetalle.Rutina>> {
+        val coleccion = coleccionActividades() ?: return emptyList()
+        val snapshot = coleccion.whereEqualTo("tipo", TipoActividad.RUTINA.name).get().await()
+        return snapshot.documents.mapNotNull { doc ->
+            val actividad = actividadBaseDesde(doc, TipoActividad.RUTINA)
+            val detalle = ActividadDetalle.Rutina(
+                actividadesIncluidasIds = (doc.get("detalleActividadesIncluidasIds") as? List<*>)?.filterIsInstance<String>() ?: emptyList(),
+                momentoDelDia = actividad.momentoDelDia ?: MomentoDelDia.MANANA,
+            )
+            actividad to detalle
+        }
+    }
+
+    override suspend fun subirMedicamento(actividad: Actividad, detalle: ActividadDetalle.Medicamento) {
+        val coleccion = coleccionActividades() ?: return
+        val datos = mapOf(
+            "tipo" to actividad.tipo.name,
+            "nombre" to actividad.nombre,
+            "propietario" to actividad.propietario,
+            "estado" to actividad.estado.name,
+            "privacidad" to actividad.privacidad.name,
+            "esPremiumFeature" to actividad.esPremiumFeature,
+            "areaDeVidaId" to actividad.areaDeVidaId,
+            "fechaCreacion" to actividad.fechaCreacion,
+            "activa" to actividad.activa,
+            "detalleNombreMedicamento" to detalle.nombreMedicamento,
+            "detalleDosis" to detalle.dosis,
+            "detalleModoFrecuencia" to detalle.modoFrecuencia.name,
+            "detalleIntervaloHoras" to detalle.intervaloHoras,
+            "detalleHoraPrimeraDosis" to detalle.horaPrimeraDosis,
+            "detalleHorariosCalculados" to detalle.horariosCalculados,
+            "detalleComidasRelacionadas" to detalle.comidasRelacionadas.map { mapOf("comida" to it.comida.name, "momento" to it.momento.name) },
+            "detalleFechaInicio" to detalle.fechaInicio,
+            "detalleFechaFin" to detalle.fechaFin,
+            "detalleCantidadDosisTotal" to detalle.cantidadDosisTotal,
+            "detalleNivelRecordatorio" to detalle.nivelRecordatorio.name,
+            "detalleRecordatorioPersistente" to detalle.recordatorioPersistente,
+            "detalleIntervaloPersistenciaMin" to detalle.intervaloPersistenciaMin,
+        )
+        coleccion.document(actividad.id).set(datos).await()
+    }
+
+    override suspend fun restaurarMedicamentos(): List<Pair<Actividad, ActividadDetalle.Medicamento>> {
+        val coleccion = coleccionActividades() ?: return emptyList()
+        val snapshot = coleccion.whereEqualTo("tipo", TipoActividad.MEDICAMENTO.name).get().await()
+        return snapshot.documents.mapNotNull { doc ->
+            val actividad = actividadBaseDesde(doc, TipoActividad.MEDICAMENTO)
+            val comidas = (doc.get("detalleComidasRelacionadas") as? List<*>)?.mapNotNull { raw ->
+                val mapa = raw as? Map<*, *> ?: return@mapNotNull null
+                val comida = (mapa["comida"] as? String)?.let { runCatching { Comida.valueOf(it) }.getOrNull() } ?: return@mapNotNull null
+                val momento = (mapa["momento"] as? String)?.let { runCatching { MomentoRelativoComida.valueOf(it) }.getOrNull() } ?: return@mapNotNull null
+                ComidaRelacionada(comida, momento)
+            } ?: emptyList()
+            val detalle = ActividadDetalle.Medicamento(
+                nombreMedicamento = doc.getString("detalleNombreMedicamento") ?: "",
+                dosis = doc.getString("detalleDosis") ?: "",
+                modoFrecuencia = runCatching { ModoFrecuenciaMedicamento.valueOf(doc.getString("detalleModoFrecuencia") ?: "") }
+                    .getOrDefault(ModoFrecuenciaMedicamento.INTERVALO_HORAS),
+                intervaloHoras = doc.getLong("detalleIntervaloHoras")?.toInt(),
+                horaPrimeraDosis = doc.getString("detalleHoraPrimeraDosis"),
+                horariosCalculados = (doc.get("detalleHorariosCalculados") as? List<*>)?.filterIsInstance<String>() ?: emptyList(),
+                comidasRelacionadas = comidas,
+                fechaInicio = doc.getLong("detalleFechaInicio") ?: 0L,
+                fechaFin = doc.getLong("detalleFechaFin"),
+                cantidadDosisTotal = doc.getLong("detalleCantidadDosisTotal")?.toInt(),
+                nivelRecordatorio = runCatching { NivelRecordatorio.valueOf(doc.getString("detalleNivelRecordatorio") ?: "") }
+                    .getOrDefault(NivelRecordatorio.SONIDO),
+                recordatorioPersistente = doc.getBoolean("detalleRecordatorioPersistente") ?: false,
+                intervaloPersistenciaMin = doc.getLong("detalleIntervaloPersistenciaMin")?.toInt(),
+            )
+            actividad to detalle
+        }
+    }
+
+    override suspend fun subirTomaMedicamento(actividadId: String, fecha: Long, horario: String, estado: EstadoActividad) {
+        val coleccion = coleccion(SUBCOLECCION_TOMAS) ?: return
+        val datos = mapOf("actividadId" to actividadId, "fecha" to fecha, "horario" to horario, "estado" to estado.name)
+        coleccion.document("${actividadId}_${fecha}_$horario").set(datos).await()
+    }
+
+    override suspend fun restaurarTomasMedicamento(): List<TomaMedicamentoRemota> {
+        val coleccion = coleccion(SUBCOLECCION_TOMAS) ?: return emptyList()
+        return coleccion.get().await().documents.mapNotNull { doc ->
+            TomaMedicamentoRemota(
+                actividadId = doc.getString("actividadId") ?: return@mapNotNull null,
+                fecha = doc.getLong("fecha") ?: return@mapNotNull null,
+                horario = doc.getString("horario") ?: return@mapNotNull null,
+                estado = runCatching { EstadoActividad.valueOf(doc.getString("estado") ?: "") }.getOrDefault(EstadoActividad.SIN_CONFIRMAR),
+            )
+        }
+    }
+
+    override suspend fun subirCita(actividad: Actividad, detalle: ActividadDetalle.Cita) {
+        val coleccion = coleccionActividades() ?: return
+        val datos = mapOf(
+            "tipo" to actividad.tipo.name,
+            "nombre" to actividad.nombre,
+            "propietario" to actividad.propietario,
+            "estado" to actividad.estado.name,
+            "privacidad" to actividad.privacidad.name,
+            "esPremiumFeature" to actividad.esPremiumFeature,
+            "areaDeVidaId" to actividad.areaDeVidaId,
+            "fechaCreacion" to actividad.fechaCreacion,
+            "activa" to actividad.activa,
+            "detalleLugar" to detalle.lugar,
+            "detalleMotivo" to detalle.motivo,
+            "detalleFechaHora" to detalle.fechaHora,
+            "detalleRecordatorios" to detalle.recordatorios.map { mapOf("anticipacion" to it.anticipacion.name, "hora" to it.hora) },
+            "detalleNivelRecordatorio" to detalle.nivelRecordatorio.name,
+            "detalleEsCurso" to detalle.esCurso,
+            "detalleDiasSemana" to detalle.diasSemana.toList(),
+            "detalleHoraSesion" to detalle.horaSesion,
+            "detalleFechaInicioCurso" to detalle.fechaInicioCurso,
+            "detalleCantidadSesionesTotal" to detalle.cantidadSesionesTotal,
+        )
+        coleccion.document(actividad.id).set(datos).await()
+    }
+
+    override suspend fun restaurarCitas(): List<Pair<Actividad, ActividadDetalle.Cita>> {
+        val coleccion = coleccionActividades() ?: return emptyList()
+        val snapshot = coleccion.whereEqualTo("tipo", TipoActividad.CITA.name).get().await()
+        return snapshot.documents.mapNotNull { doc ->
+            val actividad = actividadBaseDesde(doc, TipoActividad.CITA)
+            val recordatorios = (doc.get("detalleRecordatorios") as? List<*>)?.mapNotNull { raw ->
+                val mapa = raw as? Map<*, *> ?: return@mapNotNull null
+                val anticipacion = (mapa["anticipacion"] as? String)?.let { runCatching { AnticipacionRecordatorio.valueOf(it) }.getOrNull() } ?: return@mapNotNull null
+                val hora = mapa["hora"] as? String ?: return@mapNotNull null
+                RecordatorioCita(anticipacion, hora)
+            } ?: emptyList()
+            val detalle = ActividadDetalle.Cita(
+                lugar = doc.getString("detalleLugar"),
+                motivo = doc.getString("detalleMotivo"),
+                fechaHora = doc.getLong("detalleFechaHora") ?: 0L,
+                recordatorios = recordatorios,
+                nivelRecordatorio = runCatching { NivelRecordatorio.valueOf(doc.getString("detalleNivelRecordatorio") ?: "") }
+                    .getOrDefault(NivelRecordatorio.SONIDO),
+                esCurso = doc.getBoolean("detalleEsCurso") ?: false,
+                diasSemana = (doc.get("detalleDiasSemana") as? List<*>)?.mapNotNull { (it as? Number)?.toInt() }?.toSet() ?: emptySet(),
+                horaSesion = doc.getString("detalleHoraSesion"),
+                fechaInicioCurso = doc.getLong("detalleFechaInicioCurso"),
+                cantidadSesionesTotal = doc.getLong("detalleCantidadSesionesTotal")?.toInt(),
+            )
+            actividad to detalle
+        }
+    }
+
+    override suspend fun subirSesionCita(sesion: SesionCita) {
+        val coleccion = coleccion(SUBCOLECCION_SESIONES_CITA) ?: return
+        val datos = mapOf(
+            "actividadId" to sesion.actividadId,
+            "numeroSesion" to sesion.numeroSesion,
+            "fecha" to sesion.fecha,
+            "fechaOriginal" to sesion.fechaOriginal,
+            "horario" to sesion.horario,
+            "estado" to sesion.estado.name,
+        )
+        coleccion.document(sesion.id).set(datos).await()
+    }
+
+    override suspend fun restaurarSesionesCita(): List<SesionCita> {
+        val coleccion = coleccion(SUBCOLECCION_SESIONES_CITA) ?: return emptyList()
+        return coleccion.get().await().documents.mapNotNull { doc ->
+            SesionCita(
+                id = doc.id,
+                actividadId = doc.getString("actividadId") ?: return@mapNotNull null,
+                numeroSesion = doc.getLong("numeroSesion")?.toInt() ?: return@mapNotNull null,
+                fecha = doc.getLong("fecha") ?: return@mapNotNull null,
+                fechaOriginal = doc.getLong("fechaOriginal") ?: 0L,
+                horario = doc.getString("horario") ?: "",
+                estado = runCatching { EstadoActividad.valueOf(doc.getString("estado") ?: "") }.getOrDefault(EstadoActividad.SIN_CONFIRMAR),
+            )
+        }
+    }
+
+    override suspend fun subirFechaImportante(actividad: Actividad, detalle: ActividadDetalle.FechaImportante) {
+        val coleccion = coleccionActividades() ?: return
+        val datos = mapOf(
+            "tipo" to actividad.tipo.name,
+            "nombre" to actividad.nombre,
+            "propietario" to actividad.propietario,
+            "estado" to actividad.estado.name,
+            "privacidad" to actividad.privacidad.name,
+            "esPremiumFeature" to actividad.esPremiumFeature,
+            "areaDeVidaId" to actividad.areaDeVidaId,
+            "fechaCreacion" to actividad.fechaCreacion,
+            "activa" to actividad.activa,
+            "detalleRecurrencia" to detalle.recurrencia.name,
+            "detalleFechaBase" to detalle.fechaBase,
+            "detalleHoraNotificacion" to detalle.horaNotificacion,
+            "detalleAnticipacion" to detalle.anticipacion.name,
+            "detalleTipoAviso" to detalle.tipoAviso.name,
+        )
+        coleccion.document(actividad.id).set(datos).await()
+    }
+
+    override suspend fun restaurarFechasImportantes(): List<Pair<Actividad, ActividadDetalle.FechaImportante>> {
+        val coleccion = coleccionActividades() ?: return emptyList()
+        val snapshot = coleccion.whereEqualTo("tipo", TipoActividad.FECHA_IMPORTANTE.name).get().await()
+        return snapshot.documents.mapNotNull { doc ->
+            val actividad = actividadBaseDesde(doc, TipoActividad.FECHA_IMPORTANTE)
+            val detalle = ActividadDetalle.FechaImportante(
+                recurrencia = runCatching { Recurrencia.valueOf(doc.getString("detalleRecurrencia") ?: "") }.getOrDefault(Recurrencia.ANUAL),
+                fechaBase = doc.getLong("detalleFechaBase") ?: 0L,
+                horaNotificacion = doc.getString("detalleHoraNotificacion") ?: "09:00",
+                anticipacion = runCatching { AnticipacionRecordatorio.valueOf(doc.getString("detalleAnticipacion") ?: "") }
+                    .getOrDefault(AnticipacionRecordatorio.MISMO_DIA),
+                tipoAviso = runCatching { TipoAviso.valueOf(doc.getString("detalleTipoAviso") ?: "") }.getOrDefault(TipoAviso.MENSAJE_SILENCIOSO),
+            )
+            actividad to detalle
+        }
+    }
+
+    override suspend fun subirActividadSegunTipo(actividad: Actividad) {
+        when (val detalle = actividad.detalle) {
+            is ActividadDetalle.Habito -> subirHabito(actividad, detalle)
+            is ActividadDetalle.Tarea -> subirTarea(actividad, detalle)
+            is ActividadDetalle.Rutina -> subirRutina(actividad, detalle)
+            is ActividadDetalle.Medicamento -> subirMedicamento(actividad, detalle)
+            is ActividadDetalle.Cita -> subirCita(actividad, detalle)
+            is ActividadDetalle.FechaImportante -> subirFechaImportante(actividad, detalle)
+            null -> Unit
+        }
+    }
+
+    override suspend fun eliminarActividad(actividadId: String) {
+        coleccionActividades()?.document(actividadId)?.delete()?.await()
+        coleccionRegistros()?.let { col ->
+            col.whereEqualTo("actividadId", actividadId).get().await().documents.forEach { it.reference.delete().await() }
+        }
+        coleccion(SUBCOLECCION_TOMAS)?.let { col ->
+            col.whereEqualTo("actividadId", actividadId).get().await().documents.forEach { it.reference.delete().await() }
+        }
+        coleccion(SUBCOLECCION_SESIONES_CITA)?.let { col ->
+            col.whereEqualTo("actividadId", actividadId).get().await().documents.forEach { it.reference.delete().await() }
         }
     }
 
@@ -399,5 +670,67 @@ class PersonalSyncRepositoryImpl @Inject constructor(
             respuestas = respuestas,
             fechaEdicion = doc.getLong("fechaEdicion") ?: 0L,
         )
+    }
+
+    override suspend fun subirRegistroDiario(registro: RegistroDiario) {
+        val coleccion = coleccion(SUBCOLECCION_REGISTROS_DIARIOS) ?: return
+        val datos = mapOf(
+            "fecha" to registro.fecha,
+            "actividadesCompletadas" to registro.actividadesCompletadas,
+            "actividadesTotales" to registro.actividadesTotales,
+            "puntuacion" to registro.puntuacion,
+            "estadoAnimo" to registro.estadoAnimo,
+            "queLogre" to registro.queLogre,
+            "queCosto" to registro.queCosto,
+            "queAjusto" to registro.queAjusto,
+        )
+        coleccion.document(registro.id).set(datos).await()
+    }
+
+    override suspend fun restaurarRegistrosDiarios(): List<RegistroDiario> {
+        val coleccion = coleccion(SUBCOLECCION_REGISTROS_DIARIOS) ?: return emptyList()
+        return coleccion.get().await().documents.mapNotNull { doc ->
+            RegistroDiario(
+                id = doc.id,
+                espacioId = "",
+                fecha = doc.getLong("fecha") ?: return@mapNotNull null,
+                actividadesCompletadas = doc.getLong("actividadesCompletadas")?.toInt() ?: 0,
+                actividadesTotales = doc.getLong("actividadesTotales")?.toInt() ?: 0,
+                puntuacion = doc.getLong("puntuacion")?.toInt() ?: 0,
+                estadoAnimo = doc.getString("estadoAnimo"),
+                queLogre = doc.getString("queLogre"),
+                queCosto = doc.getString("queCosto"),
+                queAjusto = doc.getString("queAjusto"),
+            )
+        }
+    }
+
+    override suspend fun subirRegistroSemanal(registro: RegistroSemanal) {
+        val coleccion = coleccion(SUBCOLECCION_REGISTROS_SEMANALES) ?: return
+        val datos = mapOf(
+            "semana" to registro.semana,
+            "cumplimientoGeneralPorcentaje" to registro.cumplimientoGeneralPorcentaje,
+            "rachaMaxima" to registro.rachaMaxima,
+            "queLogre" to registro.queLogre,
+            "queNoFunciono" to registro.queNoFunciono,
+            "queAjusto" to registro.queAjusto,
+        )
+        coleccion.document(registro.id).set(datos).await()
+    }
+
+    override suspend fun restaurarRegistrosSemanales(): List<RegistroSemanal> {
+        val coleccion = coleccion(SUBCOLECCION_REGISTROS_SEMANALES) ?: return emptyList()
+        return coleccion.get().await().documents.mapNotNull { doc ->
+            RegistroSemanal(
+                id = doc.id,
+                espacioId = "",
+                semana = doc.getString("semana") ?: return@mapNotNull null,
+                cumplimientoGeneralPorcentaje = doc.getLong("cumplimientoGeneralPorcentaje")?.toInt() ?: 0,
+                rachaMaxima = doc.getLong("rachaMaxima")?.toInt() ?: 0,
+                queLogre = doc.getString("queLogre"),
+                queNoFunciono = doc.getString("queNoFunciono"),
+                queAjusto = doc.getString("queAjusto"),
+            )
+        }
     }
 }

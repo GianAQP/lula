@@ -9,11 +9,16 @@ import com.aqpseller.lulaapp.domain.model.MomentoDelDia
 import com.aqpseller.lulaapp.domain.model.Privacidad
 import com.aqpseller.lulaapp.domain.model.SyncStatus
 import com.aqpseller.lulaapp.domain.model.TipoActividad
+import com.aqpseller.lulaapp.domain.model.TipoEspacio
 import com.aqpseller.lulaapp.domain.repository.ActividadRepository
+import com.aqpseller.lulaapp.domain.repository.EspacioRepository
+import com.aqpseller.lulaapp.domain.repository.PersonalSyncRepository
 import javax.inject.Inject
 
 class CrearRutinaUseCase @Inject constructor(
     private val actividadRepository: ActividadRepository,
+    private val espacioRepository: EspacioRepository,
+    private val personalSyncRepository: PersonalSyncRepository,
 ) {
     suspend operator fun invoke(
         espacioId: String,
@@ -47,5 +52,8 @@ class CrearRutinaUseCase @Inject constructor(
             momentoDelDia = momentoDelDia,
         )
         actividadRepository.crearRutina(actividad, detalle, propietario)
+        if (espacioRepository.obtenerEspacioSiEsMiembro(espacioId, propietario)?.tipo == TipoEspacio.PERSONAL) {
+            runCatching { personalSyncRepository.subirRutina(actividad, detalle) }
+        }
     }
 }

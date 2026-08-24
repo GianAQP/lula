@@ -6,9 +6,15 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.QrCode
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -25,6 +31,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.aqpseller.lulaapp.core.ui.ConfirmarEliminarDialog
 import com.aqpseller.lulaapp.core.ui.DictationTextField
+import com.aqpseller.lulaapp.core.ui.InvitacionQrDialog
+import com.aqpseller.lulaapp.core.utils.QrCodeGenerator
 
 @Composable
 fun FamiliaScreen(
@@ -137,8 +145,14 @@ fun FamiliaScreen(
                     TextButton(onClick = viewModel::ocultarFormularioInvitar) { Text("Cancelar") }
                 }
             } else {
-                Button(onClick = viewModel::mostrarFormularioInvitar, modifier = Modifier.padding(top = 8.dp)) {
-                    Text("+ Invitar a alguien")
+                Row(modifier = Modifier.padding(top = 8.dp)) {
+                    Button(onClick = viewModel::mostrarFormularioInvitar, modifier = Modifier.padding(end = 8.dp)) {
+                        Text("+ Invitar a alguien")
+                    }
+                    OutlinedButton(onClick = viewModel::mostrarCodigoQr) {
+                        Icon(Icons.Filled.QrCode, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Text(" Que escaneen para entrar")
+                    }
                 }
             }
             TextButton(onClick = onVerRetosFamiliares, modifier = Modifier.padding(top = 16.dp).fillMaxWidth()) {
@@ -161,6 +175,42 @@ fun FamiliaScreen(
                 "(tareas, hábitos, metas, listas, movimientos financieros, retos familiares) para siempre.",
             onConfirmar = { mostrarConfirmarEliminar = false; viewModel.eliminarEspacioFamilia() },
             onCancelar = { mostrarConfirmarEliminar = false },
+        )
+    }
+    if (uiState.mostrarInvitacionEnviada) {
+        InvitacionQrDialog(
+            titulo = "Invitación enviada",
+            mensaje = "Todavía es \"Pendiente\" hasta que la otra persona instale Lula y acepte. " +
+                "Mientras tanto, avísale así:",
+            textoInvitacion = "🏡 Te invito a unirte a la Familia \"${uiState.nombreEspacioFamilia}\" en Lula " +
+                "— vamos a compartir tareas del hogar y retos. La app todavía no está en la tienda; " +
+                "escríbeme y coordinamos cómo instalarla.",
+            onCerrar = viewModel::ocultarInvitacionEnviada,
+        )
+    }
+    if (uiState.mostrarCodigoQr) {
+        val textoQr = uiState.codigoQrTexto
+        val qr = remember(textoQr) { textoQr?.let { QrCodeGenerator.generar(it) } }
+        AlertDialog(
+            onDismissRequest = viewModel::ocultarCodigoQr,
+            confirmButton = { TextButton(onClick = viewModel::ocultarCodigoQr) { Text("Listo") } },
+            title = { Text("Que escaneen para entrar") },
+            text = {
+                Column {
+                    Text(
+                        text = "Con el botón de escanear de su Lula — quedan dentro de \"${uiState.nombreEspacioFamilia}\" " +
+                            "al instante, sin ningún paso más. Este código se renueva solo cada minuto, así que " +
+                            "guardarlo no sirve para usarlo después.",
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(bottom = 12.dp),
+                    )
+                    if (qr != null) {
+                        Image(bitmap = qr, contentDescription = null, modifier = Modifier.size(220.dp))
+                    } else {
+                        Text("Generando código nuevo…", style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+            },
         )
     }
 }

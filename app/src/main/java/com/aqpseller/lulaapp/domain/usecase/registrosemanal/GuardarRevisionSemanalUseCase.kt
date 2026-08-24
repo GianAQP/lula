@@ -3,11 +3,16 @@ package com.aqpseller.lulaapp.domain.usecase.registrosemanal
 import com.aqpseller.lulaapp.core.utils.DateTimeUtils
 import com.aqpseller.lulaapp.core.utils.IdGenerator
 import com.aqpseller.lulaapp.domain.model.RegistroSemanal
+import com.aqpseller.lulaapp.domain.model.TipoEspacio
+import com.aqpseller.lulaapp.domain.repository.EspacioRepository
+import com.aqpseller.lulaapp.domain.repository.PersonalSyncRepository
 import com.aqpseller.lulaapp.domain.repository.RegistroSemanalRepository
 import javax.inject.Inject
 
 class GuardarRevisionSemanalUseCase @Inject constructor(
     private val registroSemanalRepository: RegistroSemanalRepository,
+    private val espacioRepository: EspacioRepository,
+    private val personalSyncRepository: PersonalSyncRepository,
 ) {
     suspend operator fun invoke(
         espacioId: String,
@@ -31,6 +36,9 @@ class GuardarRevisionSemanalUseCase @Inject constructor(
             queAjusto = queAjusto,
         )
         registroSemanalRepository.guardarRevision(registro, usuarioId)
+        if (espacioRepository.obtenerEspacioSiEsMiembro(espacioId, usuarioId)?.tipo == TipoEspacio.PERSONAL) {
+            runCatching { personalSyncRepository.subirRegistroSemanal(registro) }
+        }
         return registro
     }
 }

@@ -182,8 +182,8 @@ fun ListDetailScreen(
             text = {
                 Column {
                     Text(
-                        text = "Desde Listas en su Lula, con el botón \"📷\" — se crea una copia " +
-                            "en su teléfono, sin quedar vinculada con esta.",
+                        text = "Con el botón de escanear de su Lula (arriba, en la barra superior) — se crea " +
+                            "una copia en su teléfono, sin quedar vinculada con esta.",
                         style = MaterialTheme.typography.bodySmall,
                         modifier = Modifier.padding(bottom = 12.dp),
                     )

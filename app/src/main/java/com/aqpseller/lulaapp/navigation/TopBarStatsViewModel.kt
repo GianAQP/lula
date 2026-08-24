@@ -3,6 +3,7 @@ package com.aqpseller.lulaapp.navigation
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aqpseller.lulaapp.core.utils.DateTimeUtils
+import com.aqpseller.lulaapp.core.utils.decodificarCodigoEspacioQr
 import com.aqpseller.lulaapp.core.utils.decodificarContactoQr
 import com.aqpseller.lulaapp.core.utils.decodificarListaQr
 import com.aqpseller.lulaapp.domain.model.TipoEspacio
@@ -10,7 +11,9 @@ import com.aqpseller.lulaapp.domain.model.TipoMovimientoFinanciero
 import com.aqpseller.lulaapp.domain.repository.EspacioRepository
 import com.aqpseller.lulaapp.domain.repository.UsuarioRepository
 import com.aqpseller.lulaapp.domain.usecase.carecircle.ObtenerSolicitudesRecibidasUseCase
+import com.aqpseller.lulaapp.domain.usecase.espacio.ResultadoUnionEspacio
 import com.aqpseller.lulaapp.domain.usecase.espacio.SincronizarEspacioFamiliaUseCase
+import com.aqpseller.lulaapp.domain.usecase.espacio.UnirseAEspacioConCodigoUseCase
 import com.aqpseller.lulaapp.domain.usecase.finanzas.ObtenerBalanceMesUseCase
 import com.aqpseller.lulaapp.domain.usecase.lista.ImportarListaDesdeQrUseCase
 import com.aqpseller.lulaapp.domain.usecase.registrodiario.ObtenerProgresoDeHoyUseCase
@@ -50,6 +53,7 @@ class TopBarStatsViewModel @Inject constructor(
     private val usuarioRepository: UsuarioRepository,
     private val importarListaDesdeQrUseCase: ImportarListaDesdeQrUseCase,
     private val sincronizarEspacioFamiliaUseCase: SincronizarEspacioFamiliaUseCase,
+    private val unirseAEspacioConCodigoUseCase: UnirseAEspacioConCodigoUseCase,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(TopBarStatsUiState())
@@ -93,6 +97,19 @@ class TopBarStatsViewModel @Inject constructor(
             if (lista != null) {
                 importarListaDesdeQrUseCase(qrTexto, sesion.espacioId, sesion.usuarioId)
                 _uiState.update { it.copy(mensaje = "Lista \"${lista.nombre}\" importada ✅") }
+                return@launch
+            }
+            val codigoEspacio = decodificarCodigoEspacioQr(qrTexto)
+            if (codigoEspacio != null) {
+                val resultado = unirseAEspacioConCodigoUseCase(codigoEspacio.codigoId, sesion.usuarioId)
+                _uiState.update {
+                    it.copy(
+                        mensaje = when (resultado) {
+                            is ResultadoUnionEspacio.Exito -> "Te uniste a \"${resultado.nombreEspacio}\" ✅"
+                            ResultadoUnionEspacio.CodigoInvalido -> "Ese código ya venció — pídele que muestre uno nuevo"
+                        },
+                    )
+                }
                 return@launch
             }
             val contacto = decodificarContactoQr(qrTexto)

@@ -9,6 +9,8 @@ import com.aqpseller.lulaapp.domain.repository.MetaRepository
 import com.aqpseller.lulaapp.domain.repository.NotaRepository
 import com.aqpseller.lulaapp.domain.repository.PersonalSyncRepository
 import com.aqpseller.lulaapp.domain.repository.PropositoPersonalRepository
+import com.aqpseller.lulaapp.domain.repository.RegistroDiarioRepository
+import com.aqpseller.lulaapp.domain.repository.RegistroSemanalRepository
 import javax.inject.Inject
 
 /**
@@ -29,10 +31,14 @@ class RestaurarDatosPersonalesUseCase @Inject constructor(
     private val metaRepository: MetaRepository,
     private val listaRepository: ListaRepository,
     private val propositoPersonalRepository: PropositoPersonalRepository,
+    private val registroDiarioRepository: RegistroDiarioRepository,
+    private val registroSemanalRepository: RegistroSemanalRepository,
 ) {
     suspend operator fun invoke(usuarioId: String) {
         val espacioPersonalId = espacioRepository.obtenerEspacioPersonal(usuarioId)?.id ?: return
 
+        // Actividades primero, sus registros/tomas/sesiones después — referencian la actividad
+        // por FK local (CASCADE), restaurar en el orden contrario rompería la restauración.
         personalSyncRepository.restaurarHabitos().forEach { (actividad, detalle) ->
             actividadRepository.mergeHabitoRemoto(actividad.copy(espacioId = espacioPersonalId), detalle)
         }
@@ -41,6 +47,24 @@ class RestaurarDatosPersonalesUseCase @Inject constructor(
         }
         personalSyncRepository.restaurarTareas().forEach { (actividad, detalle) ->
             actividadRepository.mergeTareaRemota(actividad.copy(espacioId = espacioPersonalId), detalle)
+        }
+        personalSyncRepository.restaurarRutinas().forEach { (actividad, detalle) ->
+            actividadRepository.mergeRutinaRemota(actividad.copy(espacioId = espacioPersonalId), detalle)
+        }
+        personalSyncRepository.restaurarMedicamentos().forEach { (actividad, detalle) ->
+            actividadRepository.mergeMedicamentoRemoto(actividad.copy(espacioId = espacioPersonalId), detalle)
+        }
+        personalSyncRepository.restaurarTomasMedicamento().forEach { toma ->
+            actividadRepository.mergeTomaMedicamentoRemota(toma.actividadId, toma.fecha, toma.horario, toma.estado)
+        }
+        personalSyncRepository.restaurarCitas().forEach { (actividad, detalle) ->
+            actividadRepository.mergeCitaRemota(actividad.copy(espacioId = espacioPersonalId), detalle)
+        }
+        personalSyncRepository.restaurarSesionesCita().forEach { sesion ->
+            actividadRepository.guardarSesionesCita(listOf(sesion))
+        }
+        personalSyncRepository.restaurarFechasImportantes().forEach { (actividad, detalle) ->
+            actividadRepository.mergeFechaImportanteRemota(actividad.copy(espacioId = espacioPersonalId), detalle)
         }
         personalSyncRepository.restaurarMovimientosFinancieros().forEach { movimiento ->
             finanzasRepository.registrarMovimiento(movimiento.copy(espacioId = espacioPersonalId), usuarioId)
@@ -61,6 +85,12 @@ class RestaurarDatosPersonalesUseCase @Inject constructor(
             proposito.respuestas.forEach { (preguntaId, respuesta) ->
                 propositoPersonalRepository.guardarRespuesta(espacioPersonalId, usuarioId, preguntaId, respuesta)
             }
+        }
+        personalSyncRepository.restaurarRegistrosDiarios().forEach { registro ->
+            registroDiarioRepository.cerrarDia(registro.copy(espacioId = espacioPersonalId), usuarioId)
+        }
+        personalSyncRepository.restaurarRegistrosSemanales().forEach { registro ->
+            registroSemanalRepository.guardarRevision(registro.copy(espacioId = espacioPersonalId), usuarioId)
         }
     }
 }

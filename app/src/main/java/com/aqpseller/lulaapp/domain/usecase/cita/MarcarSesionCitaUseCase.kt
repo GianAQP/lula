@@ -5,7 +5,10 @@ import com.aqpseller.lulaapp.core.utils.DateTimeUtils
 import com.aqpseller.lulaapp.domain.model.ActividadDetalle
 import com.aqpseller.lulaapp.domain.model.AnticipacionRecordatorio
 import com.aqpseller.lulaapp.domain.model.EstadoActividad
+import com.aqpseller.lulaapp.domain.model.TipoEspacio
 import com.aqpseller.lulaapp.domain.repository.ActividadRepository
+import com.aqpseller.lulaapp.domain.repository.EspacioRepository
+import com.aqpseller.lulaapp.domain.repository.PersonalSyncRepository
 import com.aqpseller.lulaapp.domain.usecase.actividad.ObtenerDetalleActividadUseCase
 import javax.inject.Inject
 
@@ -18,9 +21,17 @@ class MarcarSesionCitaUseCase @Inject constructor(
     private val actividadRepository: ActividadRepository,
     private val recordatorioScheduler: RecordatorioScheduler,
     private val obtenerDetalleActividadUseCase: ObtenerDetalleActividadUseCase,
+    private val espacioRepository: EspacioRepository,
+    private val personalSyncRepository: PersonalSyncRepository,
 ) {
     suspend operator fun invoke(actividadId: String, numeroSesion: Int, estado: EstadoActividad, usuarioId: String) {
         actividadRepository.marcarSesionCita(actividadId, numeroSesion, estado, usuarioId)
+        val actividadParaSync = actividadRepository.obtenerConDetalle(actividadId)
+        if (actividadParaSync != null && espacioRepository.obtenerEspacioSiEsMiembro(actividadParaSync.espacioId, usuarioId)?.tipo == TipoEspacio.PERSONAL) {
+            actividadRepository.obtenerSesionesCita(actividadId).firstOrNull { it.numeroSesion == numeroSesion }?.let { sesion ->
+                runCatching { personalSyncRepository.subirSesionCita(sesion) }
+            }
+        }
         if (estado != EstadoActividad.SIN_CONFIRMAR) {
             AnticipacionRecordatorio.entries.forEach {
                 recordatorioScheduler.cancelarSesionCita(actividadId, numeroSesion, it)

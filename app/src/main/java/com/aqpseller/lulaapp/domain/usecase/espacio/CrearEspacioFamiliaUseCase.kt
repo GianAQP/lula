@@ -9,6 +9,8 @@ import com.aqpseller.lulaapp.domain.model.TipoEspacio
 import com.aqpseller.lulaapp.domain.repository.AjustesRepository
 import com.aqpseller.lulaapp.domain.repository.EspacioRepository
 import com.aqpseller.lulaapp.domain.repository.EspacioSyncRepository
+import com.aqpseller.lulaapp.domain.repository.UsuarioRepository
+import kotlinx.coroutines.flow.first
 import javax.inject.Inject
 
 /**
@@ -21,6 +23,7 @@ class CrearEspacioFamiliaUseCase @Inject constructor(
     private val espacioRepository: EspacioRepository,
     private val ajustesRepository: AjustesRepository,
     private val espacioSyncRepository: EspacioSyncRepository,
+    private val usuarioRepository: UsuarioRepository,
 ) {
     suspend operator fun invoke(nombre: String, usuarioId: String): Espacio {
         val espacio = Espacio(
@@ -30,7 +33,8 @@ class CrearEspacioFamiliaUseCase @Inject constructor(
             creadoPor = usuarioId,
             fechaCreacion = DateTimeUtils.ahoraEpochMillis(),
         )
-        val miembro = EspacioMiembro(espacioId = espacio.id, usuarioId = usuarioId, rol = RolEnEspacio.ADMIN)
+        val miNombre = usuarioRepository.observarUsuario().first()?.nombrePreferido
+        val miembro = EspacioMiembro(espacioId = espacio.id, usuarioId = usuarioId, rol = RolEnEspacio.ADMIN, nombre = miNombre)
         espacioRepository.crearEspacio(espacio = espacio, miembro = miembro)
         ajustesRepository.setEspacioActivoId(espacio.id)
         runCatching {

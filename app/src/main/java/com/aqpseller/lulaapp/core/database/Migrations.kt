@@ -181,3 +181,28 @@ val MIGRATION_28_29 = object : Migration(28, 29) {
         db.execSQL("ALTER TABLE solicitud_compartir ADD COLUMN tipo TEXT NOT NULL DEFAULT 'ACTIVIDAD'")
     }
 }
+
+/** Usuario gana el registro/onboarding real (antes la app entraba directo a Hoy con el usuario
+ * semilla, sin pasar por ninguna pantalla) — `onboardingCompletadoEn` null gatilla mostrar
+ * `OnboardingScreen`; los usuarios que ya venían usando la app (con datos existentes) se marcan
+ * completados de una vez acá mismo, para no interrumpirlos con un registro retroactivo. Ver
+ * `Plan/06-onboarding.md`. */
+val MIGRATION_29_30 = object : Migration(29, 30) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE usuario ADD COLUMN onboardingCompletadoEn INTEGER DEFAULT NULL")
+        db.execSQL("ALTER TABLE usuario ADD COLUMN queMejorarJson TEXT NOT NULL DEFAULT '[]'")
+        db.execSQL("ALTER TABLE usuario ADD COLUMN comoEmpezar TEXT DEFAULT NULL")
+        db.execSQL("ALTER TABLE usuario ADD COLUMN momentoDelDiaPreferido TEXT DEFAULT NULL")
+        db.execSQL("ALTER TABLE usuario ADD COLUMN porQueEmpezar TEXT DEFAULT NULL")
+        db.execSQL("UPDATE usuario SET onboardingCompletadoEn = ${System.currentTimeMillis()} WHERE onboardingCompletadoEn IS NULL")
+    }
+}
+
+/** `espacio_miembro` gana `nombre` — antes la lista de "Miembros" de Familia mostraba el id
+ * local (una UUID sin significado en otro dispositivo) para cualquiera que no fuera "yo" mismo,
+ * en vez de su nombre real. Ver `Plan/08-decisiones-tecnicas.md`. */
+val MIGRATION_30_31 = object : Migration(30, 31) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE espacio_miembro ADD COLUMN nombre TEXT DEFAULT NULL")
+    }
+}

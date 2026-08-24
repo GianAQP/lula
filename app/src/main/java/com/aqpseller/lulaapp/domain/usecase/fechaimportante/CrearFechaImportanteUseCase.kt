@@ -12,12 +12,17 @@ import com.aqpseller.lulaapp.domain.model.Recurrencia
 import com.aqpseller.lulaapp.domain.model.SyncStatus
 import com.aqpseller.lulaapp.domain.model.TipoActividad
 import com.aqpseller.lulaapp.domain.model.TipoAviso
+import com.aqpseller.lulaapp.domain.model.TipoEspacio
 import com.aqpseller.lulaapp.domain.repository.ActividadRepository
+import com.aqpseller.lulaapp.domain.repository.EspacioRepository
+import com.aqpseller.lulaapp.domain.repository.PersonalSyncRepository
 import javax.inject.Inject
 
 class CrearFechaImportanteUseCase @Inject constructor(
     private val actividadRepository: ActividadRepository,
     private val recordatorioScheduler: RecordatorioScheduler,
+    private val espacioRepository: EspacioRepository,
+    private val personalSyncRepository: PersonalSyncRepository,
 ) {
     suspend operator fun invoke(
         espacioId: String,
@@ -57,6 +62,9 @@ class CrearFechaImportanteUseCase @Inject constructor(
             tipoAviso = tipoAviso,
         )
         actividadRepository.crearFechaImportante(actividad, detalle, propietario)
+        if (espacioRepository.obtenerEspacioSiEsMiembro(espacioId, propietario)?.tipo == TipoEspacio.PERSONAL) {
+            runCatching { personalSyncRepository.subirFechaImportante(actividad, detalle) }
+        }
         recordatorioScheduler.programarFechaImportante(id, nombre, fechaBase, horaNotificacion, anticipacion, recurrencia, tipoAviso)
     }
 }

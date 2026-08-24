@@ -2,6 +2,7 @@ package com.aqpseller.lulaapp.features.family
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.aqpseller.lulaapp.core.utils.codificarCodigoEspacioQr
 import com.aqpseller.lulaapp.domain.model.RolEnEspacio
 import com.aqpseller.lulaapp.domain.model.SesionActual
 import com.aqpseller.lulaapp.domain.model.TipoEspacio
@@ -9,12 +10,15 @@ import com.aqpseller.lulaapp.domain.repository.UsuarioRepository
 import com.aqpseller.lulaapp.domain.usecase.espacio.CambiarEspacioActivoUseCase
 import com.aqpseller.lulaapp.domain.usecase.espacio.CrearEspacioFamiliaUseCase
 import com.aqpseller.lulaapp.domain.usecase.espacio.EliminarEspacioFamiliaUseCase
+import com.aqpseller.lulaapp.domain.usecase.espacio.GenerarCodigoInvitacionEspacioUseCase
 import com.aqpseller.lulaapp.domain.usecase.espacio.InvitarAEspacioUseCase
 import com.aqpseller.lulaapp.domain.usecase.espacio.ObtenerEspaciosDeUsuarioUseCase
 import com.aqpseller.lulaapp.domain.usecase.espacio.ObtenerMiembrosEspacioUseCase
 import com.aqpseller.lulaapp.domain.usecase.espacio.RenombrarEspacioFamiliaUseCase
 import com.aqpseller.lulaapp.domain.usecase.usuario.ObtenerSesionActualUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -38,6 +42,7 @@ class FamiliaViewModel @Inject constructor(
     private val renombrarEspacioFamiliaUseCase: RenombrarEspacioFamiliaUseCase,
     private val eliminarEspacioFamiliaUseCase: EliminarEspacioFamiliaUseCase,
     private val invitarAEspacioUseCase: InvitarAEspacioUseCase,
+    private val generarCodigoInvitacionEspacioUseCase: GenerarCodigoInvitacionEspacioUseCase,
     private val usuarioRepository: UsuarioRepository,
 ) : ViewModel() {
 
@@ -46,6 +51,7 @@ class FamiliaViewModel @Inject constructor(
 
     private var sesion: SesionActual? = null
     private var nombreUsuarioActual: String = "Tú"
+    private var jobCodigoQr: Job? = null
 
     init {
         viewModelScope.launch {
@@ -84,7 +90,11 @@ class FamiliaViewModel @Inject constructor(
                 _uiState.update { estado ->
                     estado.copy(
                         miembros = miembros.map { miembro ->
-                            val nombre = if (miembro.usuarioId == sesion?.usuarioId) nombreUsuarioActual else miembro.usuarioId
+                            val nombre = if (miembro.usuarioId == sesion?.usuarioId) {
+                                nombreUsuarioActual
+                            } else {
+                                miembro.nombre ?: "Alguien"
+                            }
                             MiembroUi(nombre = nombre, rol = if (miembro.rol == RolEnEspacio.ADMIN) "Admin" else "Miembro")
                         },
                     )
@@ -154,8 +164,37 @@ class FamiliaViewModel @Inject constructor(
         val nombreEspacio = _uiState.value.nombreEspacioFamilia
         viewModelScope.launch {
             invitarAEspacioUseCase(sesionActual().usuarioId, espacioId, nombreEspacio, contacto)
-            _uiState.update { it.copy(mostrarFormularioInvitar = false) }
+            _uiState.update { it.copy(mostrarFormularioInvitar = false, mostrarInvitacionEnviada = true) }
         }
+    }
+
+    fun ocultarInvitacionEnviada() {
+        _uiState.update { it.copy(mostrarInvitacionEnviada = false) }
+    }
+
+    /** Genera un código y lo renueva solo, mientras el diálogo siga abierto, un poco antes de
+     * que cada uno venza — así siempre hay un QR vigente en pantalla. */
+    fun mostrarCodigoQr() {
+        val espacioId = _uiState.value.espacioFamiliaId ?: return
+        val nombreEspacio = _uiState.value.nombreEspacioFamilia
+        _uiState.update { it.copy(mostrarCodigoQr = true) }
+        jobCodigoQr?.cancel()
+        jobCodigoQr = viewModelScope.launch {
+            while (true) {
+                val codigo = runCatching { generarCodigoInvitacionEspacioUseCase(espacioId, nombreEspacio) }.getOrNull()
+                if (codigo == null) {
+                    _uiState.update { it.copy(mostrarCodigoQr = false, codigoQrTexto = null) }
+                    return@launch
+                }
+                _uiState.update { it.copy(codigoQrTexto = codificarCodigoEspacioQr(codigo.codigoId)) }
+                delay((codigo.expiraEn - System.currentTimeMillis()).coerceAtLeast(1_000))
+            }
+        }
+    }
+
+    fun ocultarCodigoQr() {
+        jobCodigoQr?.cancel()
+        _uiState.update { it.copy(mostrarCodigoQr = false, codigoQrTexto = null) }
     }
 
     private suspend fun sesionActual(): SesionActual = sesion ?: obtenerSesionActualUseCase().also { sesion = it }

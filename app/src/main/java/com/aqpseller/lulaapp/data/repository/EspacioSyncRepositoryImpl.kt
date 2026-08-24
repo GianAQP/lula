@@ -15,6 +15,8 @@ import com.aqpseller.lulaapp.domain.model.RolEnEspacio
 import com.aqpseller.lulaapp.domain.model.SyncStatus
 import com.aqpseller.lulaapp.domain.model.TipoActividad
 import com.aqpseller.lulaapp.domain.model.TipoEspacio
+import com.aqpseller.lulaapp.core.utils.IdGenerator
+import com.aqpseller.lulaapp.domain.repository.CodigoInvitacionEspacio
 import com.aqpseller.lulaapp.domain.repository.EspacioSyncRepository
 import com.aqpseller.lulaapp.domain.repository.RegistroRetoRemoto
 import com.google.firebase.auth.FirebaseAuth
@@ -26,6 +28,11 @@ import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 
 private const val COLECCION_ESPACIOS = "espacios"
+private const val COLECCION_CODIGOS_INVITACION = "codigosInvitacionEspacio"
+
+/** El código dura poco a propósito — un QR "para siempre" se podría guardar y usar después sin
+ * que la persona que invitó se entere. Ver `Plan/08-decisiones-tecnicas.md`. */
+private const val DURACION_CODIGO_MS = 60_000L
 
 /**
  * `espacios/{id}` (root), `espacios/{id}/miembros/{miFirebaseUid}`,
@@ -53,7 +60,7 @@ class EspacioSyncRepositoryImpl @Inject constructor(
 
     override suspend fun subirMiembro(espacioId: String, miembro: EspacioMiembro) {
         val miFirebaseUid = firebaseAuth.currentUser?.uid ?: return
-        val datos = mapOf("usuarioIdLocal" to miembro.usuarioId, "rol" to miembro.rol.name)
+        val datos = mapOf("usuarioIdLocal" to miembro.usuarioId, "rol" to miembro.rol.name, "nombre" to miembro.nombre)
         firestore.collection(COLECCION_ESPACIOS).document(espacioId)
             .collection("miembros").document(miFirebaseUid).set(datos).await()
     }
@@ -86,6 +93,45 @@ class EspacioSyncRepositoryImpl @Inject constructor(
             val rol = runCatching { RolEnEspacio.valueOf(miembroDoc.getString("rol") ?: "") }.getOrDefault(RolEnEspacio.MIEMBRO)
             espacio to EspacioMiembro(espacioId = espacioId, usuarioId = usuarioIdLocal, rol = rol)
         }
+    }
+
+    override suspend fun generarCodigoInvitacion(espacioId: String, nombreEspacio: String, deNombre: String): CodigoInvitacionEspacio {
+        val miFirebaseUid = checkNotNull(firebaseAuth.currentUser?.uid) { "Necesita cuenta vinculada" }
+        val codigoId = IdGenerator.newId()
+        val expiraEn = System.currentTimeMillis() + DURACION_CODIGO_MS
+        val datos = mapOf(
+            "espacioId" to espacioId,
+            "nombreEspacio" to nombreEspacio,
+            "deFirebaseUid" to miFirebaseUid,
+            "deNombre" to deNombre,
+            "expiraEn" to expiraEn,
+            "reclamadoPor" to null,
+        )
+        firestore.collection(COLECCION_CODIGOS_INVITACION).document(codigoId).set(datos).await()
+        return CodigoInvitacionEspacio(codigoId, espacioId, nombreEspacio, miFirebaseUid, deNombre, expiraEn)
+    }
+
+    override suspend fun reclamarCodigoInvitacion(codigoId: String): CodigoInvitacionEspacio? {
+        val miFirebaseUid = firebaseAuth.currentUser?.uid ?: return null
+        val referencia = firestore.collection(COLECCION_CODIGOS_INVITACION).document(codigoId)
+        return runCatching {
+            firestore.runTransaction { transaccion ->
+                val doc = transaccion.get(referencia)
+                if (!doc.exists()) return@runTransaction null
+                val expiraEn = doc.getLong("expiraEn") ?: return@runTransaction null
+                val yaReclamado = doc.getString("reclamadoPor")
+                if (yaReclamado != null || expiraEn < System.currentTimeMillis()) return@runTransaction null
+                transaccion.update(referencia, "reclamadoPor", miFirebaseUid)
+                CodigoInvitacionEspacio(
+                    codigoId = codigoId,
+                    espacioId = doc.getString("espacioId") ?: return@runTransaction null,
+                    nombreEspacio = doc.getString("nombreEspacio") ?: "",
+                    deFirebaseUid = doc.getString("deFirebaseUid") ?: return@runTransaction null,
+                    deNombre = doc.getString("deNombre") ?: "",
+                    expiraEn = expiraEn,
+                )
+            }.await()
+        }.getOrNull()
     }
 
     override suspend fun subirTarea(espacioId: String, actividad: Actividad, detalle: ActividadDetalle.Tarea) {
@@ -158,7 +204,7 @@ class EspacioSyncRepositoryImpl @Inject constructor(
                         val usuarioId = doc.getString("usuarioIdLocal") ?: return@mapNotNull null
                         val rol = runCatching { RolEnEspacio.valueOf(doc.getString("rol") ?: "") }
                             .getOrDefault(RolEnEspacio.MIEMBRO)
-                        EspacioMiembro(espacioId = espacioId, usuarioId = usuarioId, rol = rol)
+                        EspacioMiembro(espacioId = espacioId, usuarioId = usuarioId, rol = rol, nombre = doc.getString("nombre"))
                     },
                 )
             }

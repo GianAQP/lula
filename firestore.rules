@@ -60,6 +60,18 @@ service cloud.firestore {
       match /proposito/{propositoId} {
         allow read, write: if request.auth != null && request.auth.uid == firebaseUid;
       }
+      match /tomasMedicamento/{tomaId} {
+        allow read, write: if request.auth != null && request.auth.uid == firebaseUid;
+      }
+      match /sesionesCita/{sesionId} {
+        allow read, write: if request.auth != null && request.auth.uid == firebaseUid;
+      }
+      match /registrosDiarios/{registroId} {
+        allow read, write: if request.auth != null && request.auth.uid == firebaseUid;
+      }
+      match /registrosSemanales/{registroId} {
+        allow read, write: if request.auth != null && request.auth.uid == firebaseUid;
+      }
     }
 
     // Solicitudes de Círculo de cuidado: solo el remitente (deFirebaseUid) y el destinatario
@@ -112,6 +124,23 @@ service cloud.firestore {
       match /registrosReto/{registroId} {
         allow read, write: if esMiembro();
       }
+    }
+
+    // Código de invitación a un Espacio Familia con tiempo de vida corto (ver
+    // `EspacioSyncRepository.generarCodigoInvitacion`) — escanearlo une a la persona de
+    // inmediato, sin paso de aceptar aparte. `update` solo permite reclamarlo (fijar
+    // `reclamadoPor` a mi propio uid) si nadie lo reclamó todavía y no venció — y ningún otro
+    // campo puede cambiar en esa escritura. Así, aunque alguien guarde una foto del QR, ya no
+    // sirve pasado el minuto de vida.
+    match /codigosInvitacionEspacio/{codigoId} {
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.deFirebaseUid;
+      allow read: if request.auth != null;
+      allow update: if request.auth != null &&
+        resource.data.reclamadoPor == null &&
+        request.time.toMillis() < resource.data.expiraEn &&
+        request.resource.data.reclamadoPor == request.auth.uid &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reclamadoPor']);
+      allow delete: if request.auth != null && request.auth.uid == resource.data.deFirebaseUid;
     }
 
     // Cualquier otra colección no listada arriba: denegada por defecto.

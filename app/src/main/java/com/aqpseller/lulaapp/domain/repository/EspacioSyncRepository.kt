@@ -11,6 +11,17 @@ import kotlinx.coroutines.flow.Flow
 /** Un registro de "cumplido hoy" de Reto familiar tal como llega de Firestore. */
 data class RegistroRetoRemoto(val retoId: String, val usuarioId: String, val fecha: Long, val estado: EstadoActividad)
 
+/** Código de invitación a un Espacio Familia con tiempo de vida corto — ver
+ * `EspacioSyncRepository.generarCodigoInvitacion`/`reclamarCodigoInvitacion`. */
+data class CodigoInvitacionEspacio(
+    val codigoId: String,
+    val espacioId: String,
+    val nombreEspacio: String,
+    val deFirebaseUid: String,
+    val deNombre: String,
+    val expiraEn: Long,
+)
+
 /**
  * Espejo en Firestore del *contenido* de un Espacio Familia (paso 5 de
  * `Plan/12-firebase-auth-y-sync.md`) — Tareas del hogar y Retos familiares, que es lo que
@@ -38,6 +49,15 @@ interface EspacioSyncRepository {
     /** Todos los Espacios Familia en los que aparezco como miembro — para restaurarlos en un
      * celular nuevo al vincular la cuenta. Pensado para correr una sola vez, no un listener. */
     suspend fun descubrirMisEspacios(): List<Pair<Espacio, EspacioMiembro>>
+
+    /** Crea un código de invitación de un solo uso, válido por poco tiempo (`expiraEn`) — pensado
+     * para mostrarse como QR y regenerarse solo antes de vencer (ver `FamiliaViewModel`). Evita
+     * el riesgo de un QR "para siempre" que cualquiera podría guardar y usar después. */
+    suspend fun generarCodigoInvitacion(espacioId: String, nombreEspacio: String, deNombre: String): CodigoInvitacionEspacio
+
+    /** Intenta reclamar un código — null si no existe, ya venció, o ya lo reclamó otra persona.
+     * Si lo devuelve, YA quedó marcado como reclamado (nadie más puede volver a usarlo). */
+    suspend fun reclamarCodigoInvitacion(codigoId: String): CodigoInvitacionEspacio?
 
     fun escucharMiembros(espacioId: String): Flow<List<EspacioMiembro>>
     fun escucharTareas(espacioId: String): Flow<List<Pair<Actividad, ActividadDetalle.Tarea>>>

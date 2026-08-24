@@ -26,6 +26,7 @@ import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.aqpseller.lulaapp.core.notifications.AlarmaSonidoService
+import com.aqpseller.lulaapp.features.onboarding.OnboardingScreen
 import com.aqpseller.lulaapp.navigation.AppViewModel
 import com.aqpseller.lulaapp.navigation.LulaNavHost
 import com.aqpseller.lulaapp.ui.theme.LulaAppTheme
@@ -50,17 +51,24 @@ class MainActivity : FragmentActivity() {
             LulaAppTheme {
                 val appViewModel: AppViewModel = hiltViewModel()
                 val isReady by appViewModel.isReady.collectAsState()
+                val onboardingCompletado by appViewModel.onboardingCompletado.collectAsState()
 
                 SolicitarPermisoNotificaciones()
 
-                if (isReady) {
-                    LulaNavHost(
-                        destinoInicial = destinoInicial,
-                        onDestinoConsumido = { destinoInicial = null },
-                    )
-                } else {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator()
+                when {
+                    !isReady || onboardingCompletado == null -> {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator()
+                        }
+                    }
+                    onboardingCompletado == false -> {
+                        OnboardingScreen(onTerminado = {})
+                    }
+                    else -> {
+                        LulaNavHost(
+                            destinoInicial = destinoInicial,
+                            onDestinoConsumido = { destinoInicial = null },
+                        )
                     }
                 }
             }

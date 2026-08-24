@@ -3,11 +3,16 @@ package com.aqpseller.lulaapp.domain.usecase.registrodiario
 import com.aqpseller.lulaapp.core.utils.DateTimeUtils
 import com.aqpseller.lulaapp.core.utils.IdGenerator
 import com.aqpseller.lulaapp.domain.model.RegistroDiario
+import com.aqpseller.lulaapp.domain.model.TipoEspacio
+import com.aqpseller.lulaapp.domain.repository.EspacioRepository
+import com.aqpseller.lulaapp.domain.repository.PersonalSyncRepository
 import com.aqpseller.lulaapp.domain.repository.RegistroDiarioRepository
 import javax.inject.Inject
 
 class CerrarDiaUseCase @Inject constructor(
     private val registroDiarioRepository: RegistroDiarioRepository,
+    private val espacioRepository: EspacioRepository,
+    private val personalSyncRepository: PersonalSyncRepository,
 ) {
     suspend operator fun invoke(
         espacioId: String,
@@ -33,6 +38,9 @@ class CerrarDiaUseCase @Inject constructor(
             queAjusto = queAjusto,
         )
         registroDiarioRepository.cerrarDia(registro, usuarioId)
+        if (espacioRepository.obtenerEspacioSiEsMiembro(espacioId, usuarioId)?.tipo == TipoEspacio.PERSONAL) {
+            runCatching { personalSyncRepository.subirRegistroDiario(registro) }
+        }
         return registro
     }
 }

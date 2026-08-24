@@ -9,7 +9,10 @@ import com.aqpseller.lulaapp.domain.model.ActividadDetalle
 import com.aqpseller.lulaapp.domain.model.ComidaRelacionada
 import com.aqpseller.lulaapp.domain.model.ModoFrecuenciaMedicamento
 import com.aqpseller.lulaapp.domain.model.NivelRecordatorio
+import com.aqpseller.lulaapp.domain.model.TipoEspacio
 import com.aqpseller.lulaapp.domain.repository.ActividadRepository
+import com.aqpseller.lulaapp.domain.repository.EspacioRepository
+import com.aqpseller.lulaapp.domain.repository.PersonalSyncRepository
 import com.aqpseller.lulaapp.domain.usecase.actividad.ObtenerDetalleActividadUseCase
 import javax.inject.Inject
 
@@ -17,6 +20,8 @@ class ActualizarMedicamentoUseCase @Inject constructor(
     private val actividadRepository: ActividadRepository,
     private val recordatorioScheduler: RecordatorioScheduler,
     private val obtenerDetalleActividadUseCase: ObtenerDetalleActividadUseCase,
+    private val espacioRepository: EspacioRepository,
+    private val personalSyncRepository: PersonalSyncRepository,
 ) {
     suspend operator fun invoke(
         actividadId: String,
@@ -74,6 +79,10 @@ class ActualizarMedicamentoUseCase @Inject constructor(
             intervaloPersistenciaMin = intervaloPersistenciaMin,
         )
         actividadRepository.actualizarMedicamento(actividadId, nombreMedicamento, detalle, usuarioId)
+        val actividad = actividadRepository.obtenerConDetalle(actividadId)
+        if (actividad != null && espacioRepository.obtenerEspacioSiEsMiembro(actividad.espacioId, usuarioId)?.tipo == TipoEspacio.PERSONAL) {
+            runCatching { personalSyncRepository.subirMedicamento(actividad, detalle) }
+        }
 
         horarios.forEachIndexed { index, horario ->
             recordatorioScheduler.programarMedicamento(

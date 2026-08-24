@@ -233,6 +233,71 @@ class ActividadRepositoryImpl @Inject constructor(
         )
     }
 
+    override suspend fun mergeRutinaRemota(actividad: Actividad, detalle: ActividadDetalle.Rutina) {
+        val entity = actividad.toEntity()
+        actividadDao.upsert(entity)
+        rutinaDetalleDao.upsert(detalle.toEntity(actividad.id))
+        auditLogger.registrar<ActividadEntity>(
+            entidad = "actividad",
+            entidadId = actividad.id,
+            accion = AccionAuditoria.ACTUALIZAR,
+            despues = entity,
+            usuarioId = actividad.propietario,
+        )
+    }
+
+    override suspend fun mergeMedicamentoRemoto(actividad: Actividad, detalle: ActividadDetalle.Medicamento) {
+        val entity = actividad.toEntity()
+        actividadDao.upsert(entity)
+        medicamentoDetalleDao.upsert(detalle.toEntity(actividad.id))
+        auditLogger.registrar<ActividadEntity>(
+            entidad = "actividad",
+            entidadId = actividad.id,
+            accion = AccionAuditoria.ACTUALIZAR,
+            despues = entity,
+            usuarioId = actividad.propietario,
+        )
+    }
+
+    override suspend fun mergeCitaRemota(actividad: Actividad, detalle: ActividadDetalle.Cita) {
+        val entity = actividad.toEntity()
+        actividadDao.upsert(entity)
+        citaDetalleDao.upsert(detalle.toEntity(actividad.id))
+        auditLogger.registrar<ActividadEntity>(
+            entidad = "actividad",
+            entidadId = actividad.id,
+            accion = AccionAuditoria.ACTUALIZAR,
+            despues = entity,
+            usuarioId = actividad.propietario,
+        )
+    }
+
+    override suspend fun mergeFechaImportanteRemota(actividad: Actividad, detalle: ActividadDetalle.FechaImportante) {
+        val entity = actividad.toEntity()
+        actividadDao.upsert(entity)
+        fechaImportanteDetalleDao.upsert(detalle.toEntity(actividad.id))
+        auditLogger.registrar<ActividadEntity>(
+            entidad = "actividad",
+            entidadId = actividad.id,
+            accion = AccionAuditoria.ACTUALIZAR,
+            despues = entity,
+            usuarioId = actividad.propietario,
+        )
+    }
+
+    override suspend fun mergeTomaMedicamentoRemota(actividadId: String, fecha: Long, horario: String, estado: EstadoActividad) {
+        val existente = tomaMedicamentoDao.obtenerPorActividadIdYFecha(actividadId, fecha).firstOrNull { it.horario == horario }
+        tomaMedicamentoDao.upsert(
+            TomaMedicamentoEntity(
+                id = existente?.id ?: IdGenerator.newId(),
+                actividadId = actividadId,
+                fecha = fecha,
+                horario = horario,
+                estado = estado.name,
+            ),
+        )
+    }
+
     override suspend fun actualizarHabito(actividadId: String, nombre: String, detalle: ActividadDetalle.Habito, usuarioId: String) {
         val actual = actividadDao.obtenerPorId(actividadId) ?: return
         val actualizado = actual.copy(nombre = nombre, momentoDelDia = detalle.momentoDelDia.name)

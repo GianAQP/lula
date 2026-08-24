@@ -4120,3 +4120,140 @@ primer intento de guardar una respuesta de Mi propósito falló con `PERMISSION_
 pasaron al usuario, las publicó, y el reintento (Meta + Lista + Propósito juntos) pasó limpio —
 sin `PERMISSION_DENIED`, sin excepciones — confirmado con logcat y visualmente en Firebase
 Console.
+
+## Respaldo del Espacio Personal — Rutina, Medicamento, Cita, Fecha importante, Cerrar mi día y Revisión semanal (2026-08-22)
+
+Cierre del respaldo Personal: el usuario preguntó explícitamente qué de todo lo que tiene la
+app se recupera en otro celular — la auditoría de código encontró que Rutina, Medicamento,
+Cita, Fecha importante, el historial de "Cerrar mi día" y la Revisión semanal **no** se
+respaldaban todavía (Calendario no es un dato aparte, hereda el problema de los tipos de
+Actividad que agrupa). Se completó con el mismo patrón ya probado de `PersonalSyncRepository`.
+
+**Hallazgo colateral real, corregido de paso**: nunca existió un `eliminarActividad` en
+`PersonalSyncRepository` — borrar un Hábito/Tarea local nunca borraba su copia en la nube. Esto
+no solo dejaba "basura" en Firestore: si se hubiera dejado así, un futuro restore habría
+revivido un `registro_actividad`/`toma_medicamento` huérfano (sin su Actividad dueña), violando
+la FK local. Se agregó `eliminarActividad(actividadId)` — borra el documento y, si tenía,
+también sus `tomasMedicamento`/`sesionesCita` asociadas, todo en una sola llamada usada por
+`EliminarActividadUseCase` para cualquier tipo.
+
+`PausarReanudarActividadUseCase` tampoco resubía nada — pausar/reanudar podía dejar desalineado
+el campo `activa` en la nube hasta la próxima edición. Se agregó
+`PersonalSyncRepository.subirActividadSegunTipo(actividad)`, que despacha al `subirX` correcto
+según `actividad.detalle` — necesario ahí porque el tipo no se conoce en tiempo de compilación
+(a diferencia de Crear/Actualizar, que sí lo conocen).
+
+Todos los flujos de escritura nuevos siguen el mismo criterio ya establecido: solo empujan a
+`PersonalSyncRepository` si `espacioRepository.obtenerEspacioSiEsMiembro(...)?.tipo ==
+TipoEspacio.PERSONAL` (mismo patrón de `MarcarActividadUseCase`/`CrearHabitoUseCase`) —evita
+contaminar el respaldo Personal con datos de un Espacio Familia.
+
+**Firestore**: Rutina/Medicamento/Cita/Fecha importante reusan `actividadesPersonales` (misma
+colección que Hábito/Tarea, discriminados por `tipo`, sin colección nueva). Sí son nuevas:
+`tomasMedicamento`, `sesionesCita`, `registrosDiarios`, `registrosSemanales` — mismo patrón
+privado (`request.auth.uid == firebaseUid`) que el resto de lo Personal.
+
+Confirmado sin `PERMISSION_DENIED` ni excepciones tras publicar las reglas nuevas y probar
+Rutina + Medicamento (con toma) + Cita (con sesiones de curso) + Fecha importante juntos.
+
+## Registro obligatorio al iniciar + preguntas de onboarding (2026-08-22/23)
+
+El usuario probó la app en un segundo celular por primera vez y notó que arrancaba directo en
+Hoy con el usuario semilla, sin ningún registro — exactamente el hueco que `Plan/06-onboarding.md`
+ya había diseñado el 2026-08-01 pero nunca se había construido. Se construyó el flujo completo
+descrito ahí (Bienvenida → Cuenta → Privacidad → 5 preguntas → Resumen → Hoy), con una decisión
+distinta a la original en un solo punto:
+
+- **Paso "Hábitos sugeridos" del documento original, fuera de esta ronda a propósito** — arma
+  hábitos según las respuestas 4a/4b, es una pieza de lógica de producto separada del gate de
+  registro en sí (que era el pedido explícito). Queda documentado como pendiente.
+- **Cuenta: Google obligatorio, correo mágico como "próximamente"** — el plan original (`Plan/12-
+  firebase-auth-y-sync.md`) preveía enlace mágico por correo sin contraseña, pero completarlo de
+  verdad (que el link vuelva a abrir la app) necesita un dominio propio configurado en Firebase —
+  Firebase Dynamic Links (la forma vieja de resolver esto sin dominio) fue dado de baja por
+  Google. El usuario confirmó: por ahora Google nomás, sin contraseña clásica, dejando el diseño
+  listo para sumar correo/gestor de contraseñas más adelante.
+
+**Gate de navegación**: `Usuario.onboardingCompletadoEn: Long?` (null = falta registrarse).
+`AppViewModel` lo expone como `StateFlow<Boolean?>`; `MainActivity` compone `OnboardingScreen`
+en vez de `LulaNavHost` mientras sea `false`. Los usuarios que YA tenían la app instalada con
+datos reales se marcan completados de una vez en la propia migración (`MIGRATION_29_30`), para
+no interrumpirlos con un registro retroactivo.
+
+**Bug propio, encontrado y arreglado en la misma ronda**: la primera versión de
+`OnboardingScreen` se veía con texto gris casi invisible — a diferencia de cualquier otra
+pantalla de la app (siempre dentro del `Scaffold` de `LulaNavHost`, que ya pinta su propio fondo
+y define el color de contenido correcto), esta pantalla se muestra ANTES de `LulaNavHost`, sin
+ningún `Surface`/`Scaffold` que la envuelva — sin eso, Compose no tiene de dónde sacar el color
+de texto correcto. Se arregló envolviendo la pantalla en un `Surface` propio.
+
+## Código de invitación a Espacio Familia con tiempo de vida corto (2026-08-23)
+
+El usuario pidió, hace semanas, que escanear un QR de invitación dejara a la persona "ya
+adentro" sin un paso de aceptar aparte (estilo Yape) — se había descartado antes (2026-08-20)
+por el riesgo de seguridad de un QR permanente que cualquiera con la imagen pudiera reclamar
+después. Se retomó con una idea del propio usuario: que el código tenga tiempo de vida corto y
+se renueve solo, para que guardar una foto del QR ya no sirva pasado ese tiempo.
+
+**Por qué solo para Familia, no para Círculo de cuidado todavía**: el contenido de un Espacio
+Familia ya sincroniza de verdad entre dispositivos (paso 5 ya construido) — aceptar de golpe ahí
+es 100% funcional. El contenido de Círculo de cuidado (compartir una Tarea/Medicamento puntual)
+**no** — aceptar ahí hoy no deja ver nada real del otro lado (hueco ya documentado aparte). Se
+decidió con el usuario: Familia ahora, Círculo de cuidado cuando se resuelva ese hueco de
+contenido (queda documentado, no descartado).
+
+**Diseño de seguridad**: colección nueva `codigosInvitacionEspacio/{codigoId}` (Firestore),
+independiente de `espacios/{id}/**` porque quien escanea todavía no es miembro y no podría leer
+ahí. Cada código dura 60 segundos (`DURACION_CODIGO_MS`); `FamiliaViewModel.mostrarCodigoQr()`
+genera uno nuevo y se regenera solo mientras el diálogo sigue abierto (loop con `delay` hasta
+casi el vencimiento). Reclamar un código es una `runTransaction` de Firestore (no un `update`
+suelto) para que dos personas escaneando casi al mismo tiempo no puedan reclamarlo ambas. La
+regla de seguridad refuerza lo mismo del lado del servidor: `update` solo permite fijar
+`reclamadoPor` a mi propio uid, solo si nadie lo reclamó antes y no venció, y solo ese campo
+puede cambiar en esa escritura — un cliente malicioso no puede saltarse el vencimiento ni pisar
+el reclamo de otro aunque ignore la app.
+
+`UnirseAEspacioConCodigoUseCase` reutiliza exactamente la misma secuencia de
+`AceptarSolicitudCompartirUseCase` (rama ESPACIO): `asegurarEspacioMinimo` + `agregarMiembro` +
+`subirMiembro` + `subirPunteroMiEspacio` — no se duplicó lógica de unión, solo cambia cómo se
+dispara. El QR en sí solo lleva el `codigoId` (texto corto, prefijo `LULA_CODIGO_ESPACIO_V1:`,
+mismo patrón que `ListaQrCodec`/`ContactoQrCodec`); los datos reales viven en Firestore y se
+validan ahí, nunca en el propio QR.
+
+**Aclaración importante confirmada con evidencia real**: un lector de QR genérico (no el botón
+de escanear de Lula) solo abre el texto crudo en otra app (ej. notas) — no lanza Lula. Es
+esperado: el código es texto plano con un prefijo propio, no una URL, así que solo el escáner
+interno de Lula (`ML Kit` + `decodificarCodigoEspacioQr`) sabe interpretarlo. Convertirlo en un
+link real que cualquier lector entienda necesitaría Android App Links (dominio propio +
+verificación `assetlinks.json`) — mismo tipo de bloqueo que el enlace mágico por correo.
+
+## Bugs reales encontrados en la primera prueba de dos celulares con cuentas distintas (2026-08-23)
+
+Primera vez en toda la sesión probando con dos cuentas de Google reales en dos celulares —
+salieron 3 bugs reales, cada uno confirmado con evidencia (capturas de pantalla o logcat) antes
+de arreglarlo:
+
+1. **Miembro de Familia mostraba su id local (una UUID) en vez de su nombre.** Causa: `EspacioMiembro`
+   nunca guardó el nombre — solo `usuarioId` (el id LOCAL de cada quien, una UUID distinta por
+   dispositivo, sin significado fuera de su propio celular) y `rol`. Para "mí mismo" la pantalla
+   ya resolvía el nombre desde `Usuario` local, pero para cualquier OTRO miembro (llegado por
+   sync remoto) no había de dónde sacarlo. Se agregó `EspacioMiembro.nombre` (denormalizado,
+   `MIGRATION_30_31`), se sube en `subirMiembro`/se lee en `escucharMiembros`, y
+   `EspacioRepositoryImpl.agregarMiembro` preserva el nombre ya guardado si el nuevo valor llega
+   null (para que un sync viejo sin nombre nunca borre uno que ya se sabía).
+2. **Alarma con un sonido extra antes del loop propio.** Ver sección de arriba — canal de
+   notificaciones con un sonido asignado a mano desde Ajustes del sistema en el dispositivo real
+   del usuario, confirmado con `dumpsys notification` (`mUserLockedFields` != 0). Arreglado
+   subiendo el canal a `_v4` (mismo patrón que `_v2`→`_v3` antes).
+3. **Bug propio de esta sesión, encontrado y arreglado de inmediato**: al agregar
+   `MIGRATION_30_31`, se importó en `DatabaseModule.kt` pero se olvidó agregar a la lista real
+   `.addMigrations(...)` — la app crasheaba al abrir con `IllegalStateException: A migration
+   from 30 to 31 was required but not found`. Se detectó con logcat en vivo durante una prueba de
+   recordatorio (que además quedó contaminada por una reinstalación mía en simultáneo — ver
+   nota de proceso abajo) y se corrigió en el momento.
+
+**Nota de proceso**: durante esta ronda, una reinstalación de la app mientras un recordatorio de
+prueba sonaba mató el proceso a mitad de la alarma — un corte que en el momento parecía el bug
+que el usuario venía reportando ("suena y se corta"), pero era un artefacto de la propia sesión
+de pruebas, no el bug real. Quedó como recordatorio de no reinstalar mientras se prueba algo en
+vivo en el dispositivo.

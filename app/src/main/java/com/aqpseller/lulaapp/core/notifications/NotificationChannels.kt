@@ -24,19 +24,24 @@ import com.aqpseller.lulaapp.domain.model.NivelRecordatorio
  * Alarma **no** lleva sonido en el canal (`setSound(null, null)`) — un `NotificationChannel`
  * solo puede reproducir su sonido una vez por notificación, y Alarma necesita sonar en loop
  * hasta que la persona la corte, así que ese control lo tiene `AlarmaSonidoService` con su
- * propio `MediaPlayer`, no el canal. Por eso su ID ya va en `_v3` (pasó por tener el tono de
- * sistema, después el sonido propio de Lula una sola vez, y ahora sin sonido de canal).
+ * propio `MediaPlayer`, no el canal. Por eso su ID ya va en `_v4` (pasó por tener el tono de
+ * sistema, después el sonido propio de Lula una sola vez, después sin sonido de canal — y ahora
+ * de nuevo, porque en un dispositivo real terminó con un sonido asignado a mano desde Ajustes
+ * del sistema, `mUserLockedFields` en `dumpsys notification` lo confirmó — Android bloquea ese
+ * campo para la app apenas alguien lo toca desde Ajustes, así que la única forma de "limpiarlo"
+ * es, otra vez, un canal nuevo). Ver `Plan/08-decisiones-tecnicas.md`.
  * Los canales viejos se borran para no dejar basura en Ajustes del sistema.
  */
 object NotificationChannels {
     const val RECORDATORIOS_SILENCIOSO = "recordatorios_silencioso"
     const val RECORDATORIOS_SONIDO = "recordatorios_sonido_v2"
-    const val RECORDATORIOS_ALARMA = "recordatorios_alarma_v3"
+    const val RECORDATORIOS_ALARMA = "recordatorios_alarma_v4"
 
     private val CANALES_HUERFANOS = listOf(
         "recordatorios_sonido",
         "recordatorios_alarma",
         "recordatorios_alarma_v2",
+        "recordatorios_alarma_v3",
     )
 
     private fun uriRecursoRaw(context: Context, resId: Int): Uri =

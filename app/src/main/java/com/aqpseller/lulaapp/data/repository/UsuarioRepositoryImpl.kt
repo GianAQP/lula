@@ -98,4 +98,45 @@ class UsuarioRepositoryImpl @Inject constructor(
             usuarioId = usuarioId,
         )
     }
+
+    override suspend fun guardarRespuestasOnboarding(
+        usuarioId: String,
+        queMejorar: List<String>?,
+        comoEmpezar: String?,
+        momentoDelDiaPreferido: String?,
+        nombrePreferido: String?,
+        porQueEmpezar: String?,
+    ) {
+        val actual = usuarioDao.obtenerUnico() ?: return
+        val actualizado = actual.copy(
+            queMejorarJson = queMejorar?.let { encodeStringList(it) } ?: actual.queMejorarJson,
+            comoEmpezar = comoEmpezar ?: actual.comoEmpezar,
+            momentoDelDiaPreferido = momentoDelDiaPreferido ?: actual.momentoDelDiaPreferido,
+            nombrePreferido = nombrePreferido ?: actual.nombrePreferido,
+            porQueEmpezar = porQueEmpezar ?: actual.porQueEmpezar,
+        )
+        usuarioDao.upsert(actualizado)
+        auditLogger.registrar<UsuarioEntity>(
+            entidad = "usuario",
+            entidadId = usuarioId,
+            accion = AccionAuditoria.ACTUALIZAR,
+            antes = actual,
+            despues = actualizado,
+            usuarioId = usuarioId,
+        )
+    }
+
+    override suspend fun completarOnboarding(usuarioId: String) {
+        val actual = usuarioDao.obtenerUnico() ?: return
+        val actualizado = actual.copy(onboardingCompletadoEn = System.currentTimeMillis())
+        usuarioDao.upsert(actualizado)
+        auditLogger.registrar<UsuarioEntity>(
+            entidad = "usuario",
+            entidadId = usuarioId,
+            accion = AccionAuditoria.ACTUALIZAR,
+            antes = actual,
+            despues = actualizado,
+            usuarioId = usuarioId,
+        )
+    }
 }

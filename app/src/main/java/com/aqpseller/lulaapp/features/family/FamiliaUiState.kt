@@ -23,4 +23,10 @@ data class FamiliaUiState(
     val cuentaVinculada: Boolean = false,
     /** Se puso true tras crear o cambiar de espacio — la pantalla vuelve sola a Hoy. */
     val espacioCambiado: Boolean = false,
+    /** true tras enviar una invitación — muestra el QR + botón de WhatsApp de la invitación. */
+    val mostrarInvitacionEnviada: Boolean = false,
+    /** Código de invitación de corta duración — escanearlo une a la persona de inmediato, sin
+     * paso de aceptar aparte. Se renueva solo mientras el diálogo sigue abierto. */
+    val mostrarCodigoQr: Boolean = false,
+    val codigoQrTexto: String? = null,
 )

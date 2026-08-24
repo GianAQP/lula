@@ -97,7 +97,7 @@ import com.aqpseller.lulaapp.data.local.entity.UsuarioEntity
         ConexionEntity::class,
         SesionCitaEntity::class,
     ],
-    version = 29,
+    version = 31,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)

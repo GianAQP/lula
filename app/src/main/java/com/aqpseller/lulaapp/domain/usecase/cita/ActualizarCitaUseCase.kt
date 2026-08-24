@@ -6,13 +6,18 @@ import com.aqpseller.lulaapp.domain.model.ActividadDetalle
 import com.aqpseller.lulaapp.domain.model.AnticipacionRecordatorio
 import com.aqpseller.lulaapp.domain.model.NivelRecordatorio
 import com.aqpseller.lulaapp.domain.model.RecordatorioCita
+import com.aqpseller.lulaapp.domain.model.TipoEspacio
 import com.aqpseller.lulaapp.domain.repository.ActividadRepository
+import com.aqpseller.lulaapp.domain.repository.EspacioRepository
+import com.aqpseller.lulaapp.domain.repository.PersonalSyncRepository
 import javax.inject.Inject
 
 class ActualizarCitaUseCase @Inject constructor(
     private val actividadRepository: ActividadRepository,
     private val recordatorioScheduler: RecordatorioScheduler,
     private val generarSesionesCursoUseCase: GenerarSesionesCursoUseCase,
+    private val espacioRepository: EspacioRepository,
+    private val personalSyncRepository: PersonalSyncRepository,
 ) {
     suspend operator fun invoke(
         actividadId: String,
@@ -42,6 +47,12 @@ class ActualizarCitaUseCase @Inject constructor(
             cantidadSesionesTotal = cantidadSesionesTotal,
         )
         actividadRepository.actualizarCita(actividadId, nombre, detalle, usuarioId)
+        val actividad = actividadRepository.obtenerConDetalle(actividadId)
+        val esPersonal = actividad != null &&
+            espacioRepository.obtenerEspacioSiEsMiembro(actividad.espacioId, usuarioId)?.tipo == TipoEspacio.PERSONAL
+        if (esPersonal) {
+            runCatching { personalSyncRepository.subirCita(actividad!!, detalle) }
+        }
         // Solo hay 3 valores posibles de anticipación — más simple y robusto cancelar los 3
         // (idempotente si no había alarma) que ir a buscar cuáles tenía configurados antes.
         AnticipacionRecordatorio.entries.forEach { recordatorioScheduler.cancelarCita(actividadId, it) }
@@ -53,6 +64,9 @@ class ActualizarCitaUseCase @Inject constructor(
             val nuevas = generarSesionesCursoUseCase(actividadId, detalle, existentes)
             if (nuevas.isNotEmpty()) {
                 actividadRepository.guardarSesionesCita(nuevas)
+                if (esPersonal) {
+                    nuevas.forEach { sesion -> runCatching { personalSyncRepository.subirSesionCita(sesion) } }
+                }
                 nuevas.forEach { sesion ->
                     val fechaHoraSesion = DateTimeUtils.combinarFechaYHora(DateTimeUtils.epochDiasAEpochMillis(sesion.fecha), sesion.horario)
                     recordatorioScheduler.programarSesionCita(actividadId, nombre, sesion.numeroSesion, fechaHoraSesion, recordatorios, nivelRecordatorio)

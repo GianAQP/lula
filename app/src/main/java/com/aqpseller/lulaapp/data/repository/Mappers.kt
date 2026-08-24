@@ -102,6 +102,11 @@ fun UsuarioEntity.toDomain() = Usuario(
     terminosAceptadosEn = terminosAceptadosEn,
     consentimientoDatosSaludEn = consentimientoDatosSaludEn,
     firebaseUid = firebaseUid,
+    onboardingCompletadoEn = onboardingCompletadoEn,
+    queMejorar = decodeStringList(queMejorarJson),
+    comoEmpezar = comoEmpezar,
+    momentoDelDiaPreferido = momentoDelDiaPreferido,
+    porQueEmpezar = porQueEmpezar,
 )
 
 fun Usuario.toEntity() = UsuarioEntity(
@@ -119,6 +124,11 @@ fun Usuario.toEntity() = UsuarioEntity(
     terminosAceptadosEn = terminosAceptadosEn,
     consentimientoDatosSaludEn = consentimientoDatosSaludEn,
     firebaseUid = firebaseUid,
+    onboardingCompletadoEn = onboardingCompletadoEn,
+    queMejorarJson = encodeStringList(queMejorar),
+    comoEmpezar = comoEmpezar,
+    momentoDelDiaPreferido = momentoDelDiaPreferido,
+    porQueEmpezar = porQueEmpezar,
 )
 
 // --- Espacio ---
@@ -143,6 +153,7 @@ fun EspacioMiembro.toEntity() = EspacioMiembroEntity(
     espacioId = espacioId,
     usuarioId = usuarioId,
     rol = rol.name,
+    nombre = nombre,
 )
 
 fun ConexionEntity.toDomain() = Conexion(
@@ -158,6 +169,7 @@ fun EspacioMiembroEntity.toDomain() = EspacioMiembro(
     espacioId = espacioId,
     usuarioId = usuarioId,
     rol = RolEnEspacio.valueOf(rol),
+    nombre = nombre,
 )
 
 fun RetoFamiliarEntity.toDomain(participantesIds: List<String>) = RetoFamiliar(
