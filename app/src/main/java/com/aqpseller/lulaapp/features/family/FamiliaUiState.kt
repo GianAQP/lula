@@ -7,7 +7,13 @@ data class EspacioUi(
     val esActivo: Boolean,
 )
 
-data class MiembroUi(val nombre: String, val rol: String)
+data class MiembroUi(
+    val usuarioId: String,
+    val firebaseUid: String?,
+    val nombre: String,
+    val rol: String,
+    val esUnoMismo: Boolean,
+)
 
 data class FamiliaUiState(
     val cargando: Boolean = true,
@@ -15,6 +21,8 @@ data class FamiliaUiState(
     val espacioFamiliaId: String? = null,
     val nombreEspacioFamilia: String = "",
     val miembros: List<MiembroUi> = emptyList(),
+    /** Solo el admin puede quitar a otros miembros. */
+    val soyAdmin: Boolean = false,
     val mostrarFormularioCrear: Boolean = false,
     val mostrarFormularioRenombrar: Boolean = false,
     val mostrarFormularioInvitar: Boolean = false,

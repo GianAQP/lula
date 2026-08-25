@@ -10,11 +10,13 @@ import com.aqpseller.lulaapp.domain.repository.UsuarioRepository
 import com.aqpseller.lulaapp.domain.usecase.espacio.CambiarEspacioActivoUseCase
 import com.aqpseller.lulaapp.domain.usecase.espacio.CrearEspacioFamiliaUseCase
 import com.aqpseller.lulaapp.domain.usecase.espacio.EliminarEspacioFamiliaUseCase
+import com.aqpseller.lulaapp.domain.usecase.espacio.EliminarMiembroEspacioUseCase
 import com.aqpseller.lulaapp.domain.usecase.espacio.GenerarCodigoInvitacionEspacioUseCase
 import com.aqpseller.lulaapp.domain.usecase.espacio.InvitarAEspacioUseCase
 import com.aqpseller.lulaapp.domain.usecase.espacio.ObtenerEspaciosDeUsuarioUseCase
 import com.aqpseller.lulaapp.domain.usecase.espacio.ObtenerMiembrosEspacioUseCase
 import com.aqpseller.lulaapp.domain.usecase.espacio.RenombrarEspacioFamiliaUseCase
+import com.aqpseller.lulaapp.domain.usecase.espacio.SalirDeEspacioFamiliaUseCase
 import com.aqpseller.lulaapp.domain.usecase.usuario.ObtenerSesionActualUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
@@ -43,6 +45,8 @@ class FamiliaViewModel @Inject constructor(
     private val eliminarEspacioFamiliaUseCase: EliminarEspacioFamiliaUseCase,
     private val invitarAEspacioUseCase: InvitarAEspacioUseCase,
     private val generarCodigoInvitacionEspacioUseCase: GenerarCodigoInvitacionEspacioUseCase,
+    private val salirDeEspacioFamiliaUseCase: SalirDeEspacioFamiliaUseCase,
+    private val eliminarMiembroEspacioUseCase: EliminarMiembroEspacioUseCase,
     private val usuarioRepository: UsuarioRepository,
 ) : ViewModel() {
 
@@ -87,15 +91,20 @@ class FamiliaViewModel @Inject constructor(
     private fun cargarMiembros(espacioId: String) {
         viewModelScope.launch {
             obtenerMiembrosEspacioUseCase(espacioId).collect { miembros ->
+                val miUsuarioId = sesionActual().usuarioId
                 _uiState.update { estado ->
                     estado.copy(
+                        soyAdmin = miembros.find { it.usuarioId == miUsuarioId }?.rol == RolEnEspacio.ADMIN,
                         miembros = miembros.map { miembro ->
-                            val nombre = if (miembro.usuarioId == sesion?.usuarioId) {
-                                nombreUsuarioActual
-                            } else {
-                                miembro.nombre ?: "Alguien"
-                            }
-                            MiembroUi(nombre = nombre, rol = if (miembro.rol == RolEnEspacio.ADMIN) "Admin" else "Miembro")
+                            val esUnoMismo = miembro.usuarioId == miUsuarioId
+                            val nombre = if (esUnoMismo) nombreUsuarioActual else miembro.nombre ?: "Alguien"
+                            MiembroUi(
+                                usuarioId = miembro.usuarioId,
+                                firebaseUid = miembro.firebaseUid,
+                                nombre = nombre,
+                                rol = if (miembro.rol == RolEnEspacio.ADMIN) "Admin" else "Miembro",
+                                esUnoMismo = esUnoMismo,
+                            )
                         },
                     )
                 }
@@ -147,6 +156,23 @@ class FamiliaViewModel @Inject constructor(
         val espacioId = _uiState.value.espacioFamiliaId ?: return
         viewModelScope.launch {
             eliminarEspacioFamiliaUseCase(espacioId, sesionActual().usuarioId)
+        }
+    }
+
+    /** Salir del espacio yo mismo — el contenido ya creado ahí se queda tal cual. */
+    fun salirDeEspacioFamilia() {
+        val espacioId = _uiState.value.espacioFamiliaId ?: return
+        viewModelScope.launch {
+            salirDeEspacioFamiliaUseCase(espacioId, sesionActual().usuarioId)
+        }
+    }
+
+    /** Quitar a otra persona — solo tiene efecto si yo soy admin (verificado también del lado
+     * del servidor, ver `firestore.rules`). */
+    fun eliminarMiembro(miembro: MiembroUi) {
+        val espacioId = _uiState.value.espacioFamiliaId ?: return
+        viewModelScope.launch {
+            eliminarMiembroEspacioUseCase(espacioId, miembro.usuarioId, miembro.firebaseUid, sesionActual().usuarioId)
         }
     }
 

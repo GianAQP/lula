@@ -7,4 +7,8 @@
     <color name="teal_700">#FF018786</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+
+    <!-- Fondo del ícono evolutivo de la app (semilla/plantita/flor) — mismo tono cálido de las
+         3 imágenes, para que el fondo no salte al cambiar de estado. Ver `IconoAppSwitcher`. -->
+    <color name="ic_launcher_background_lula">#FAF3E8</color>
 </resources>

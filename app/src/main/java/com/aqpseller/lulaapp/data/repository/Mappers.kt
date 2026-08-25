@@ -154,6 +154,7 @@ fun EspacioMiembro.toEntity() = EspacioMiembroEntity(
     usuarioId = usuarioId,
     rol = rol.name,
     nombre = nombre,
+    firebaseUid = firebaseUid,
 )
 
 fun ConexionEntity.toDomain() = Conexion(
@@ -170,6 +171,7 @@ fun EspacioMiembroEntity.toDomain() = EspacioMiembro(
     usuarioId = usuarioId,
     rol = RolEnEspacio.valueOf(rol),
     nombre = nombre,
+    firebaseUid = firebaseUid,
 )
 
 fun RetoFamiliarEntity.toDomain(participantesIds: List<String>) = RetoFamiliar(

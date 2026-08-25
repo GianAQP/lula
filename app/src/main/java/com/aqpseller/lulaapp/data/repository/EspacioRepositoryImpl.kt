@@ -80,9 +80,15 @@ class EspacioRepositoryImpl @Inject constructor(
         )
     }
 
-    override suspend fun agregarMiembro(espacioId: String, usuarioId: String, rol: RolEnEspacio, nombre: String?) {
+    override suspend fun agregarMiembro(espacioId: String, usuarioId: String, rol: RolEnEspacio, nombre: String?, firebaseUid: String?) {
         val existente = espacioMiembroDao.obtenerMiembro(espacioId, usuarioId)
-        val entity = EspacioMiembro(espacioId = espacioId, usuarioId = usuarioId, rol = rol, nombre = nombre ?: existente?.nombre).toEntity()
+        val entity = EspacioMiembro(
+            espacioId = espacioId,
+            usuarioId = usuarioId,
+            rol = rol,
+            nombre = nombre ?: existente?.nombre,
+            firebaseUid = firebaseUid ?: existente?.firebaseUid,
+        ).toEntity()
         espacioMiembroDao.upsert(entity)
         auditLogger.registrar<EspacioMiembroEntity>(
             entidad = "espacio_miembro",
@@ -90,6 +96,18 @@ class EspacioRepositoryImpl @Inject constructor(
             accion = AccionAuditoria.CREAR,
             despues = entity,
             usuarioId = usuarioId,
+        )
+    }
+
+    override suspend fun eliminarMiembro(espacioId: String, usuarioId: String, ejecutadoPor: String) {
+        val existente = espacioMiembroDao.obtenerMiembro(espacioId, usuarioId) ?: return
+        espacioMiembroDao.eliminar(espacioId, usuarioId)
+        auditLogger.registrar<EspacioMiembroEntity>(
+            entidad = "espacio_miembro",
+            entidadId = "$espacioId:$usuarioId",
+            accion = AccionAuditoria.ELIMINAR,
+            antes = existente,
+            usuarioId = ejecutadoPor,
         )
     }
 

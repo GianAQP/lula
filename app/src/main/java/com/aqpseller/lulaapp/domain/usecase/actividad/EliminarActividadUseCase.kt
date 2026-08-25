@@ -7,6 +7,7 @@ import com.aqpseller.lulaapp.domain.model.TipoEspacio
 import com.aqpseller.lulaapp.domain.repository.ActividadRepository
 import com.aqpseller.lulaapp.domain.repository.EspacioRepository
 import com.aqpseller.lulaapp.domain.repository.PersonalSyncRepository
+import com.aqpseller.lulaapp.domain.usecase.carecircle.EliminarActividadesCompartidasDeUseCase
 import javax.inject.Inject
 
 class EliminarActividadUseCase @Inject constructor(
@@ -14,6 +15,7 @@ class EliminarActividadUseCase @Inject constructor(
     private val recordatorioScheduler: RecordatorioScheduler,
     private val espacioRepository: EspacioRepository,
     private val personalSyncRepository: PersonalSyncRepository,
+    private val eliminarActividadesCompartidasDeUseCase: EliminarActividadesCompartidasDeUseCase,
 ) {
     suspend operator fun invoke(actividadId: String, usuarioId: String) {
         // Un Medicamento con varias tomas por día, o una Cita con varios recordatorios, tienen
@@ -41,6 +43,7 @@ class EliminarActividadUseCase @Inject constructor(
         if (actividadActual != null && espacioRepository.obtenerEspacioSiEsMiembro(actividadActual.espacioId, usuarioId)?.tipo == TipoEspacio.PERSONAL) {
             runCatching { personalSyncRepository.eliminarActividad(actividadId) }
         }
+        runCatching { eliminarActividadesCompartidasDeUseCase(actividadId, usuarioId) }
         actividadRepository.eliminar(actividadId, usuarioId)
         recordatorioScheduler.cancelar(actividadId)
     }

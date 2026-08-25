@@ -1,0 +1,2570 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 32,
+    "identityHash": "80f286ef2cdf25fbdac88d5136528e73",
+    "entities": [
+      {
+        "tableName": "usuario",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `nombreCompleto` TEXT NOT NULL, `nombrePreferido` TEXT NOT NULL, `correo` TEXT, `metodoLogin` TEXT NOT NULL, `privacidadAceptadaEn` INTEGER, `modoDefectoAsistente` TEXT, `horaDesayuno` TEXT, `horaAlmuerzo` TEXT, `horaCena` TEXT, `confirmoMayorDe13` INTEGER NOT NULL, `terminosAceptadosEn` INTEGER, `consentimientoDatosSaludEn` INTEGER, `firebaseUid` TEXT, `onboardingCompletadoEn` INTEGER, `queMejorarJson` TEXT NOT NULL, `comoEmpezar` TEXT, `momentoDelDiaPreferido` TEXT, `porQueEmpezar` TEXT, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nombreCompleto",
+            "columnName": "nombreCompleto",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nombrePreferido",
+            "columnName": "nombrePreferido",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "correo",
+            "columnName": "correo",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "metodoLogin",
+            "columnName": "metodoLogin",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "privacidadAceptadaEn",
+            "columnName": "privacidadAceptadaEn",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "modoDefectoAsistente",
+            "columnName": "modoDefectoAsistente",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "horaDesayuno",
+            "columnName": "horaDesayuno",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "horaAlmuerzo",
+            "columnName": "horaAlmuerzo",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "horaCena",
+            "columnName": "horaCena",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "confirmoMayorDe13",
+            "columnName": "confirmoMayorDe13",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "terminosAceptadosEn",
+            "columnName": "terminosAceptadosEn",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "consentimientoDatosSaludEn",
+            "columnName": "consentimientoDatosSaludEn",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "firebaseUid",
+            "columnName": "firebaseUid",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "onboardingCompletadoEn",
+            "columnName": "onboardingCompletadoEn",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "queMejorarJson",
+            "columnName": "queMejorarJson",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "comoEmpezar",
+            "columnName": "comoEmpezar",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "momentoDelDiaPreferido",
+            "columnName": "momentoDelDiaPreferido",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "porQueEmpezar",
+            "columnName": "porQueEmpezar",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "espacio",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `tipo` TEXT NOT NULL, `nombre` TEXT NOT NULL, `creadoPor` TEXT NOT NULL, `fechaCreacion` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tipo",
+            "columnName": "tipo",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nombre",
+            "columnName": "nombre",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "creadoPor",
+            "columnName": "creadoPor",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fechaCreacion",
+            "columnName": "fechaCreacion",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "espacio_miembro",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`espacioId` TEXT NOT NULL, `usuarioId` TEXT NOT NULL, `rol` TEXT NOT NULL, `nombre` TEXT, `firebaseUid` TEXT, PRIMARY KEY(`espacioId`, `usuarioId`), FOREIGN KEY(`espacioId`) REFERENCES `espacio`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "espacioId",
+            "columnName": "espacioId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "usuarioId",
+            "columnName": "usuarioId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rol",
+            "columnName": "rol",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nombre",
+            "columnName": "nombre",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "firebaseUid",
+            "columnName": "firebaseUid",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "espacioId",
+            "usuarioId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_espacio_miembro_espacioId",
+            "unique": false,
+            "columnNames": [
+              "espacioId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_espacio_miembro_espacioId` ON `${TABLE_NAME}` (`espacioId`)"
+          },
+          {
+            "name": "index_espacio_miembro_usuarioId",
+            "unique": false,
+            "columnNames": [
+              "usuarioId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_espacio_miembro_usuarioId` ON `${TABLE_NAME}` (`usuarioId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "espacio",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "espacioId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "area_de_vida",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `nombre` TEXT NOT NULL, `activa` INTEGER NOT NULL, `esPredefinida` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nombre",
+            "columnName": "nombre",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "activa",
+            "columnName": "activa",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "esPredefinida",
+            "columnName": "esPredefinida",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "actividad",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `tipo` TEXT NOT NULL, `espacioId` TEXT NOT NULL, `nombre` TEXT NOT NULL, `propietario` TEXT NOT NULL, `responsablesJson` TEXT NOT NULL, `puedeVerJson` TEXT NOT NULL, `puedeRecordarJson` TEXT NOT NULL, `estado` TEXT NOT NULL, `privacidad` TEXT NOT NULL, `syncStatus` TEXT NOT NULL, `esPremiumFeature` INTEGER NOT NULL, `areaDeVidaId` TEXT, `momentoDelDia` TEXT, `fechaCreacion` INTEGER NOT NULL, `activa` INTEGER NOT NULL, `fechaCompletado` INTEGER, PRIMARY KEY(`id`), FOREIGN KEY(`espacioId`) REFERENCES `espacio`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT , FOREIGN KEY(`areaDeVidaId`) REFERENCES `area_de_vida`(`id`) ON UPDATE NO ACTION ON DELETE SET NULL )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tipo",
+            "columnName": "tipo",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "espacioId",
+            "columnName": "espacioId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nombre",
+            "columnName": "nombre",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "propietario",
+            "columnName": "propietario",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "responsablesJson",
+            "columnName": "responsablesJson",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "puedeVerJson",
+            "columnName": "puedeVerJson",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "puedeRecordarJson",
+            "columnName": "puedeRecordarJson",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "estado",
+            "columnName": "estado",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "privacidad",
+            "columnName": "privacidad",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "syncStatus",
+            "columnName": "syncStatus",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "esPremiumFeature",
+            "columnName": "esPremiumFeature",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "areaDeVidaId",
+            "columnName": "areaDeVidaId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "momentoDelDia",
+            "columnName": "momentoDelDia",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "fechaCreacion",
+            "columnName": "fechaCreacion",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "activa",
+            "columnName": "activa",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fechaCompletado",
+            "columnName": "fechaCompletado",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_actividad_espacioId",
+            "unique": false,
+            "columnNames": [
+              "espacioId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_actividad_espacioId` ON `${TABLE_NAME}` (`espacioId`)"
+          },
+          {
+            "name": "index_actividad_tipo",
+            "unique": false,
+            "columnNames": [
+              "tipo"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_actividad_tipo` ON `${TABLE_NAME}` (`tipo`)"
+          },
+          {
+            "name": "index_actividad_fechaCreacion",
+            "unique": false,
+            "columnNames": [
+              "fechaCreacion"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_actividad_fechaCreacion` ON `${TABLE_NAME}` (`fechaCreacion`)"
+          },
+          {
+            "name": "index_actividad_estado",
+            "unique": false,
+            "columnNames": [
+              "estado"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_actividad_estado` ON `${TABLE_NAME}` (`estado`)"
+          },
+          {
+            "name": "index_actividad_momentoDelDia",
+            "unique": false,
+            "columnNames": [
+              "momentoDelDia"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_actividad_momentoDelDia` ON `${TABLE_NAME}` (`momentoDelDia`)"
+          },
+          {
+            "name": "index_actividad_areaDeVidaId",
+            "unique": false,
+            "columnNames": [
+              "areaDeVidaId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_actividad_areaDeVidaId` ON `${TABLE_NAME}` (`areaDeVidaId`)"
+          },
+          {
+            "name": "index_actividad_propietario",
+            "unique": false,
+            "columnNames": [
+              "propietario"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_actividad_propietario` ON `${TABLE_NAME}` (`propietario`)"
+          },
+          {
+            "name": "index_actividad_activa",
+            "unique": false,
+            "columnNames": [
+              "activa"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_actividad_activa` ON `${TABLE_NAME}` (`activa`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "espacio",
+            "onDelete": "RESTRICT",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "espacioId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "table": "area_de_vida",
+            "onDelete": "SET NULL",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "areaDeVidaId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "habito_detalle",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`actividadId` TEXT NOT NULL, `momentoDelDia` TEXT NOT NULL, `frecuencia` TEXT NOT NULL, `diasEspecificosJson` TEXT, `duracionInicialMin` INTEGER, `duracionObjetivoMin` INTEGER, `incrementoMin` INTEGER, `frecuenciaRevisionDias` INTEGER, `horaRecordatorio` TEXT, `nivelRecordatorio` TEXT NOT NULL, `duracionActualMin` INTEGER, `proximaRevisionEpochDay` INTEGER, PRIMARY KEY(`actividadId`), FOREIGN KEY(`actividadId`) REFERENCES `actividad`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "actividadId",
+            "columnName": "actividadId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "momentoDelDia",
+            "columnName": "momentoDelDia",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "frecuencia",
+            "columnName": "frecuencia",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "diasEspecificosJson",
+            "columnName": "diasEspecificosJson",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "duracionInicialMin",
+            "columnName": "duracionInicialMin",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "duracionObjetivoMin",
+            "columnName": "duracionObjetivoMin",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "incrementoMin",
+            "columnName": "incrementoMin",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "frecuenciaRevisionDias",
+            "columnName": "frecuenciaRevisionDias",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "horaRecordatorio",
+            "columnName": "horaRecordatorio",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "nivelRecordatorio",
+            "columnName": "nivelRecordatorio",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "duracionActualMin",
+            "columnName": "duracionActualMin",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "proximaRevisionEpochDay",
+            "columnName": "proximaRevisionEpochDay",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "actividadId"
+          ]
+        },
+        "foreignKeys": [
+          {
+            "table": "actividad",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "actividadId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "tarea_detalle",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`actividadId` TEXT NOT NULL, `fechaLimite` INTEGER, `prioridad` INTEGER, `importante` INTEGER NOT NULL, `urgente` INTEGER NOT NULL, `horaRecordatorio` TEXT, `nivelRecordatorio` TEXT NOT NULL, `recurrencia` TEXT NOT NULL, `actividadVinculadaId` TEXT, PRIMARY KEY(`actividadId`), FOREIGN KEY(`actividadId`) REFERENCES `actividad`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`actividadVinculadaId`) REFERENCES `actividad`(`id`) ON UPDATE NO ACTION ON DELETE SET NULL )",
+        "fields": [
+          {
+            "fieldPath": "actividadId",
+            "columnName": "actividadId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fechaLimite",
+            "columnName": "fechaLimite",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "prioridad",
+            "columnName": "prioridad",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "importante",
+            "columnName": "importante",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "urgente",
+            "columnName": "urgente",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "horaRecordatorio",
+            "columnName": "horaRecordatorio",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "nivelRecordatorio",
+            "columnName": "nivelRecordatorio",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "recurrencia",
+            "columnName": "recurrencia",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "actividadVinculadaId",
+            "columnName": "actividadVinculadaId",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "actividadId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_tarea_detalle_fechaLimite",
+            "unique": false,
+            "columnNames": [
+              "fechaLimite"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_tarea_detalle_fechaLimite` ON `${TABLE_NAME}` (`fechaLimite`)"
+          },
+          {
+            "name": "index_tarea_detalle_actividadVinculadaId",
+            "unique": false,
+            "columnNames": [
+              "actividadVinculadaId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_tarea_detalle_actividadVinculadaId` ON `${TABLE_NAME}` (`actividadVinculadaId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "actividad",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "actividadId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "table": "actividad",
+            "onDelete": "SET NULL",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "actividadVinculadaId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "rutina_detalle",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`actividadId` TEXT NOT NULL, `actividadesIncluidasJson` TEXT NOT NULL, `momentoDelDia` TEXT NOT NULL, PRIMARY KEY(`actividadId`), FOREIGN KEY(`actividadId`) REFERENCES `actividad`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "actividadId",
+            "columnName": "actividadId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "actividadesIncluidasJson",
+            "columnName": "actividadesIncluidasJson",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "momentoDelDia",
+            "columnName": "momentoDelDia",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "actividadId"
+          ]
+        },
+        "foreignKeys": [
+          {
+            "table": "actividad",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "actividadId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "medicamento_detalle",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`actividadId` TEXT NOT NULL, `nombreMedicamento` TEXT NOT NULL, `dosis` TEXT NOT NULL, `modoFrecuencia` TEXT NOT NULL, `intervaloHoras` INTEGER, `horaPrimeraDosis` TEXT, `horariosCalculadosJson` TEXT, `comidasRelacionadasJson` TEXT, `fechaInicio` INTEGER NOT NULL, `fechaFin` INTEGER, `cantidadDosisTotal` INTEGER, `nivelRecordatorio` TEXT NOT NULL, `recordatorioPersistente` INTEGER NOT NULL, `intervaloPersistenciaMin` INTEGER, PRIMARY KEY(`actividadId`), FOREIGN KEY(`actividadId`) REFERENCES `actividad`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "actividadId",
+            "columnName": "actividadId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nombreMedicamento",
+            "columnName": "nombreMedicamento",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dosis",
+            "columnName": "dosis",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "modoFrecuencia",
+            "columnName": "modoFrecuencia",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "intervaloHoras",
+            "columnName": "intervaloHoras",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "horaPrimeraDosis",
+            "columnName": "horaPrimeraDosis",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "horariosCalculadosJson",
+            "columnName": "horariosCalculadosJson",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "comidasRelacionadasJson",
+            "columnName": "comidasRelacionadasJson",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "fechaInicio",
+            "columnName": "fechaInicio",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fechaFin",
+            "columnName": "fechaFin",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "cantidadDosisTotal",
+            "columnName": "cantidadDosisTotal",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "nivelRecordatorio",
+            "columnName": "nivelRecordatorio",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "recordatorioPersistente",
+            "columnName": "recordatorioPersistente",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "intervaloPersistenciaMin",
+            "columnName": "intervaloPersistenciaMin",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "actividadId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_medicamento_detalle_fechaInicio",
+            "unique": false,
+            "columnNames": [
+              "fechaInicio"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_medicamento_detalle_fechaInicio` ON `${TABLE_NAME}` (`fechaInicio`)"
+          },
+          {
+            "name": "index_medicamento_detalle_fechaFin",
+            "unique": false,
+            "columnNames": [
+              "fechaFin"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_medicamento_detalle_fechaFin` ON `${TABLE_NAME}` (`fechaFin`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "actividad",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "actividadId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "cita_detalle",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`actividadId` TEXT NOT NULL, `lugar` TEXT, `motivo` TEXT, `fechaHora` INTEGER NOT NULL, `recordatoriosJson` TEXT, `nivelRecordatorio` TEXT NOT NULL, `esCurso` INTEGER NOT NULL, `diasSemanaJson` TEXT, `horaSesion` TEXT, `fechaInicioCurso` INTEGER, `cantidadSesionesTotal` INTEGER, PRIMARY KEY(`actividadId`), FOREIGN KEY(`actividadId`) REFERENCES `actividad`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "actividadId",
+            "columnName": "actividadId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lugar",
+            "columnName": "lugar",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "motivo",
+            "columnName": "motivo",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "fechaHora",
+            "columnName": "fechaHora",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "recordatoriosJson",
+            "columnName": "recordatoriosJson",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "nivelRecordatorio",
+            "columnName": "nivelRecordatorio",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "esCurso",
+            "columnName": "esCurso",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "diasSemanaJson",
+            "columnName": "diasSemanaJson",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "horaSesion",
+            "columnName": "horaSesion",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "fechaInicioCurso",
+            "columnName": "fechaInicioCurso",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "cantidadSesionesTotal",
+            "columnName": "cantidadSesionesTotal",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "actividadId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_cita_detalle_fechaHora",
+            "unique": false,
+            "columnNames": [
+              "fechaHora"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_cita_detalle_fechaHora` ON `${TABLE_NAME}` (`fechaHora`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "actividad",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "actividadId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "fecha_importante_detalle",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`actividadId` TEXT NOT NULL, `recurrencia` TEXT NOT NULL, `fechaBase` INTEGER NOT NULL, `horaNotificacion` TEXT NOT NULL, `anticipacion` TEXT NOT NULL, `tipoAviso` TEXT NOT NULL, PRIMARY KEY(`actividadId`), FOREIGN KEY(`actividadId`) REFERENCES `actividad`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "actividadId",
+            "columnName": "actividadId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "recurrencia",
+            "columnName": "recurrencia",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fechaBase",
+            "columnName": "fechaBase",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "horaNotificacion",
+            "columnName": "horaNotificacion",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "anticipacion",
+            "columnName": "anticipacion",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tipoAviso",
+            "columnName": "tipoAviso",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "actividadId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_fecha_importante_detalle_fechaBase",
+            "unique": false,
+            "columnNames": [
+              "fechaBase"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_fecha_importante_detalle_fechaBase` ON `${TABLE_NAME}` (`fechaBase`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "actividad",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "actividadId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "registro_actividad",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `actividadId` TEXT NOT NULL, `fecha` INTEGER NOT NULL, `estado` TEXT NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`actividadId`) REFERENCES `actividad`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "actividadId",
+            "columnName": "actividadId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fecha",
+            "columnName": "fecha",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "estado",
+            "columnName": "estado",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_registro_actividad_actividadId_fecha",
+            "unique": true,
+            "columnNames": [
+              "actividadId",
+              "fecha"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_registro_actividad_actividadId_fecha` ON `${TABLE_NAME}` (`actividadId`, `fecha`)"
+          },
+          {
+            "name": "index_registro_actividad_fecha",
+            "unique": false,
+            "columnNames": [
+              "fecha"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_registro_actividad_fecha` ON `${TABLE_NAME}` (`fecha`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "actividad",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "actividadId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "meta",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `espacioId` TEXT NOT NULL, `nombre` TEXT NOT NULL, `areaDeVidaId` TEXT, `fechaLimite` INTEGER, `comoSeMide` TEXT NOT NULL, `valorObjetivo` REAL NOT NULL, `valorActual` REAL NOT NULL, `ultimoHitoCelebrado` INTEGER NOT NULL, `categoria` TEXT, `avisarAlVencer` INTEGER NOT NULL, `nivelRecordatorio` TEXT NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`espacioId`) REFERENCES `espacio`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT , FOREIGN KEY(`areaDeVidaId`) REFERENCES `area_de_vida`(`id`) ON UPDATE NO ACTION ON DELETE SET NULL )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "espacioId",
+            "columnName": "espacioId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nombre",
+            "columnName": "nombre",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "areaDeVidaId",
+            "columnName": "areaDeVidaId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "fechaLimite",
+            "columnName": "fechaLimite",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "comoSeMide",
+            "columnName": "comoSeMide",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "valorObjetivo",
+            "columnName": "valorObjetivo",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "valorActual",
+            "columnName": "valorActual",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "ultimoHitoCelebrado",
+            "columnName": "ultimoHitoCelebrado",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "categoria",
+            "columnName": "categoria",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "avisarAlVencer",
+            "columnName": "avisarAlVencer",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nivelRecordatorio",
+            "columnName": "nivelRecordatorio",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_meta_espacioId",
+            "unique": false,
+            "columnNames": [
+              "espacioId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_meta_espacioId` ON `${TABLE_NAME}` (`espacioId`)"
+          },
+          {
+            "name": "index_meta_areaDeVidaId",
+            "unique": false,
+            "columnNames": [
+              "areaDeVidaId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_meta_areaDeVidaId` ON `${TABLE_NAME}` (`areaDeVidaId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "espacio",
+            "onDelete": "RESTRICT",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "espacioId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "table": "area_de_vida",
+            "onDelete": "SET NULL",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "areaDeVidaId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "meta_actividad_cross_ref",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`metaId` TEXT NOT NULL, `actividadId` TEXT NOT NULL, PRIMARY KEY(`metaId`, `actividadId`), FOREIGN KEY(`metaId`) REFERENCES `meta`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`actividadId`) REFERENCES `actividad`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "metaId",
+            "columnName": "metaId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "actividadId",
+            "columnName": "actividadId",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "metaId",
+            "actividadId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_meta_actividad_cross_ref_metaId",
+            "unique": false,
+            "columnNames": [
+              "metaId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_meta_actividad_cross_ref_metaId` ON `${TABLE_NAME}` (`metaId`)"
+          },
+          {
+            "name": "index_meta_actividad_cross_ref_actividadId",
+            "unique": false,
+            "columnNames": [
+              "actividadId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_meta_actividad_cross_ref_actividadId` ON `${TABLE_NAME}` (`actividadId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "meta",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "metaId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "table": "actividad",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "actividadId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "finanzas",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `espacioId` TEXT NOT NULL, `tipo` TEXT NOT NULL, `monto` REAL NOT NULL, `categoria` TEXT NOT NULL, `descripcion` TEXT, `fecha` INTEGER NOT NULL, `privacidad` TEXT NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`espacioId`) REFERENCES `espacio`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "espacioId",
+            "columnName": "espacioId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tipo",
+            "columnName": "tipo",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "monto",
+            "columnName": "monto",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "categoria",
+            "columnName": "categoria",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "descripcion",
+            "columnName": "descripcion",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "fecha",
+            "columnName": "fecha",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "privacidad",
+            "columnName": "privacidad",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_finanzas_espacioId",
+            "unique": false,
+            "columnNames": [
+              "espacioId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_finanzas_espacioId` ON `${TABLE_NAME}` (`espacioId`)"
+          },
+          {
+            "name": "index_finanzas_fecha",
+            "unique": false,
+            "columnNames": [
+              "fecha"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_finanzas_fecha` ON `${TABLE_NAME}` (`fecha`)"
+          },
+          {
+            "name": "index_finanzas_tipo",
+            "unique": false,
+            "columnNames": [
+              "tipo"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_finanzas_tipo` ON `${TABLE_NAME}` (`tipo`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "espacio",
+            "onDelete": "RESTRICT",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "espacioId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "entrada_diario",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `espacioId` TEXT NOT NULL, `propietario` TEXT NOT NULL, `titulo` TEXT, `texto` TEXT NOT NULL, `areaDeVidaId` TEXT, `fecha` INTEGER NOT NULL, `privacidad` TEXT NOT NULL, `fotosJson` TEXT, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "espacioId",
+            "columnName": "espacioId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "propietario",
+            "columnName": "propietario",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "titulo",
+            "columnName": "titulo",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "texto",
+            "columnName": "texto",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "areaDeVidaId",
+            "columnName": "areaDeVidaId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "fecha",
+            "columnName": "fecha",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "privacidad",
+            "columnName": "privacidad",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fotosJson",
+            "columnName": "fotosJson",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_entrada_diario_espacioId",
+            "unique": false,
+            "columnNames": [
+              "espacioId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_entrada_diario_espacioId` ON `${TABLE_NAME}` (`espacioId`)"
+          },
+          {
+            "name": "index_entrada_diario_fecha",
+            "unique": false,
+            "columnNames": [
+              "fecha"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_entrada_diario_fecha` ON `${TABLE_NAME}` (`fecha`)"
+          }
+        ]
+      },
+      {
+        "tableName": "registro_diario",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `espacioId` TEXT NOT NULL, `fecha` INTEGER NOT NULL, `actividadesCompletadas` INTEGER NOT NULL, `actividadesTotales` INTEGER NOT NULL, `puntuacion` INTEGER NOT NULL, `estadoAnimo` TEXT, `queLogre` TEXT, `queCosto` TEXT, `queAjusto` TEXT, PRIMARY KEY(`id`), FOREIGN KEY(`espacioId`) REFERENCES `espacio`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "espacioId",
+            "columnName": "espacioId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fecha",
+            "columnName": "fecha",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "actividadesCompletadas",
+            "columnName": "actividadesCompletadas",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "actividadesTotales",
+            "columnName": "actividadesTotales",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "puntuacion",
+            "columnName": "puntuacion",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "estadoAnimo",
+            "columnName": "estadoAnimo",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "queLogre",
+            "columnName": "queLogre",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "queCosto",
+            "columnName": "queCosto",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "queAjusto",
+            "columnName": "queAjusto",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_registro_diario_espacioId_fecha",
+            "unique": true,
+            "columnNames": [
+              "espacioId",
+              "fecha"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_registro_diario_espacioId_fecha` ON `${TABLE_NAME}` (`espacioId`, `fecha`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "espacio",
+            "onDelete": "RESTRICT",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "espacioId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "registro_semanal",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `espacioId` TEXT NOT NULL, `semana` TEXT NOT NULL, `cumplimientoGeneralPorcentaje` INTEGER NOT NULL, `rachaMaxima` INTEGER NOT NULL, `queLogre` TEXT, `queNoFunciono` TEXT, `queAjusto` TEXT, PRIMARY KEY(`id`), FOREIGN KEY(`espacioId`) REFERENCES `espacio`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "espacioId",
+            "columnName": "espacioId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "semana",
+            "columnName": "semana",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "cumplimientoGeneralPorcentaje",
+            "columnName": "cumplimientoGeneralPorcentaje",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rachaMaxima",
+            "columnName": "rachaMaxima",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "queLogre",
+            "columnName": "queLogre",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "queNoFunciono",
+            "columnName": "queNoFunciono",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "queAjusto",
+            "columnName": "queAjusto",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_registro_semanal_espacioId_semana",
+            "unique": true,
+            "columnNames": [
+              "espacioId",
+              "semana"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_registro_semanal_espacioId_semana` ON `${TABLE_NAME}` (`espacioId`, `semana`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "espacio",
+            "onDelete": "RESTRICT",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "espacioId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "reto_familiar",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `espacioId` TEXT NOT NULL, `nombre` TEXT NOT NULL, `objetivo` TEXT NOT NULL, `frecuencia` TEXT NOT NULL, `recompensa` TEXT, PRIMARY KEY(`id`), FOREIGN KEY(`espacioId`) REFERENCES `espacio`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "espacioId",
+            "columnName": "espacioId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nombre",
+            "columnName": "nombre",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "objetivo",
+            "columnName": "objetivo",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "frecuencia",
+            "columnName": "frecuencia",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "recompensa",
+            "columnName": "recompensa",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_reto_familiar_espacioId",
+            "unique": false,
+            "columnNames": [
+              "espacioId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_reto_familiar_espacioId` ON `${TABLE_NAME}` (`espacioId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "espacio",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "espacioId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "reto_familiar_participante",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`retoId` TEXT NOT NULL, `usuarioId` TEXT NOT NULL, PRIMARY KEY(`retoId`, `usuarioId`), FOREIGN KEY(`retoId`) REFERENCES `reto_familiar`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "retoId",
+            "columnName": "retoId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "usuarioId",
+            "columnName": "usuarioId",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "retoId",
+            "usuarioId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_reto_familiar_participante_retoId",
+            "unique": false,
+            "columnNames": [
+              "retoId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_reto_familiar_participante_retoId` ON `${TABLE_NAME}` (`retoId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "reto_familiar",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "retoId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "reto_familiar_registro",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `retoId` TEXT NOT NULL, `usuarioId` TEXT NOT NULL, `fecha` INTEGER NOT NULL, `estado` TEXT NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`retoId`) REFERENCES `reto_familiar`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "retoId",
+            "columnName": "retoId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "usuarioId",
+            "columnName": "usuarioId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fecha",
+            "columnName": "fecha",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "estado",
+            "columnName": "estado",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_reto_familiar_registro_retoId_usuarioId_fecha",
+            "unique": true,
+            "columnNames": [
+              "retoId",
+              "usuarioId",
+              "fecha"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_reto_familiar_registro_retoId_usuarioId_fecha` ON `${TABLE_NAME}` (`retoId`, `usuarioId`, `fecha`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "reto_familiar",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "retoId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "solicitud_compartir",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `de` TEXT NOT NULL, `para` TEXT NOT NULL, `tieneCuenta` INTEGER NOT NULL, `elementoId` TEXT NOT NULL, `contexto` TEXT NOT NULL, `deNombre` TEXT NOT NULL, `tipo` TEXT NOT NULL, `permisos` TEXT NOT NULL, `estado` TEXT NOT NULL, `canalEnvio` TEXT, `fechaSolicitud` INTEGER NOT NULL, `fechaRespuesta` INTEGER, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "de",
+            "columnName": "de",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "para",
+            "columnName": "para",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tieneCuenta",
+            "columnName": "tieneCuenta",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "elementoId",
+            "columnName": "elementoId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "contexto",
+            "columnName": "contexto",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "deNombre",
+            "columnName": "deNombre",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tipo",
+            "columnName": "tipo",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "permisos",
+            "columnName": "permisos",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "estado",
+            "columnName": "estado",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "canalEnvio",
+            "columnName": "canalEnvio",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "fechaSolicitud",
+            "columnName": "fechaSolicitud",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fechaRespuesta",
+            "columnName": "fechaRespuesta",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_solicitud_compartir_de",
+            "unique": false,
+            "columnNames": [
+              "de"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_solicitud_compartir_de` ON `${TABLE_NAME}` (`de`)"
+          },
+          {
+            "name": "index_solicitud_compartir_para",
+            "unique": false,
+            "columnNames": [
+              "para"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_solicitud_compartir_para` ON `${TABLE_NAME}` (`para`)"
+          },
+          {
+            "name": "index_solicitud_compartir_estado",
+            "unique": false,
+            "columnNames": [
+              "estado"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_solicitud_compartir_estado` ON `${TABLE_NAME}` (`estado`)"
+          }
+        ]
+      },
+      {
+        "tableName": "historial_cambios",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `entidad` TEXT NOT NULL, `entidadId` TEXT NOT NULL, `accion` TEXT NOT NULL, `valoresAntesJson` TEXT, `valoresDespuesJson` TEXT, `usuarioId` TEXT NOT NULL, `timestamp` INTEGER NOT NULL, `origen` TEXT NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "entidad",
+            "columnName": "entidad",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "entidadId",
+            "columnName": "entidadId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "accion",
+            "columnName": "accion",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "valoresAntesJson",
+            "columnName": "valoresAntesJson",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "valoresDespuesJson",
+            "columnName": "valoresDespuesJson",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "usuarioId",
+            "columnName": "usuarioId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "timestamp",
+            "columnName": "timestamp",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "origen",
+            "columnName": "origen",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_historial_cambios_entidad_entidadId",
+            "unique": false,
+            "columnNames": [
+              "entidad",
+              "entidadId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_historial_cambios_entidad_entidadId` ON `${TABLE_NAME}` (`entidad`, `entidadId`)"
+          },
+          {
+            "name": "index_historial_cambios_timestamp",
+            "unique": false,
+            "columnNames": [
+              "timestamp"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_historial_cambios_timestamp` ON `${TABLE_NAME}` (`timestamp`)"
+          }
+        ]
+      },
+      {
+        "tableName": "lista",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `espacioId` TEXT NOT NULL, `nombre` TEXT NOT NULL, `fechaCreacion` INTEGER NOT NULL, `orden` INTEGER NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`espacioId`) REFERENCES `espacio`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "espacioId",
+            "columnName": "espacioId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nombre",
+            "columnName": "nombre",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fechaCreacion",
+            "columnName": "fechaCreacion",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "orden",
+            "columnName": "orden",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_lista_espacioId",
+            "unique": false,
+            "columnNames": [
+              "espacioId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_lista_espacioId` ON `${TABLE_NAME}` (`espacioId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "espacio",
+            "onDelete": "RESTRICT",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "espacioId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "lista_item",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `listaId` TEXT NOT NULL, `texto` TEXT NOT NULL, `marcado` INTEGER NOT NULL, `orden` INTEGER NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`listaId`) REFERENCES `lista`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "listaId",
+            "columnName": "listaId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "texto",
+            "columnName": "texto",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "marcado",
+            "columnName": "marcado",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "orden",
+            "columnName": "orden",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_lista_item_listaId",
+            "unique": false,
+            "columnNames": [
+              "listaId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_lista_item_listaId` ON `${TABLE_NAME}` (`listaId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "lista",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "listaId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "toma_medicamento",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `actividadId` TEXT NOT NULL, `fecha` INTEGER NOT NULL, `horario` TEXT NOT NULL, `estado` TEXT NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`actividadId`) REFERENCES `actividad`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "actividadId",
+            "columnName": "actividadId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fecha",
+            "columnName": "fecha",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "horario",
+            "columnName": "horario",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "estado",
+            "columnName": "estado",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_toma_medicamento_actividadId_fecha_horario",
+            "unique": true,
+            "columnNames": [
+              "actividadId",
+              "fecha",
+              "horario"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_toma_medicamento_actividadId_fecha_horario` ON `${TABLE_NAME}` (`actividadId`, `fecha`, `horario`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "actividad",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "actividadId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "nota",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `espacioId` TEXT NOT NULL, `propietario` TEXT NOT NULL, `titulo` TEXT, `contenido` TEXT NOT NULL, `fechaCreacion` INTEGER NOT NULL, `fechaEdicion` INTEGER NOT NULL, `orden` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "espacioId",
+            "columnName": "espacioId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "propietario",
+            "columnName": "propietario",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "titulo",
+            "columnName": "titulo",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "contenido",
+            "columnName": "contenido",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fechaCreacion",
+            "columnName": "fechaCreacion",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fechaEdicion",
+            "columnName": "fechaEdicion",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "orden",
+            "columnName": "orden",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_nota_espacioId",
+            "unique": false,
+            "columnNames": [
+              "espacioId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_nota_espacioId` ON `${TABLE_NAME}` (`espacioId`)"
+          },
+          {
+            "name": "index_nota_fechaEdicion",
+            "unique": false,
+            "columnNames": [
+              "fechaEdicion"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_nota_fechaEdicion` ON `${TABLE_NAME}` (`fechaEdicion`)"
+          }
+        ]
+      },
+      {
+        "tableName": "lista_ejecucion",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `listaId` TEXT NOT NULL, `fecha` INTEGER NOT NULL, `itemsJson` TEXT NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`listaId`) REFERENCES `lista`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "listaId",
+            "columnName": "listaId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fecha",
+            "columnName": "fecha",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "itemsJson",
+            "columnName": "itemsJson",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_lista_ejecucion_listaId",
+            "unique": false,
+            "columnNames": [
+              "listaId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_lista_ejecucion_listaId` ON `${TABLE_NAME}` (`listaId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "lista",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "listaId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "proposito_personal",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`espacioId` TEXT NOT NULL, `propietario` TEXT NOT NULL, `respuestasJson` TEXT NOT NULL, `fechaEdicion` INTEGER NOT NULL, PRIMARY KEY(`espacioId`), FOREIGN KEY(`espacioId`) REFERENCES `espacio`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT )",
+        "fields": [
+          {
+            "fieldPath": "espacioId",
+            "columnName": "espacioId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "propietario",
+            "columnName": "propietario",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "respuestasJson",
+            "columnName": "respuestasJson",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fechaEdicion",
+            "columnName": "fechaEdicion",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "espacioId"
+          ]
+        },
+        "foreignKeys": [
+          {
+            "table": "espacio",
+            "onDelete": "RESTRICT",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "espacioId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "conexion",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `usuarioA` TEXT NOT NULL, `usuarioB` TEXT NOT NULL, `tipo` TEXT NOT NULL, `origenSolicitudId` TEXT, `fechaConexion` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "usuarioA",
+            "columnName": "usuarioA",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "usuarioB",
+            "columnName": "usuarioB",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tipo",
+            "columnName": "tipo",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "origenSolicitudId",
+            "columnName": "origenSolicitudId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "fechaConexion",
+            "columnName": "fechaConexion",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_conexion_usuarioA",
+            "unique": false,
+            "columnNames": [
+              "usuarioA"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_conexion_usuarioA` ON `${TABLE_NAME}` (`usuarioA`)"
+          },
+          {
+            "name": "index_conexion_usuarioB",
+            "unique": false,
+            "columnNames": [
+              "usuarioB"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_conexion_usuarioB` ON `${TABLE_NAME}` (`usuarioB`)"
+          }
+        ]
+      },
+      {
+        "tableName": "sesion_cita",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `actividadId` TEXT NOT NULL, `numeroSesion` INTEGER NOT NULL, `fecha` INTEGER NOT NULL, `fechaOriginal` INTEGER NOT NULL, `horario` TEXT NOT NULL, `estado` TEXT NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`actividadId`) REFERENCES `actividad`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "actividadId",
+            "columnName": "actividadId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "numeroSesion",
+            "columnName": "numeroSesion",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fecha",
+            "columnName": "fecha",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fechaOriginal",
+            "columnName": "fechaOriginal",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "horario",
+            "columnName": "horario",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "estado",
+            "columnName": "estado",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_sesion_cita_actividadId_numeroSesion",
+            "unique": true,
+            "columnNames": [
+              "actividadId",
+              "numeroSesion"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_sesion_cita_actividadId_numeroSesion` ON `${TABLE_NAME}` (`actividadId`, `numeroSesion`)"
+          },
+          {
+            "name": "index_sesion_cita_fecha",
+            "unique": false,
+            "columnNames": [
+              "fecha"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_sesion_cita_fecha` ON `${TABLE_NAME}` (`fecha`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "actividad",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "actividadId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '80f286ef2cdf25fbdac88d5136528e73')"
+    ]
+  }
+}

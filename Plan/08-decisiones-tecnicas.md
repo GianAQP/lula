@@ -4257,3 +4257,159 @@ prueba sonaba mató el proceso a mitad de la alarma — un corte que en el momen
 que el usuario venía reportando ("suena y se corta"), pero era un artefacto de la propia sesión
 de pruebas, no el bug real. Quedó como recordatorio de no reinstalar mientras se prueba algo en
 vivo en el dispositivo.
+
+## Ícono de la app que evoluciona con el tiempo (2026-08-23)
+
+El usuario propuso un ícono que cambia solo con el uso — semilla → plantita → flor — inspirado en
+apps como Genshin Impact que cambian su ícono real del launcher. Se construyó con la técnica
+estándar de Android para esto: 3 `activity-alias` en el manifest (todas apuntando a
+`MainActivity`, cada una con su propio ícono), con solo una `enabled` a la vez — `MainActivity`
+en sí ya NO lleva el intent-filter de LAUNCHER (si lo tuviera además de los alias, aparecerían
+4 íconos en vez de 1).
+
+**Regla de evolución, definida junto con el usuario tras un par de iteraciones**:
+- 🌱 Semilla: 0-29 días desde `Usuario.onboardingCompletadoEn` (el "día 0" de la cuenta).
+- 🌿 Plantita sin flor: 30+ días, pero (a) todavía no llega a 60 días, o (b) ya los pasó pero
+  ahora mismo no tiene racha activa.
+- 🌸 Flor: 60+ días de cuenta **y** racha activa ahora mismo — si se corta la racha, vuelve a
+  plantita sin flor (nunca retrocede a semilla).
+
+`ActualizarIconoAppUseCase` calcula el estado y llama `PackageManager.setComponentEnabledSetting`
+best-effort en cada apertura de la app (mismo patrón que el resto de checks de `AppViewModel`) —
+no reinicia ni mata el proceso en curso (`PackageManager.DONT_KILL_APP`).
+
+**Detalle de las imágenes**: las 3 imágenes que dio el usuario ya venían con un fondo tipo
+"tarjeta" (esquinas redondeadas horneadas en el propio dibujo, no transparencia real) — para el
+ícono adaptativo de Android (que aplica su propia máscara: círculo, squircle, gota según el
+launcher) se generó una versión escalada al ~62% dentro de un lienzo transparente más grande,
+para que la máscara no recorte el personaje. No es 100% idealmente "limpio" (Android igual
+recorta ligeramente el borde de la tarjeta original), pero se ve bien en la práctica — el usuario
+confirmó verlo bien en su dispositivo real.
+
+## Perfil de usuario: arreglo de sincronización + saltar registro en celular nuevo (2026-08-23)
+
+El usuario probó el registro en el segundo celular, escribió "Eli" en "¿cómo te llamo?", y al
+revisar Firebase Console encontró que el perfil en la nube seguía mostrando "Tú" (el placeholder
+del usuario semilla). Causa real, encontrada leyendo el código (sin necesitar el segundo
+celular): `subirPerfil` se llama en el paso "Cuenta" del registro (justo después de vincular con
+Google) — que es ANTES del paso "¿cómo te llamo?" en el flujo de onboarding. El nombre real nunca
+se volvía a subir después de escribirlo.
+
+**Arreglado en dos puntas**:
+1. `OnboardingViewModel.finalizar()` vuelve a subir el perfil después de guardar las respuestas
+   (ahí sí ya tiene el nombre real). `ProfileViewModel` también resube el perfil al editar
+   horarios de comida, por el mismo motivo (evitar que cualquier edición posterior quede
+   pegada en la nube con un valor viejo).
+2. `subirPerfil` ahora también manda `nombreCompleto`, horarios de comida, y
+   `onboardingCompletadoEn` — antes solo mandaba `nombrePreferido`/`correo`.
+
+**Gap más grande, encontrado al responder "¿si cambio de celular, recupero 'Eli'?"**: el perfil
+solo se SUBÍA, nunca se DESCARGABA — un celular nuevo con la misma cuenta de Google nunca traía
+el nombre real, y como `onboardingCompletadoEn` es un campo 100% local, el registro se volvía a
+pedir desde cero en cualquier celular nuevo, aunque la cuenta ya existiera. Se agregó
+`CompartirSyncRepository.restaurarPerfil(firebaseUid)` (pull) y
+`UsuarioRepository.aplicarPerfilRemoto(...)`, llamados desde `ReclamarCuentaConGoogleUseCase`
+ANTES de subir de nuevo (para no pisar un nombre real con el placeholder semilla si es la
+primera vez que se abre en este dispositivo). `ReclamarCuentaConGoogleUseCase` ahora devuelve
+`Boolean` (si la cuenta ya tenía el registro completo en otro lado) — `OnboardingViewModel` lo
+usa para saltarse el resto del wizard (preguntas, privacidad) y entrar directo a Hoy si ya
+estaba todo respondido antes, en vez de volver a preguntar. Ver también la nota de "Ajustes" (no
+tocado en esta ronda) en `10-pendientes.md`.
+
+## Círculo de cuidado: ver el contenido real compartido (2026-08-23)
+
+Cierre del hueco documentado desde hace varias rondas ("Ver el contenido real de lo que me
+compartieron" — antes, aceptar una `SolicitudCompartir` solo sincronizaba la solicitud/conexión,
+nunca el hábito/tarea/medicamento en sí). Se construyó con el mismo nivel de detalle que ya tenía
+Familia: Hábito, Tarea, Rutina, Medicamento (con tomas recientes), Cita (con sesiones de curso) y
+Fecha importante — decidido con el usuario, alcance completo en vez de solo Tarea/Hábito.
+
+**Diseño**: colección nueva `actividadesCompartidas/{solicitudId}` (Firestore) — un documento por
+`SolicitudCompartir` ya `ACEPTADA` de tipo `ACTIVIDAD`. Solo quien comparte escribe
+(`deFirebaseUid`); solo quien comparte y a quien le comparten (`paraCorreo`, correo verificado)
+pueden leer — mismo patrón de seguridad que `solicitudes_compartir`.
+
+- `SincronizarActividadCompartidaUseCase`: sube el contenido completo de una actividad
+  compartida y aceptada — se llama (a) cada vez que `CareCircleScreen` refresca sus "enviadas"
+  (así detecta cuando la otra persona recién aceptó y sube por primera vez), y (b) cada vez que
+  se marca la actividad (`MarcarActividadUseCase`/`MarcarTomaMedicamentoUseCase`/
+  `MarcarSesionCitaUseCase`), vía `SincronizarSiEstaCompartidaUseCase` (resuelve si la actividad
+  tiene alguna solicitud ACEPTADA saliente antes de subir). No es un listener en vivo permanente
+  como Familia — es "best-effort, se refresca cuando hay una acción real", mismo criterio que el
+  resto de sync de esta app.
+- `CancelarSolicitudCompartirUseCase` ahora también borra el espejo de contenido al cancelar/
+  revocar — si no, quien acompañaba seguiría viendo la actividad después de perder el acceso.
+- Pantalla nueva "Lo que me comparten" (`LoQueMeComparteScreen`), accesible desde Círculo de
+  cuidado — escucha en vivo `actividadesCompartidas` filtrado por mi correo, muestra cada
+  actividad con quién la comparte y un resumen de su estado actual (hecho hoy/no, tomas
+  recientes, sesiones cumplidas, etc.). Decidido con el usuario: pantalla aparte, no mezclado con
+  Hoy (son conceptualmente cosas distintas — lo propio vs. lo que se acompaña).
+
+**Gap relacionado, encontrado pero NO resuelto en esta ronda**: compartir una **Meta** por
+Círculo de cuidado ya estaba roto de antes (no es parte de esta ronda) — `MetaDetailScreen` tiene
+el mismo botón "🤝 Compartir seguimiento" que Hábito/Tarea/etc., pero una Meta vive en su propia
+tabla (`Meta`), no en `Actividad` — al aceptar, `AceptarSolicitudCompartirUseCase` busca
+`solicitud.elementoId` en la tabla `actividad` y nunca lo encuentra (es en realidad un id de
+`Meta`), así que no pasa nada. Pendiente, ver `10-pendientes.md`.
+
+## Quitar/salir de Familia, dejar de ver algo compartido, y sync al editar — añadido 2026-08-23
+
+El usuario probó lo recién construido y encontró tres huecos reales con una sola pregunta:
+"¿cómo elimino a una persona de Familia, y si dejo de compartir algo se borra de Firebase de
+verdad, y puedo salir de una invitación/de algo que me compartieron?" Una segunda pregunta
+("si algo ya creado se edita, ¿se actualiza en Firebase?") encontró un cuarto hueco.
+
+**1. Quitar a un miembro de Familia (admin) y salir uno mismo.**
+
+Necesitaba un dato que no existía: `EspacioMiembro` no guardaba el `firebaseUid` del miembro,
+solo su `usuarioId` local — pero Firestore guarda la membresía por documento con id =
+`firebaseUid` (ver reglas de `espacios/{id}/miembros/{miembroFirebaseUid}`), así que sin ese
+dato el dispositivo del admin no podía saber qué documento borrar para otra persona. Se agregó
+`firebaseUid: String?` a `EspacioMiembro`/`EspacioMiembroEntity` (`MIGRATION_31_32`), capturado
+gratis desde `doc.id` durante el listener ya existente (`escucharMiembros`) — no hizo falta
+ningún mecanismo de sync nuevo, el dato ya estaba en Firestore, solo faltaba guardarlo.
+
+- `EliminarMiembroEspacioUseCase`: valida que quien ejecuta sea ADMIN (doble validación — igual
+  en las reglas de Firestore, ver abajo) antes de borrar local + remoto.
+- `SalirDeEspacioFamiliaUseCase`: cualquier miembro puede borrar su propia membresía; si el
+  espacio del que sale era el activo, vuelve a `null` (Personal).
+- Reglas nuevas: función `esAdmin()` en `firestore.rules` (`get()` del propio doc de membresía,
+  no solo `exists()` como `esMiembro()`) — `allow delete` en `miembros/{miembroFirebaseUid}`
+  ahora permite borrar la propia fila (salir) O cualquier fila si soy admin (quitar a otro).
+- Decisión de producto explícita, confirmada con el usuario: **el contenido ya creado se queda
+  en el espacio** al quitar/salir — no se borra en cascada. Coherente con "nada se pierde, nada
+  se castiga" (`Plan/CLAUDE.md`).
+- UI: botón "Quitar" por fila de miembro (solo visible si `soyAdmin` y no es uno mismo) y
+  "🚪 Salir de este espacio" en `FamiliaScreen`, ambos con `ConfirmarEliminarDialog`.
+
+**2. "Dejar de ver esto" — el destinatario se desconecta de un contenido compartido, sin
+depender de que quien comparte revoque primero.**
+
+Antes solo existía el camino de quien comparte ("Revocar acceso", que sí borraba
+`actividadesCompartidas` de verdad — se confirmó y quedó documentado, era la duda #2 del
+usuario). Faltaba el camino inverso. `DejarDeVerActividadCompartidaUseCase` reutiliza
+`EstadoSolicitud.RECHAZADA` sobre una solicitud que ya estaba `ACEPTADA` (mismo estado, otro
+momento — evita inventar un tercer estado solo para esto), sube ese cambio, y además borra
+directamente el documento `actividadesCompartidas` del lado del destinatario para que
+desaparezca al instante sin esperar el próximo refresh de quien comparte. Regla de
+`actividadesCompartidas` ampliada: `allow delete` ahora también acepta
+`request.auth.token.email == resource.data.paraCorreo`, no solo el dueño. Botón "Dejar de ver
+esto" en cada tarjeta de `LoQueMeComparteScreen`, con confirmación.
+
+**3. Editar (no solo marcar) algo compartido no se actualizaba en Firebase.**
+
+La pregunta del usuario destapó que `SincronizarSiEstaCompartidaUseCase` solo estaba conectado
+a los casos de uso de **Marcar** y al refresco de "enviadas" — ninguno de los seis
+`Actualizar*UseCase` (Tarea/Hábito/Rutina/Medicamento/Cita/FechaImportante) lo llamaba. Alguien
+editaba la hora de una cita compartida y quien lo acompañaba seguía viendo la hora vieja
+indefinidamente. Se agregó la misma llamada `runCatching { sincronizarSiEstaCompartidaUseCase(...) }`
+a los seis, y un caso simétrico que tampoco existía: `EliminarActividadesCompartidasDeUseCase`,
+llamado desde `EliminarActividadUseCase` antes de borrar, para que borrar el original limpie
+también su espejo en `actividadesCompartidas` (antes quedaba huérfano, visible para siempre del
+otro lado).
+
+Compilado, `installDebug` limpio, sin crash verificado con `adb logcat`. Reglas nuevas
+publicadas por el usuario en Firebase Console. Pendiente probar de punta a punta con los dos
+celulares reales (quitar miembro, salir, dejar de ver, editar algo compartido) — ver
+`10-pendientes.md`.
+

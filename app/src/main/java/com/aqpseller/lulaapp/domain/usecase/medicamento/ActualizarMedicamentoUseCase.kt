@@ -14,6 +14,7 @@ import com.aqpseller.lulaapp.domain.repository.ActividadRepository
 import com.aqpseller.lulaapp.domain.repository.EspacioRepository
 import com.aqpseller.lulaapp.domain.repository.PersonalSyncRepository
 import com.aqpseller.lulaapp.domain.usecase.actividad.ObtenerDetalleActividadUseCase
+import com.aqpseller.lulaapp.domain.usecase.carecircle.SincronizarSiEstaCompartidaUseCase
 import javax.inject.Inject
 
 class ActualizarMedicamentoUseCase @Inject constructor(
@@ -22,6 +23,7 @@ class ActualizarMedicamentoUseCase @Inject constructor(
     private val obtenerDetalleActividadUseCase: ObtenerDetalleActividadUseCase,
     private val espacioRepository: EspacioRepository,
     private val personalSyncRepository: PersonalSyncRepository,
+    private val sincronizarSiEstaCompartidaUseCase: SincronizarSiEstaCompartidaUseCase,
 ) {
     suspend operator fun invoke(
         actividadId: String,
@@ -83,6 +85,7 @@ class ActualizarMedicamentoUseCase @Inject constructor(
         if (actividad != null && espacioRepository.obtenerEspacioSiEsMiembro(actividad.espacioId, usuarioId)?.tipo == TipoEspacio.PERSONAL) {
             runCatching { personalSyncRepository.subirMedicamento(actividad, detalle) }
         }
+        runCatching { sincronizarSiEstaCompartidaUseCase(actividadId, usuarioId) }
 
         horarios.forEachIndexed { index, horario ->
             recordatorioScheduler.programarMedicamento(

@@ -25,19 +25,25 @@ Hábitos, tareas, finanzas y cuidado no son módulos sueltos: son piezas que ali
 - **Arquitectura**: Clean Architecture (data / domain / features)
 - **Persistencia local**: Room
 - **Inyección de dependencias**: Hilt
-- **Backend real decidido (2026-08-01)**: Firebase (Auth + Firestore) — reemplaza el plan
-  original de Google Sheets vía n8n para sincronización de datos. Ver
-  `Plan/12-firebase-auth-y-sync.md`. n8n se mantiene como plan solo para el webhook del
-  asistente conversacional / "armar con IA" de Mi propósito (Fase 2.0), no para sync de datos.
-  **Sin ningún cliente de red construido todavía** — bloqueado por que el usuario cree el
-  proyecto en Firebase Console.
-- **Autenticación**: Firebase Authentication (Google Sign-In + enlace mágico por correo,
-  sin contraseñas clásicas) — diseñado, no construido; hoy la app usa un usuario semilla local.
+- **Backend real, construido y en uso (decidido 2026-08-01, Firebase Auth + Firestore)** —
+  reemplaza el plan original de Google Sheets vía n8n para sincronización de datos. n8n se
+  mantiene como plan solo para el webhook del asistente conversacional / "armar con IA" de Mi
+  propósito (Fase 2.0), no para sync de datos. Ver `Plan/12-firebase-auth-y-sync.md`.
+- **Autenticación**: Google Sign-In construido y funcionando (Credential Manager API). Correo
+  mágico sin contraseña sigue solo diseñado, no construible todavía — necesita un dominio propio
+  configurado en Firebase (Dynamic Links, la forma vieja de resolverlo sin dominio, fue dado de
+  baja por Google).
+- **Registro obligatorio al abrir la app (2026-08-23)**: `OnboardingScreen` gatea la entrada —
+  ya no se salta directo a Hoy con el usuario semilla. Si la cuenta de Google ya había
+  completado el registro en otro dispositivo, lo salta solo (trae el perfil real de la nube en
+  vez de volver a preguntar). Ver `Plan/06-onboarding.md`, `Plan/08-decisiones-tecnicas.md`.
 - **Modelo de datos**: local-first, sincronización a la nube en segundo plano — Familia/
-  Conexiones (varias personas, listener en vivo) y, desde 2026-08-22, también el Espacio
-  Personal (Hábitos, Tareas, Finanzas, Diario, Notas, Metas, Listas, Mi propósito — un solo
-  dispositivo activo a la vez, push+restaurar-una-vez, sin restricción de premium todavía). Ver
-  `Plan/12-firebase-auth-y-sync.md` y `Plan/08-decisiones-tecnicas.md`.
+  Conexiones (varias personas, listener en vivo, incluye código de invitación de 60s para
+  Familia), Círculo de cuidado (solicitud/aceptación **y**, desde 2026-08-23, el contenido real
+  de lo compartido — pantalla "Lo que me comparten"), y el Espacio Personal completo (todos los
+  tipos de Actividad + Finanzas/Diario/Notas/Metas/Listas/Mi propósito/Cerrar mi día/Revisión
+  semanal — un solo dispositivo activo a la vez, push+restaurar-una-vez, sin restricción de
+  premium todavía). Ver `Plan/12-firebase-auth-y-sync.md` y `Plan/08-decisiones-tecnicas.md`.
 
 ## Regla de diseño no negociable
 
@@ -1112,4 +1118,46 @@ ronda: Hábitos (con su historial día a día, la racha) y Tareas — lo que má
 Bug real corregido con logcat en vivo: reglas de Firestore nuevas sin publicar causaron
 `PERMISSION_DENIED` en el primer intento. Confirmado con Firebase Console: el Hábito con todos
 sus campos y su registro de racha, verificados ahí. Detalle completo en
+`Plan/08-decisiones-tecnicas.md`.
+
+**Recuperar la cuenta por completo** (2026-08-22): el usuario pidió cerrar el hueco de "qué
+pasa si cambio de celular" hasta el final. `PersonalSyncRepository` ganó Rutina, Medicamento (con
+tomas), Cita (con sesiones de curso), Fecha importante, y el historial de Cerrar mi día/Revisión
+semanal — ya no queda ningún tipo del Espacio Personal sin respaldar. Se restaura también la
+membresía a Espacios Familia en un celular nuevo (puntero `misEspacios`, sin necesitar
+`collectionGroup` con índice compuesto). Detalle completo en `Plan/08-decisiones-tecnicas.md`.
+
+**Registro obligatorio + primera prueba real con dos celulares** (2026-08-22/23): se construyó
+el registro completo (`Plan/06-onboarding.md`: Bienvenida → Cuenta → Privacidad → 5 preguntas →
+Resumen) — la app ya no arranca directo en Hoy con el usuario semilla. Familia ganó QR de
+invitación + botón de WhatsApp, y un código de unión de 60 segundos que se renueva solo
+("escanear y quedar dentro", sin paso de aceptar — con mitigación real del riesgo de un QR
+permanente). Primera vez probando con dos cuentas de Google reales en dos celulares — salieron 3
+bugs reales, los 3 arreglados el mismo día: nombre de miembro de Familia mostraba el id local en
+vez del nombre real, un canal de notificación de Alarma con un sonido pegado desde Ajustes del
+sistema del dispositivo, y contraste de texto en el registro. Se agregó también un ícono de app
+que evoluciona solo con el tiempo (semilla → plantita → flor, según antigüedad de cuenta y racha
+activa) y se arregló la sincronización del perfil (nombre real y "ya me registré antes" ahora
+viajan de verdad entre celulares). Detalle completo en `Plan/08-decisiones-tecnicas.md`.
+
+**Círculo de cuidado: ver el contenido real compartido** (2026-08-23): cierre del hueco más
+grande que quedaba pendiente de Firebase — antes, aceptar una solicitud de Círculo de cuidado
+solo sincronizaba la "capa social" (quién pidió, quién aceptó), nunca el hábito/tarea/medicamento
+en sí. Se construyó con el mismo nivel de detalle que ya tenía Familia (Hábito, Tarea, Rutina,
+Medicamento, Cita, Fecha importante) y una pantalla nueva, "Lo que me comparten". Gap relacionado
+encontrado de paso, no resuelto: compartir una Meta por Círculo de cuidado sigue roto (Meta no
+vive en la tabla `Actividad`). Detalle completo en `Plan/08-decisiones-tecnicas.md`,
+`Plan/10-pendientes.md`.
+
+**Quitar/salir de Familia, dejar de ver algo compartido, y sync al editar** (2026-08-23): tres
+preguntas del usuario tras probar lo anterior destaparon huecos reales. Ahora un admin puede
+quitar a un miembro de Familia y cualquiera puede salir por su cuenta (`EspacioMiembro` ganó
+`firebaseUid`, `MIGRATION_31_32`, para saber qué documento borrar en Firestore); el destinatario
+de algo compartido por Círculo de cuidado puede "Dejar de ver esto" sin depender de que quien
+comparte revoque primero; y se confirmó que "Revocar acceso" ya borraba de verdad en Firebase.
+De paso se encontró y arregló que **editar** (no solo marcar) un Hábito/Tarea/Rutina/
+Medicamento/Cita/Fecha importante compartido no se estaba re-subiendo — los 6
+`Actualizar*UseCase` no llamaban a `SincronizarSiEstaCompartidaUseCase`, solo lo hacían los
+casos de Marcar. Reglas de Firestore nuevas (`esAdmin()`, delete ampliado en `miembros` y
+`actividadesCompartidas`) publicadas por el usuario. Detalle completo en
 `Plan/08-decisiones-tecnicas.md`.

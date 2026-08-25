@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aqpseller.lulaapp.domain.model.Usuario
 import com.aqpseller.lulaapp.domain.repository.AuthRepository
+import com.aqpseller.lulaapp.domain.repository.CompartirSyncRepository
 import com.aqpseller.lulaapp.domain.repository.UsuarioRepository
 import com.aqpseller.lulaapp.domain.usecase.usuario.ActualizarHorariosComidaUseCase
 import com.aqpseller.lulaapp.domain.usecase.usuario.ObtenerSesionActualUseCase
@@ -12,6 +13,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -22,6 +24,7 @@ class ProfileViewModel @Inject constructor(
     private val obtenerSesionActualUseCase: ObtenerSesionActualUseCase,
     private val actualizarHorariosComidaUseCase: ActualizarHorariosComidaUseCase,
     private val reclamarCuentaConGoogleUseCase: ReclamarCuentaConGoogleUseCase,
+    private val compartirSyncRepository: CompartirSyncRepository,
 ) : ViewModel() {
 
     private val _usuario = MutableStateFlow<Usuario?>(null)
@@ -48,6 +51,9 @@ class ProfileViewModel @Inject constructor(
         viewModelScope.launch {
             val sesion = obtenerSesionActualUseCase()
             actualizarHorariosComidaUseCase(sesion.usuarioId, desayuno, almuerzo, cena)
+            usuarioRepository.observarUsuario().first()?.let { usuario ->
+                runCatching { compartirSyncRepository.subirPerfil(usuario) }
+            }
         }
     }
 

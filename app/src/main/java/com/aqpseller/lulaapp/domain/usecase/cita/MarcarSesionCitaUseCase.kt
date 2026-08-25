@@ -10,6 +10,7 @@ import com.aqpseller.lulaapp.domain.repository.ActividadRepository
 import com.aqpseller.lulaapp.domain.repository.EspacioRepository
 import com.aqpseller.lulaapp.domain.repository.PersonalSyncRepository
 import com.aqpseller.lulaapp.domain.usecase.actividad.ObtenerDetalleActividadUseCase
+import com.aqpseller.lulaapp.domain.usecase.carecircle.SincronizarSiEstaCompartidaUseCase
 import javax.inject.Inject
 
 /** Marca cumplida/no cumplida UNA sesión de un curso de Cita — a diferencia de `MarcarActividadUseCase`,
@@ -23,6 +24,7 @@ class MarcarSesionCitaUseCase @Inject constructor(
     private val obtenerDetalleActividadUseCase: ObtenerDetalleActividadUseCase,
     private val espacioRepository: EspacioRepository,
     private val personalSyncRepository: PersonalSyncRepository,
+    private val sincronizarSiEstaCompartidaUseCase: SincronizarSiEstaCompartidaUseCase,
 ) {
     suspend operator fun invoke(actividadId: String, numeroSesion: Int, estado: EstadoActividad, usuarioId: String) {
         actividadRepository.marcarSesionCita(actividadId, numeroSesion, estado, usuarioId)
@@ -32,6 +34,7 @@ class MarcarSesionCitaUseCase @Inject constructor(
                 runCatching { personalSyncRepository.subirSesionCita(sesion) }
             }
         }
+        runCatching { sincronizarSiEstaCompartidaUseCase(actividadId, usuarioId) }
         if (estado != EstadoActividad.SIN_CONFIRMAR) {
             AnticipacionRecordatorio.entries.forEach {
                 recordatorioScheduler.cancelarSesionCita(actividadId, numeroSesion, it)

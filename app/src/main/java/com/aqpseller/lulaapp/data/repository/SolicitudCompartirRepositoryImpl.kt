@@ -57,6 +57,9 @@ class SolicitudCompartirRepositoryImpl @Inject constructor(
     override fun observarEnviadasPor(usuarioId: String): Flow<List<SolicitudCompartir>> =
         solicitudCompartirDao.observarEnviadasPor(usuarioId).map { lista -> lista.map { it.toDomain() } }
 
+    override suspend fun obtenerPorId(solicitudId: String): SolicitudCompartir? =
+        solicitudCompartirDao.obtenerPorId(solicitudId)?.toDomain()
+
     override fun observarPendientesPara(correo: String): Flow<List<SolicitudCompartir>> =
         solicitudCompartirDao.observarPendientesPara(correo).map { lista -> lista.map { it.toDomain() } }
 }

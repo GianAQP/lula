@@ -35,6 +35,7 @@ data class EspacioMiembroEntity(
     val usuarioId: String,
     val rol: String,
     val nombre: String? = null,
+    val firebaseUid: String? = null,
 )
 
 @Entity(tableName = "area_de_vida")

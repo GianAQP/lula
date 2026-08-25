@@ -21,6 +21,7 @@ import com.aqpseller.lulaapp.core.utils.DateTimeUtils
 import com.aqpseller.lulaapp.domain.model.TipoActividad
 import com.aqpseller.lulaapp.features.calendar.CalendarScreen
 import com.aqpseller.lulaapp.features.care_circle.CareCircleScreen
+import com.aqpseller.lulaapp.features.care_circle.LoQueMeComparteScreen
 import com.aqpseller.lulaapp.features.common.ProximamenteScreen
 import com.aqpseller.lulaapp.features.daily_review.CerrarDiaScreen
 import com.aqpseller.lulaapp.features.diary.DiaryCalendarScreen
@@ -488,7 +489,12 @@ fun LulaNavHost(
                 AccionTomaScreen(onListo = { navController.popBackStack() })
             }
             composable(LulaDestinations.CIRCULO_CUIDADO) {
-                CareCircleScreen()
+                CareCircleScreen(
+                    onVerLoQueMeComparten = { navController.navigate(LulaDestinations.LO_QUE_ME_COMPARTEN) },
+                )
+            }
+            composable(LulaDestinations.LO_QUE_ME_COMPARTEN) {
+                LoQueMeComparteScreen()
             }
             composable(LulaDestinations.FECHAS_IMPORTANTES) {
                 ImportantDatesListScreen(

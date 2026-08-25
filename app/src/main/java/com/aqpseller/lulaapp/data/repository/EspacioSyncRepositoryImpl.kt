@@ -91,8 +91,19 @@ class EspacioSyncRepositoryImpl @Inject constructor(
             )
             val usuarioIdLocal = miembroDoc.getString("usuarioIdLocal") ?: return@mapNotNull null
             val rol = runCatching { RolEnEspacio.valueOf(miembroDoc.getString("rol") ?: "") }.getOrDefault(RolEnEspacio.MIEMBRO)
-            espacio to EspacioMiembro(espacioId = espacioId, usuarioId = usuarioIdLocal, rol = rol)
+            espacio to EspacioMiembro(
+                espacioId = espacioId,
+                usuarioId = usuarioIdLocal,
+                rol = rol,
+                nombre = miembroDoc.getString("nombre"),
+                firebaseUid = miembroDoc.id,
+            )
         }
+    }
+
+    override suspend fun eliminarMiembro(espacioId: String, miembroFirebaseUid: String) {
+        firestore.collection(COLECCION_ESPACIOS).document(espacioId)
+            .collection("miembros").document(miembroFirebaseUid).delete().await()
     }
 
     override suspend fun generarCodigoInvitacion(espacioId: String, nombreEspacio: String, deNombre: String): CodigoInvitacionEspacio {
@@ -204,7 +215,7 @@ class EspacioSyncRepositoryImpl @Inject constructor(
                         val usuarioId = doc.getString("usuarioIdLocal") ?: return@mapNotNull null
                         val rol = runCatching { RolEnEspacio.valueOf(doc.getString("rol") ?: "") }
                             .getOrDefault(RolEnEspacio.MIEMBRO)
-                        EspacioMiembro(espacioId = espacioId, usuarioId = usuarioId, rol = rol, nombre = doc.getString("nombre"))
+                        EspacioMiembro(espacioId = espacioId, usuarioId = usuarioId, rol = rol, nombre = doc.getString("nombre"), firebaseUid = doc.id)
                     },
                 )
             }

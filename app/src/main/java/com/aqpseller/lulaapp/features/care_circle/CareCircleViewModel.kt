@@ -2,14 +2,17 @@ package com.aqpseller.lulaapp.features.care_circle
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.aqpseller.lulaapp.domain.model.EstadoSolicitud
 import com.aqpseller.lulaapp.domain.model.SesionActual
 import com.aqpseller.lulaapp.domain.model.SolicitudCompartir
+import com.aqpseller.lulaapp.domain.model.TipoSolicitud
 import com.aqpseller.lulaapp.domain.repository.UsuarioRepository
 import com.aqpseller.lulaapp.domain.usecase.carecircle.AceptarSolicitudCompartirUseCase
 import com.aqpseller.lulaapp.domain.usecase.carecircle.CancelarSolicitudCompartirUseCase
 import com.aqpseller.lulaapp.domain.usecase.carecircle.ObtenerSolicitudesEnviadasUseCase
 import com.aqpseller.lulaapp.domain.usecase.carecircle.ObtenerSolicitudesRecibidasUseCase
 import com.aqpseller.lulaapp.domain.usecase.carecircle.RechazarSolicitudCompartirUseCase
+import com.aqpseller.lulaapp.domain.usecase.carecircle.SincronizarActividadCompartidaUseCase
 import com.aqpseller.lulaapp.domain.usecase.carecircle.SincronizarSolicitudesRecibidasUseCase
 import com.aqpseller.lulaapp.domain.usecase.usuario.ObtenerSesionActualUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -31,6 +34,7 @@ class CareCircleViewModel @Inject constructor(
     private val aceptarSolicitudCompartirUseCase: AceptarSolicitudCompartirUseCase,
     private val rechazarSolicitudCompartirUseCase: RechazarSolicitudCompartirUseCase,
     private val sincronizarSolicitudesRecibidasUseCase: SincronizarSolicitudesRecibidasUseCase,
+    private val sincronizarActividadCompartidaUseCase: SincronizarActividadCompartidaUseCase,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CareCircleUiState())
@@ -55,6 +59,13 @@ class CareCircleViewModel @Inject constructor(
                             },
                         )
                     }
+                    // Cada vez que cambia el estado de lo que comparto (ej. la otra persona
+                    // recién aceptó), se resube el contenido real de lo que ya está aceptado —
+                    // así quien acompaña siempre ve algo fresco al abrir esta pantalla. Ver
+                    // `Plan/08-decisiones-tecnicas.md`.
+                    solicitudes
+                        .filter { it.tipo == TipoSolicitud.ACTIVIDAD && it.estado == EstadoSolicitud.ACEPTADA }
+                        .forEach { solicitud -> runCatching { sincronizarActividadCompartidaUseCase(solicitud) } }
                 }
             }
 

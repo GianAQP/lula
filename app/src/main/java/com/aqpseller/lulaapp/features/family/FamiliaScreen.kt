@@ -46,6 +46,8 @@ fun FamiliaScreen(
     var nombreRenombrar by remember { mutableStateOf("") }
     var contactoInvitar by remember { mutableStateOf("") }
     var mostrarConfirmarEliminar by remember { mutableStateOf(false) }
+    var mostrarConfirmarSalir by remember { mutableStateOf(false) }
+    var miembroAQuitar by remember { mutableStateOf<MiembroUi?>(null) }
     LaunchedEffect(uiState.espacioCambiado) { if (uiState.espacioCambiado) onEspacioCambiado() }
     LaunchedEffect(uiState.mostrarFormularioRenombrar) {
         if (uiState.mostrarFormularioRenombrar) nombreRenombrar = uiState.nombreEspacioFamilia
@@ -121,7 +123,12 @@ fun FamiliaScreen(
             Text(text = "👨‍👩‍👧 ${uiState.nombreEspacioFamilia}", style = MaterialTheme.typography.titleSmall)
             Text(text = "Miembros", modifier = Modifier.padding(top = 12.dp))
             uiState.miembros.forEach { miembro ->
-                Text(text = "🙋 ${miembro.nombre} — ${miembro.rol}", modifier = Modifier.padding(top = 4.dp))
+                Row(modifier = Modifier.padding(top = 4.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                    Text(text = "🙋 ${miembro.nombre} — ${miembro.rol}", modifier = Modifier.weight(1f))
+                    if (uiState.soyAdmin && !miembro.esUnoMismo) {
+                        TextButton(onClick = { miembroAQuitar = miembro }) { Text("Quitar") }
+                    }
+                }
             }
             if (!uiState.cuentaVinculada) {
                 Text(
@@ -166,6 +173,9 @@ fun FamiliaScreen(
                     Text("🗑️ Eliminar")
                 }
             }
+            TextButton(onClick = { mostrarConfirmarSalir = true }, modifier = Modifier.padding(top = 8.dp)) {
+                Text("🚪 Salir de este espacio")
+            }
         }
     }
 
@@ -175,6 +185,22 @@ fun FamiliaScreen(
                 "(tareas, hábitos, metas, listas, movimientos financieros, retos familiares) para siempre.",
             onConfirmar = { mostrarConfirmarEliminar = false; viewModel.eliminarEspacioFamilia() },
             onCancelar = { mostrarConfirmarEliminar = false },
+        )
+    }
+    if (mostrarConfirmarSalir) {
+        ConfirmarEliminarDialog(
+            mensaje = "Vas a salir de \"${uiState.nombreEspacioFamilia}\". Lo que ya se creó ahí se " +
+                "queda tal cual para el resto — solo dejas de tener acceso tú.",
+            onConfirmar = { mostrarConfirmarSalir = false; viewModel.salirDeEspacioFamilia() },
+            onCancelar = { mostrarConfirmarSalir = false },
+        )
+    }
+    miembroAQuitar?.let { miembro ->
+        ConfirmarEliminarDialog(
+            mensaje = "Vas a quitar a \"${miembro.nombre}\" de \"${uiState.nombreEspacioFamilia}\". Lo que ya " +
+                "creó ahí se queda tal cual — solo pierde el acceso.",
+            onConfirmar = { viewModel.eliminarMiembro(miembro); miembroAQuitar = null },
+            onCancelar = { miembroAQuitar = null },
         )
     }
     if (uiState.mostrarInvitacionEnviada) {

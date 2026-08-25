@@ -42,4 +42,18 @@ interface UsuarioRepository {
 
     /** Marca terminado el registro inicial — de acá en más la app entra directo a Hoy. */
     suspend fun completarOnboarding(usuarioId: String)
+
+    /** Aplica el perfil restaurado de la nube (celular nuevo, misma cuenta) — cada campo null se
+     * deja como está, mismo criterio que [guardarRespuestasOnboarding]. Si [onboardingCompletadoEn]
+     * llega no-null, salta el registro en este dispositivo (ya se completó en otro). Ver
+     * `ReclamarCuentaConGoogleUseCase`. */
+    suspend fun aplicarPerfilRemoto(
+        usuarioId: String,
+        nombreCompleto: String?,
+        nombrePreferido: String?,
+        horaDesayuno: String?,
+        horaAlmuerzo: String?,
+        horaCena: String?,
+        onboardingCompletadoEn: Long?,
+    )
 }

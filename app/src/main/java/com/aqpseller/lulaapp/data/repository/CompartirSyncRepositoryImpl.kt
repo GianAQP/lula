@@ -8,6 +8,7 @@ import com.aqpseller.lulaapp.domain.model.SolicitudCompartir
 import com.aqpseller.lulaapp.domain.model.TipoSolicitud
 import com.aqpseller.lulaapp.domain.model.Usuario
 import com.aqpseller.lulaapp.domain.repository.CompartirSyncRepository
+import com.aqpseller.lulaapp.domain.repository.PerfilRemoto
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Filter
@@ -37,10 +38,28 @@ class CompartirSyncRepositoryImpl @Inject constructor(
         val uid = usuario.firebaseUid ?: return
         val datos = mapOf(
             "usuarioIdLocal" to usuario.id,
+            "nombreCompleto" to usuario.nombreCompleto,
             "nombrePreferido" to usuario.nombrePreferido,
             "correo" to usuario.correo,
+            "horaDesayuno" to usuario.horaDesayuno,
+            "horaAlmuerzo" to usuario.horaAlmuerzo,
+            "horaCena" to usuario.horaCena,
+            "onboardingCompletadoEn" to usuario.onboardingCompletadoEn,
         )
         firestore.collection(COLECCION_USUARIOS).document(uid).set(datos).await()
+    }
+
+    override suspend fun restaurarPerfil(firebaseUid: String): PerfilRemoto? {
+        val doc = firestore.collection(COLECCION_USUARIOS).document(firebaseUid).get().await()
+        if (!doc.exists()) return null
+        return PerfilRemoto(
+            nombreCompleto = doc.getString("nombreCompleto"),
+            nombrePreferido = doc.getString("nombrePreferido"),
+            horaDesayuno = doc.getString("horaDesayuno"),
+            horaAlmuerzo = doc.getString("horaAlmuerzo"),
+            horaCena = doc.getString("horaCena"),
+            onboardingCompletadoEn = doc.getLong("onboardingCompletadoEn"),
+        )
     }
 
     override suspend fun subirSolicitud(solicitud: SolicitudCompartir) {

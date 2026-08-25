@@ -10,6 +10,7 @@ import com.aqpseller.lulaapp.domain.model.TipoEspacio
 import com.aqpseller.lulaapp.domain.repository.ActividadRepository
 import com.aqpseller.lulaapp.domain.repository.EspacioRepository
 import com.aqpseller.lulaapp.domain.repository.PersonalSyncRepository
+import com.aqpseller.lulaapp.domain.usecase.carecircle.SincronizarSiEstaCompartidaUseCase
 import javax.inject.Inject
 
 class ActualizarCitaUseCase @Inject constructor(
@@ -18,6 +19,7 @@ class ActualizarCitaUseCase @Inject constructor(
     private val generarSesionesCursoUseCase: GenerarSesionesCursoUseCase,
     private val espacioRepository: EspacioRepository,
     private val personalSyncRepository: PersonalSyncRepository,
+    private val sincronizarSiEstaCompartidaUseCase: SincronizarSiEstaCompartidaUseCase,
 ) {
     suspend operator fun invoke(
         actividadId: String,
@@ -53,6 +55,7 @@ class ActualizarCitaUseCase @Inject constructor(
         if (esPersonal) {
             runCatching { personalSyncRepository.subirCita(actividad!!, detalle) }
         }
+        runCatching { sincronizarSiEstaCompartidaUseCase(actividadId, usuarioId) }
         // Solo hay 3 valores posibles de anticipación — más simple y robusto cancelar los 3
         // (idempotente si no había alarma) que ir a buscar cuáles tenía configurados antes.
         AnticipacionRecordatorio.entries.forEach { recordatorioScheduler.cancelarCita(actividadId, it) }
@@ -67,6 +70,7 @@ class ActualizarCitaUseCase @Inject constructor(
                 if (esPersonal) {
                     nuevas.forEach { sesion -> runCatching { personalSyncRepository.subirSesionCita(sesion) } }
                 }
+                runCatching { sincronizarSiEstaCompartidaUseCase(actividadId, usuarioId) }
                 nuevas.forEach { sesion ->
                     val fechaHoraSesion = DateTimeUtils.combinarFechaYHora(DateTimeUtils.epochDiasAEpochMillis(sesion.fecha), sesion.horario)
                     recordatorioScheduler.programarSesionCita(actividadId, nombre, sesion.numeroSesion, fechaHoraSesion, recordatorios, nivelRecordatorio)

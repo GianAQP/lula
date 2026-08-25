@@ -22,6 +22,8 @@ interface SolicitudCompartirRepository {
 
     fun observarEnviadasPor(usuarioId: String): Flow<List<SolicitudCompartir>>
 
+    suspend fun obtenerPorId(solicitudId: String): SolicitudCompartir?
+
     /**
      * Solicitudes que alguien más me envió a mí, todavía sin responder — filtra por mi correo
      * (`para` es un contacto de texto libre, no un `usuarioId`). Vacío hasta que la cuenta esté

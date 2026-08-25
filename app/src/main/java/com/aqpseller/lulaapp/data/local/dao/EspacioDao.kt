@@ -54,6 +54,9 @@ interface EspacioMiembroDao {
 
     @Query("SELECT * FROM espacio_miembro WHERE espacioId = :espacioId AND usuarioId = :usuarioId LIMIT 1")
     suspend fun obtenerMiembro(espacioId: String, usuarioId: String): EspacioMiembroEntity?
+
+    @Query("DELETE FROM espacio_miembro WHERE espacioId = :espacioId AND usuarioId = :usuarioId")
+    suspend fun eliminar(espacioId: String, usuarioId: String)
 }
 
 @Dao

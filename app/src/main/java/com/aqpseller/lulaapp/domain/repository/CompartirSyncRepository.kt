@@ -5,6 +5,18 @@ import com.aqpseller.lulaapp.domain.model.SolicitudCompartir
 import com.aqpseller.lulaapp.domain.model.Usuario
 import kotlinx.coroutines.flow.Flow
 
+/** Perfil tal como llega del respaldo en la nube — usado para recuperarlo en un celular nuevo
+ * (nombre real y si el registro ya se completó, para no volver a pedirlo). Ver
+ * `ReclamarCuentaConGoogleUseCase`. */
+data class PerfilRemoto(
+    val nombreCompleto: String?,
+    val nombrePreferido: String?,
+    val horaDesayuno: String?,
+    val horaAlmuerzo: String?,
+    val horaCena: String?,
+    val onboardingCompletadoEn: Long?,
+)
+
 /**
  * Espejo en Firestore de lo mínimo que necesita viajar entre dos cuentas reales para que
  * Círculo de cuidado funcione — ver `Plan/12-firebase-auth-y-sync.md`. Solo entra acá lo que
@@ -15,6 +27,10 @@ import kotlinx.coroutines.flow.Flow
  */
 interface CompartirSyncRepository {
     suspend fun subirPerfil(usuario: Usuario)
+
+    /** Trae el perfil guardado en la nube para esta cuenta — null si nunca se subió nada
+     * (cuenta recién vinculada por primera vez en cualquier dispositivo). */
+    suspend fun restaurarPerfil(firebaseUid: String): PerfilRemoto?
     suspend fun subirSolicitud(solicitud: SolicitudCompartir)
     suspend fun eliminarSolicitud(solicitudId: String)
     suspend fun subirConexion(conexion: Conexion)

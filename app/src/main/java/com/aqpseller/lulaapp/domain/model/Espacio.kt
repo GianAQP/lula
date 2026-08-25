@@ -17,6 +17,11 @@ data class EspacioMiembro(
      * lista de miembros mostraba el id en vez del nombre para cualquiera que no fuera "yo". Ver
      * `Plan/08-decisiones-tecnicas.md`. */
     val nombre: String? = null,
+    /** uid de Firebase de este miembro — necesario para que un admin pueda quitarlo de verdad
+     * (el documento de membresía en Firestore se guarda por uid de Firebase, no por `usuarioId`
+     * local). Se captura al recibir su membresía por sync (`escucharMiembros`); null para
+     * miembros nunca vistos por Firestore. Ver `Plan/08-decisiones-tecnicas.md`. */
+    val firebaseUid: String? = null,
 )
 
 data class AreaDeVida(

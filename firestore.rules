@@ -102,6 +102,13 @@ service cloud.firestore {
           exists(/databases/$(database)/documents/espacios/$(espacioId)/miembros/$(request.auth.uid));
       }
 
+      // Para "quitar a alguien de Familia" (admin) — necesita leer el ROL del propio requester,
+      // no solo que exista como miembro. Ver `EliminarMiembroEspacioUseCase`.
+      function esAdmin() {
+        return request.auth != null &&
+          get(/databases/$(database)/documents/espacios/$(espacioId)/miembros/$(request.auth.uid)).data.rol == 'ADMIN';
+      }
+
       allow read: if esMiembro();
       // Cualquier autenticado puede crear un espacio nuevo (con su propio id, un UUID) — recién
       // ahí se agrega a sí mismo como miembro y empieza a poder leerlo.
@@ -110,7 +117,9 @@ service cloud.firestore {
 
       match /miembros/{miembroFirebaseUid} {
         allow read: if esMiembro();
-        allow write: if request.auth != null && request.auth.uid == miembroFirebaseUid;
+        allow create, update: if request.auth != null && request.auth.uid == miembroFirebaseUid;
+        // Salir del espacio (borrar la propia membresía) o que un admin quite a otra persona.
+        allow delete: if request.auth != null && (request.auth.uid == miembroFirebaseUid || esAdmin());
       }
 
       match /actividades/{actividadId} {
@@ -124,6 +133,20 @@ service cloud.firestore {
       match /registrosReto/{registroId} {
         allow read, write: if esMiembro();
       }
+    }
+
+    // Contenido real de una actividad compartida por Círculo de cuidado (a diferencia de
+    // `solicitudes_compartir`, que es solo la "capa social") — un documento por solicitud ya
+    // aceptada. Solo quien comparte escribe; quien comparte y a quien le comparten (por correo
+    // verificado) pueden leer. Ver `Plan/08-decisiones-tecnicas.md`.
+    match /actividadesCompartidas/{solicitudId} {
+      allow read: if request.auth != null &&
+        (request.auth.uid == resource.data.deFirebaseUid || request.auth.token.email == resource.data.paraCorreo);
+      allow create, update: if request.auth != null && request.auth.uid == request.resource.data.deFirebaseUid;
+      // Además de quien comparte, quien lo recibe también puede borrar SU copia (por ejemplo,
+      // "dejar de ver esto" sin esperar a que la otra persona revoque primero).
+      allow delete: if request.auth != null &&
+        (request.auth.uid == resource.data.deFirebaseUid || request.auth.token.email == resource.data.paraCorreo);
     }
 
     // Código de invitación a un Espacio Familia con tiempo de vida corto (ver

@@ -25,10 +25,14 @@ interface EspacioRepository {
     fun observarMiembros(espacioId: String): Flow<List<EspacioMiembro>>
 
     /** Al aceptar una invitación real a un Espacio Familia — agrega a [usuarioId] como miembro
-     * con [rol]. [nombre] null deja el nombre ya guardado sin tocar (nunca lo borra) — así un
-     * respaldo/sync sin nombre todavía no pisa uno que ya se sabía. Ver
+     * con [rol]. [nombre]/[firebaseUid] null dejan el valor ya guardado sin tocar (nunca lo
+     * borran) — así un respaldo/sync sin ese dato todavía no pisa uno que ya se sabía. Ver
      * `Plan/12-firebase-auth-y-sync.md`. */
-    suspend fun agregarMiembro(espacioId: String, usuarioId: String, rol: RolEnEspacio, nombre: String? = null)
+    suspend fun agregarMiembro(espacioId: String, usuarioId: String, rol: RolEnEspacio, nombre: String? = null, firebaseUid: String? = null)
+
+    /** Quita a [usuarioId] del espacio — para "salir" (yo mismo) o que un admin quite a otro.
+     * La validación de quién puede hacerlo vive en el caso de uso, no acá. */
+    suspend fun eliminarMiembro(espacioId: String, usuarioId: String, ejecutadoPor: String)
 
     /** Si acepto una invitación a un Espacio que vive en OTRO dispositivo (el de quien me
      * invitó), ese Espacio no existe en mi base local — y `agregarMiembro` fallaría por la FK

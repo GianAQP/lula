@@ -7,6 +7,7 @@ import com.aqpseller.lulaapp.domain.repository.AjustesRepository
 import com.aqpseller.lulaapp.domain.repository.UsuarioRepository
 import com.aqpseller.lulaapp.domain.usecase.espacio.RestaurarEspaciosFamiliaUseCase
 import com.aqpseller.lulaapp.domain.usecase.notificaciones.ReprogramarTodosLosRecordatoriosUseCase
+import com.aqpseller.lulaapp.domain.usecase.usuario.ActualizarIconoAppUseCase
 import com.aqpseller.lulaapp.domain.usecase.usuario.AsegurarDatosSemillaUseCase
 import com.aqpseller.lulaapp.domain.usecase.usuario.RestaurarDatosPersonalesUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -31,6 +32,7 @@ class AppViewModel @Inject constructor(
     private val reprogramarTodosLosRecordatoriosUseCase: ReprogramarTodosLosRecordatoriosUseCase,
     private val restaurarDatosPersonalesUseCase: RestaurarDatosPersonalesUseCase,
     private val restaurarEspaciosFamiliaUseCase: RestaurarEspaciosFamiliaUseCase,
+    private val actualizarIconoAppUseCase: ActualizarIconoAppUseCase,
     private val usuarioRepository: UsuarioRepository,
     sesionPrivadaState: SesionPrivadaState,
     ajustesRepository: AjustesRepository,
@@ -80,6 +82,11 @@ class AppViewModel @Inject constructor(
                 runCatching { restaurarDatosPersonalesUseCase(usuario.id) }
                 runCatching { restaurarEspaciosFamiliaUseCase(usuario.id) }
             }
+        }
+        // Ícono de la app (semilla/plantita/flor) — best-effort en cada apertura, mismo criterio
+        // que el resto de checks de acá. Ver `ActualizarIconoAppUseCase`.
+        viewModelScope.launch {
+            runCatching { actualizarIconoAppUseCase() }
         }
     }
 }

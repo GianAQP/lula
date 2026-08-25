@@ -39,6 +39,7 @@ object LulaDestinations {
     const val CITA_DETALLE = "cita/{actividadId}"
     const val ACCION_TOMA = "toma_accion/{actividadId}/{horario}"
     const val CIRCULO_CUIDADO = "circulo_cuidado"
+    const val LO_QUE_ME_COMPARTEN = "lo_que_me_comparten"
     const val FECHAS_IMPORTANTES = "fechas_importantes"
     const val CREAR_FECHA_IMPORTANTE = "crear_fecha_importante?actividadId={actividadId}"
     const val NOTAS = "notas"

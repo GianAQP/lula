@@ -6,12 +6,14 @@ import com.aqpseller.lulaapp.domain.model.TipoEspacio
 import com.aqpseller.lulaapp.domain.repository.ActividadRepository
 import com.aqpseller.lulaapp.domain.repository.EspacioRepository
 import com.aqpseller.lulaapp.domain.repository.PersonalSyncRepository
+import com.aqpseller.lulaapp.domain.usecase.carecircle.SincronizarSiEstaCompartidaUseCase
 import javax.inject.Inject
 
 class ActualizarRutinaUseCase @Inject constructor(
     private val actividadRepository: ActividadRepository,
     private val espacioRepository: EspacioRepository,
     private val personalSyncRepository: PersonalSyncRepository,
+    private val sincronizarSiEstaCompartidaUseCase: SincronizarSiEstaCompartidaUseCase,
 ) {
     suspend operator fun invoke(
         actividadId: String,
@@ -29,5 +31,6 @@ class ActualizarRutinaUseCase @Inject constructor(
         if (espacioRepository.obtenerEspacioSiEsMiembro(actividad.espacioId, usuarioId)?.tipo == TipoEspacio.PERSONAL) {
             runCatching { personalSyncRepository.subirRutina(actividad, detalle) }
         }
+        runCatching { sincronizarSiEstaCompartidaUseCase(actividadId, usuarioId) }
     }
 }

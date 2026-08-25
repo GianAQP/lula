@@ -206,3 +206,12 @@ val MIGRATION_30_31 = object : Migration(30, 31) {
         db.execSQL("ALTER TABLE espacio_miembro ADD COLUMN nombre TEXT DEFAULT NULL")
     }
 }
+
+/** `espacio_miembro` gana `firebaseUid` — necesario para que un admin pueda quitar a otro
+ * miembro de verdad (el documento de membresía en Firestore se guarda por uid de Firebase, no
+ * por el id local). Ver `Plan/08-decisiones-tecnicas.md`. */
+val MIGRATION_31_32 = object : Migration(31, 32) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE espacio_miembro ADD COLUMN firebaseUid TEXT DEFAULT NULL")
+    }
+}

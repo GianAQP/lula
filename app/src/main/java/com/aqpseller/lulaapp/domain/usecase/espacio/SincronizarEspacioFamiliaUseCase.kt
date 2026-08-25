@@ -31,7 +31,7 @@ class SincronizarEspacioFamiliaUseCase @Inject constructor(
 
         launch {
             espacioSyncRepository.escucharMiembros(espacioId).collect { miembros ->
-                miembros.forEach { espacioRepository.agregarMiembro(it.espacioId, it.usuarioId, it.rol, it.nombre) }
+                miembros.forEach { espacioRepository.agregarMiembro(it.espacioId, it.usuarioId, it.rol, it.nombre, it.firebaseUid) }
             }
         }
         launch {

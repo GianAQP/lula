@@ -126,6 +126,37 @@ class UsuarioRepositoryImpl @Inject constructor(
         )
     }
 
+    override suspend fun aplicarPerfilRemoto(
+        usuarioId: String,
+        nombreCompleto: String?,
+        nombrePreferido: String?,
+        horaDesayuno: String?,
+        horaAlmuerzo: String?,
+        horaCena: String?,
+        onboardingCompletadoEn: Long?,
+    ) {
+        val actual = usuarioDao.obtenerUnico() ?: return
+        val actualizado = actual.copy(
+            nombreCompleto = nombreCompleto ?: actual.nombreCompleto,
+            nombrePreferido = nombrePreferido ?: actual.nombrePreferido,
+            horaDesayuno = horaDesayuno ?: actual.horaDesayuno,
+            horaAlmuerzo = horaAlmuerzo ?: actual.horaAlmuerzo,
+            horaCena = horaCena ?: actual.horaCena,
+            // Si ESTE dispositivo ya tenía el registro completo, se respeta esa fecha en vez de
+            // pisarla — solo se adopta la de la nube cuando acá todavía era null.
+            onboardingCompletadoEn = actual.onboardingCompletadoEn ?: onboardingCompletadoEn,
+        )
+        usuarioDao.upsert(actualizado)
+        auditLogger.registrar<UsuarioEntity>(
+            entidad = "usuario",
+            entidadId = usuarioId,
+            accion = AccionAuditoria.ACTUALIZAR,
+            antes = actual,
+            despues = actualizado,
+            usuarioId = usuarioId,
+        )
+    }
+
     override suspend fun completarOnboarding(usuarioId: String) {
         val actual = usuarioDao.obtenerUnico() ?: return
         val actualizado = actual.copy(onboardingCompletadoEn = System.currentTimeMillis())

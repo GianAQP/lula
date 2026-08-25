@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aqpseller.lulaapp.core.utils.DateTimeUtils
 import com.aqpseller.lulaapp.domain.model.Usuario
+import com.aqpseller.lulaapp.domain.repository.CompartirSyncRepository
 import com.aqpseller.lulaapp.domain.repository.UsuarioRepository
 import com.aqpseller.lulaapp.domain.usecase.usuario.ReclamarCuentaConGoogleUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -39,6 +40,7 @@ private val ORDEN_PASOS = PasoOnboarding.entries
 class OnboardingViewModel @Inject constructor(
     private val usuarioRepository: UsuarioRepository,
     private val reclamarCuentaConGoogleUseCase: ReclamarCuentaConGoogleUseCase,
+    private val compartirSyncRepository: CompartirSyncRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(OnboardingUiState())
@@ -74,9 +76,15 @@ class OnboardingViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(vinculandoCuenta = true, errorCuenta = null)
             try {
-                reclamarCuentaConGoogleUseCase(idToken)
+                val yaTeniaRegistroCompleto = reclamarCuentaConGoogleUseCase(idToken)
                 _uiState.value = _uiState.value.copy(vinculandoCuenta = false)
-                avanzar()
+                if (yaTeniaRegistroCompleto) {
+                    // Esta cuenta ya se registró antes en otro celular — no hace falta volver a
+                    // preguntar nada, `completarOnboarding` ya se aplicó vía `aplicarPerfilRemoto`.
+                    _terminado.value = true
+                } else {
+                    avanzar()
+                }
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
                     vinculandoCuenta = false,
@@ -140,6 +148,13 @@ class OnboardingViewModel @Inject constructor(
                 porQueEmpezar = estado.porQueHoy,
             )
             usuarioRepository.completarOnboarding(usuarioId)
+            // Recién acá el nombre real ya está guardado — si el perfil se hubiera subido antes
+            // (al vincular la cuenta, unos pasos atrás), la nube se habría quedado pegada con el
+            // placeholder "Tú". Se sube de nuevo ahora que ya está completo. Ver
+            // `Plan/08-decisiones-tecnicas.md`.
+            usuarioRepository.observarUsuario().first()?.let { usuario ->
+                runCatching { compartirSyncRepository.subirPerfil(usuario) }
+            }
             _terminado.value = true
         }
     }

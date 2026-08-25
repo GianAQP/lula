@@ -12,6 +12,7 @@ import com.aqpseller.lulaapp.domain.repository.ActividadRepository
 import com.aqpseller.lulaapp.domain.repository.EspacioRepository
 import com.aqpseller.lulaapp.domain.repository.EspacioSyncRepository
 import com.aqpseller.lulaapp.domain.repository.PersonalSyncRepository
+import com.aqpseller.lulaapp.domain.usecase.carecircle.SincronizarSiEstaCompartidaUseCase
 import javax.inject.Inject
 
 class MarcarActividadUseCase @Inject constructor(
@@ -20,10 +21,12 @@ class MarcarActividadUseCase @Inject constructor(
     private val espacioRepository: EspacioRepository,
     private val espacioSyncRepository: EspacioSyncRepository,
     private val personalSyncRepository: PersonalSyncRepository,
+    private val sincronizarSiEstaCompartidaUseCase: SincronizarSiEstaCompartidaUseCase,
 ) {
     suspend operator fun invoke(actividadId: String, estado: EstadoActividad, usuarioId: String, fechaCompletado: Long? = null) {
         actividadRepository.marcarEstado(actividadId, estado, usuarioId, fechaCompletado)
         sincronizarSiCorresponde(actividadId, estado, usuarioId)
+        runCatching { sincronizarSiEstaCompartidaUseCase(actividadId, usuarioId) }
         if (estado != EstadoActividad.CONFIRMADO) return
         avanzarSiEsTareaRecurrente(actividadId, usuarioId)
     }

@@ -36,6 +36,11 @@ interface EspacioSyncRepository {
      * otro, las reglas de seguridad no lo permitirían. */
     suspend fun subirMiembro(espacioId: String, miembro: EspacioMiembro)
 
+    /** Borra la membresía de [miembroFirebaseUid] — sirve tanto para "salir del espacio" (borro
+     * la mía) como para que un admin quite a otra persona (las reglas de seguridad exigen ser
+     * esa persona O admin del espacio, ver `firestore.rules`). */
+    suspend fun eliminarMiembro(espacioId: String, miembroFirebaseUid: String)
+
     suspend fun subirTarea(espacioId: String, actividad: Actividad, detalle: ActividadDetalle.Tarea)
     suspend fun subirReto(espacioId: String, reto: RetoFamiliar)
     suspend fun subirRegistroReto(espacioId: String, registro: RegistroRetoRemoto)

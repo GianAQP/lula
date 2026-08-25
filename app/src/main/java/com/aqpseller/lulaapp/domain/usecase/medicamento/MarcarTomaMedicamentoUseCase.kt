@@ -7,6 +7,7 @@ import com.aqpseller.lulaapp.domain.model.TipoEspacio
 import com.aqpseller.lulaapp.domain.repository.ActividadRepository
 import com.aqpseller.lulaapp.domain.repository.EspacioRepository
 import com.aqpseller.lulaapp.domain.repository.PersonalSyncRepository
+import com.aqpseller.lulaapp.domain.usecase.carecircle.SincronizarSiEstaCompartidaUseCase
 import javax.inject.Inject
 
 class MarcarTomaMedicamentoUseCase @Inject constructor(
@@ -14,6 +15,7 @@ class MarcarTomaMedicamentoUseCase @Inject constructor(
     private val recordatorioScheduler: RecordatorioScheduler,
     private val espacioRepository: EspacioRepository,
     private val personalSyncRepository: PersonalSyncRepository,
+    private val sincronizarSiEstaCompartidaUseCase: SincronizarSiEstaCompartidaUseCase,
 ) {
     suspend operator fun invoke(actividadId: String, horario: String, estado: EstadoActividad, usuarioId: String) {
         actividadRepository.marcarToma(actividadId, horario, estado, usuarioId)
@@ -28,5 +30,6 @@ class MarcarTomaMedicamentoUseCase @Inject constructor(
             val fechaHoy = DateTimeUtils.hoy().toEpochDays().toLong()
             runCatching { personalSyncRepository.subirTomaMedicamento(actividadId, fechaHoy, horario, estado) }
         }
+        runCatching { sincronizarSiEstaCompartidaUseCase(actividadId, usuarioId) }
     }
 }

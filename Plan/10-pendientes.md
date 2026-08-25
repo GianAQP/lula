@@ -9,8 +9,16 @@ se construye, se borra de acá y el detalle de cómo se hizo queda en
 **Prueba real con dos dispositivos — hecha (2026-08-23)**: primera vez probando con dos cuentas
 de Google reales en dos celulares (Familia, código de invitación). Salieron 3 bugs reales, los 3
 arreglados el mismo día — ver `08-decisiones-tecnicas.md`. Círculo de cuidado (compartir una
-Tarea/Medicamento puntual) todavía no se probó así — sigue bloqueado por el mismo hueco de "ver
-contenido compartido" de abajo.
+Tarea/Medicamento puntual, con el contenido real ya construido) queda pendiente de esa misma
+prueba de punta a punta.
+
+**Quitar/salir de Familia, dejar de ver algo compartido, sync al editar — construido (2026-08-23)**:
+admin puede quitar a un miembro, cualquiera puede salir de un espacio Familia, el destinatario de
+Círculo de cuidado puede "Dejar de ver esto" sin esperar a quien comparte, y editar (no solo
+marcar) algo compartido ahora sí se re-sube a Firebase. Reglas nuevas publicadas. Falta probar de
+punta a punta con los dos celulares reales: quitar miembro (como admin), salir de un espacio,
+"Dejar de ver esto", y confirmar que editar algo compartido (ej. cambiar hora de una Cita) se ve
+del otro lado. Ver `08-decisiones-tecnicas.md`.
 
 **Respaldo del Espacio Personal — completo (2026-08-22)**: Hábitos, Tareas, Rutinas,
 Medicamentos (con tomas), Citas (con sesiones de curso), Fechas importantes, Finanzas, Diario,
@@ -29,16 +37,35 @@ usuario tenga/configure uno.
 
 **Código de invitación a Espacio Familia con tiempo de vida corto — construido (2026-08-23)**:
 escanear y quedar dentro al instante, sin paso de aceptar, código de 60s que se renueva solo.
-Falta el mismo mecanismo para Círculo de cuidado (compartir una Tarea/Medicamento puntual) —
-decidido con el usuario: se hace cuando se resuelva el hueco de "ver contenido compartido" de
-abajo, para no construir una aceptación que no muestra nada real del otro lado. Ver
+Falta el mismo mecanismo para Círculo de cuidado (compartir una Tarea/Medicamento puntual) — ya
+no está bloqueado (el contenido real ya se ve del otro lado, ver el punto de abajo), pero todavía
+no se construyó el código de unión instantánea ahí, queda para una ronda siguiente si hace falta.
+
+**Logo/ícono de la app que evoluciona con el tiempo — construido (2026-08-23)**: semilla (0-29
+días) → plantita sin flor (30-59 días, o 60+ sin racha activa) → flor (60+ días con racha activa
+ahora mismo). 3 `activity-alias` en el manifest, cambia solo en cada apertura de la app. Ver
 `08-decisiones-tecnicas.md`.
 
-**Logo/ícono de la app — sin construir**: el usuario propuso un ícono que evoluciona solo con el
-tiempo (semilla → brote → plantita, 3 etapas) usando el mismo mecanismo que apps como Genshin
-Impact (varios íconos declarados, activados por código). Técnicamente viable, pero necesita 3
-imágenes de ícono ya diseñadas/exportadas que Claude no puede generar — bloqueado hasta que
-alguien las diseñe.
+**Círculo de cuidado: ver el contenido real compartido — construido (2026-08-23)**: Hábito,
+Tarea, Rutina, Medicamento (con tomas), Cita (con sesiones) y Fecha importante, con pantalla
+nueva "Lo que me comparten". Cierra el hueco que estaba documentado acá desde hace varias
+rondas. Falta:
+- Probarlo de punta a punta con los dos celulares reales (compartido arriba).
+- **Compartir una Meta por Círculo de cuidado sigue roto** (bug encontrado de paso, no de esta
+  ronda): `MetaDetailScreen` ofrece "🤝 Compartir seguimiento" igual que Hábito/Tarea, pero una
+  Meta no vive en la tabla `Actividad` — al aceptar, la búsqueda por `elementoId` no encuentra
+  nada y no pasa nada. Necesita su propio camino de aceptar/sincronizar contenido (Meta no tiene
+  ni registro de tomas/sesiones, así que sería más simple que el resto).
+- El nivel "Puede ver y recordar" no hace nada especial todavía en "Lo que me comparten" (no hay
+  botón de "recordarle") — hoy la pantalla es de solo lectura sin importar el permiso.
+
+**Perfil de usuario — arreglado + Ajustes sin sincronizar (2026-08-23)**: el nombre real y los
+horarios de comida ahora se suben y se recuperan bien en un celular nuevo, y el registro se salta
+solo si la cuenta ya lo había completado antes en otro lado (ver `08-decisiones-tecnicas.md`).
+Sin resolver: **Ajustes** (posición de la barra inferior, duración máxima de la alarma tipo
+"Alarma", espacio activo) siguen siendo 100% locales — se pierden al cambiar de celular. Menor
+prioridad que datos reales (son preferencias de pantalla, no contenido), pero el usuario los
+mencionó explícitamente al pedir "que no se pierda nada".
 
 ## 1. Bloqueado por backend (necesita Firebase + algo de sync)
 
@@ -67,15 +94,12 @@ falta activar en cuanto exista:
 - **Sync de contenido de Espacios Familia — construido (2026-08-21)**: Tareas del hogar y Retos
   familiares (paso 5 de `12-firebase-auth-y-sync.md`), `EspacioSyncRepository` nuevo. Ver
   `08-decisiones-tecnicas.md`. Falta confirmarlo con una segunda cuenta/dispositivo real.
-- **Ver el contenido real de lo que me compartieron por Círculo de cuidado** (compartir puntual
-  de un hábito/tarea con un contacto, distinto de un Espacio Familia) — al aceptar una solicitud
-  hoy solo sincroniza la solicitud y la conexión (la "capa social"), no el hábito/tarea/
-  medicamento en sí. Sigue sin resolverse (a diferencia de Espacios Familia, que ya sincroniza
-  su contenido) — necesitaría el mismo tipo de mapeo por Firestore + una pantalla nueva de "lo
-  que otros comparten conmigo". Ver `08-decisiones-tecnicas.md`, 2026-08-19.
+- **Ver el contenido real de lo que me compartieron por Círculo de cuidado — construido
+  (2026-08-23)**: pantalla "Lo que me comparten", ver el bloque de arriba. Falta probarlo con
+  una segunda cuenta/dispositivo real, y compartir una Meta sigue roto (ver arriba).
 - **Invitación a personas sin la app instalada** (deep link + onboarding especial).
-- **Estados `confirmado/sin_confirmar/omitido` visibles para quien acompaña** — depende del
-  punto anterior (mostrar el contenido real primero).
+- **Estados `confirmado/sin_confirmar/omitido` visibles para quien acompaña — construido
+  (2026-08-23)**: "Lo que me comparten" ya muestra el estado actual (hecho hoy, tomas, sesiones).
 - **Buscar usuarios existentes por nombre/correo** (compartir) — no hay ningún directorio de
   quién más usa Lula fuera del propio teléfono; hoy compartir sigue siendo por contacto
   (correo/teléfono) en texto libre.
