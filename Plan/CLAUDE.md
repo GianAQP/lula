@@ -1197,3 +1197,17 @@ pantalla decía "Pausado" pero seguía sonando. Diagnosticado con `sqlite3` sobr
 dispositivo (no adivinado) — de paso confirmó que el filtro de fecha de vencimiento ya funciona
 bien. Se agregó un log permanente para diagnosticar más rápido la próxima vez. Detalle completo
 en `Plan/08-decisiones-tecnicas.md`.
+
+**El canal "Sonido" sonaba como Alarma — causa real encontrada y arreglada** (2026-08-25): el
+usuario insistió en que "Sonido" seguía sonando como Alarma pese a los arreglos anteriores, y
+tenía razón. Con un log en vivo (`adb logcat` streamed mientras probaba) más `dumpsys
+notification` y `aapt2 dump resources`, se encontró la causa exacta: el canal de notificación
+"Sonido" tenía guardado el ID de recurso del archivo de Alarma, no el del mensaje — los IDs de
+`R.raw.*` que asigna Android pueden reordenarse entre compilaciones, y como un canal ya creado
+nunca puede cambiar de sonido, quedó pegado al ID viejo (mismo mecanismo que ya había pasado con
+el canal Alarma en una ronda anterior). Arreglado con el mismo método: canal nuevo (`_v2` → `_v3`).
+También se probó (a pedido del usuario) que los avisos "¿revisaste Lula?"/"¿cómo te fue hoy?"
+sonaran como Alarma en vez de Sonido — resultó demasiado molesto en la práctica (sonaba sin
+parar, no encontró cómo pararlo) y se revirtió el mismo día. Confirmado con 5 pruebas reales
+espaciadas 2 minutos: los 3 niveles ya suenan correctamente. Detalle completo en
+`Plan/08-decisiones-tecnicas.md`.

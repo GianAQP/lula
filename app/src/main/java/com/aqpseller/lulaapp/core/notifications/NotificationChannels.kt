@@ -17,9 +17,15 @@ import com.aqpseller.lulaapp.domain.model.NivelRecordatorio
  * Ver `Plan/08-decisiones-tecnicas.md`.
  *
  * Sonido usa el sonido propio de Lula (`res/raw`), no el tono del sistema — como Android nunca
- * deja cambiar el sonido de un canal ya creado, su ID lleva sufijo `_v2`: instalaciones que ya
- * habían creado el canal original (con el tono de sistema) reciben un canal nuevo con el
- * sonido correcto, en vez de quedarse pegadas al sonido viejo para siempre.
+ * deja cambiar el sonido de un canal ya creado, su ID lleva sufijo `_v3` (pasó por tener el tono
+ * de sistema, después el sonido propio, y ahora de nuevo porque en un dispositivo real terminó
+ * sonando como Alarma — confirmado con `dumpsys notification`: el canal tenía guardado el ID de
+ * recurso `R.raw` de la Alarma, no el del mensaje. Los IDs de `R.raw.*` que asigna el compilador
+ * de Android pueden reordenarse entre compilaciones (suelen ir alfabético: al agregar
+ * `lula_alarma_gorrion_habla_ventana` después de `lula_mensaje`, el primero "corrió" al ID que
+ * antes tenía el segundo) — el canal, creado en una build anterior, quedó apuntando para
+ * siempre a ese número, que ahora resuelve al archivo equivocado. Ver
+ * `Plan/08-decisiones-tecnicas.md`.
  *
  * Alarma **no** lleva sonido en el canal (`setSound(null, null)`) — un `NotificationChannel`
  * solo puede reproducir su sonido una vez por notificación, y Alarma necesita sonar en loop
@@ -34,11 +40,12 @@ import com.aqpseller.lulaapp.domain.model.NivelRecordatorio
  */
 object NotificationChannels {
     const val RECORDATORIOS_SILENCIOSO = "recordatorios_silencioso"
-    const val RECORDATORIOS_SONIDO = "recordatorios_sonido_v2"
+    const val RECORDATORIOS_SONIDO = "recordatorios_sonido_v3"
     const val RECORDATORIOS_ALARMA = "recordatorios_alarma_v4"
 
     private val CANALES_HUERFANOS = listOf(
         "recordatorios_sonido",
+        "recordatorios_sonido_v2",
         "recordatorios_alarma",
         "recordatorios_alarma_v2",
         "recordatorios_alarma_v3",

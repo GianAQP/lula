@@ -4581,3 +4581,65 @@ Se agregó además un `Log.i` permanente en `RecordatorioReceiver.mostrarNotific
 adivinar. Compilado limpio, `installDebug` en dispositivo real, sin crash verificado con
 `adb logcat`.
 
+**"¿Revisaste Lula?" y "¿Cómo te fue hoy?" ahora son Alarma — añadido 2026-08-25.** A pedido
+del usuario: los avisos genéricos para abrir la app (por franja del día, y el de cierre de día)
+sonaban siempre con el canal `RECORDATORIOS_SONIDO` fijo, sin usar el nivel Alarma nunca — el
+usuario los quiere insistentes, no un simple sonido de mensaje/campana. Se reescribieron
+`mostrarNotificacionFranja`/`mostrarNotificacionCierreDia` para pasar por
+`mostrarNotificacionConNivel(..., NivelRecordatorio.ALARMA, ...)`, el mismo camino compartido que
+ya usan Hábito/Tarea/Medicamento/Cita/Meta en Alarma (pantalla completa + `AlarmaSonidoService`
+en loop). No quedó configurable por el usuario (no hay selector de nivel en Ajustes para estos
+dos, a diferencia de cada Hábito/Tarea individual) — si más adelante hace falta elegir, se agrega
+ahí. Compilado limpio, `installDebug` en dispositivo real, sin crash verificado con `adb logcat`.
+**Revertido el mismo día**: el usuario lo probó y resultó demasiado molesto (sonaba sin parar,
+no encontró cómo detenerlo) — quería algo suave ("avisar sin molestar mucho"), no Alarma. Vuelto
+a `NivelRecordatorio.SONIDO`.
+
+## Bug real confirmado: el canal "Sonido" sonaba como Alarma — añadido 2026-08-25
+
+El usuario probó los 3 niveles con pruebas espaciadas (Tareas nuevas a las 20:35/20:40/20:45, más
+el recordatorio de franja a las 20:50) y un log en vivo (`adb logcat` streamed a un archivo,
+correlacionado con el `Log.i` de diagnóstico agregado antes) confirmó algo contradictorio: la app
+calculaba y usaba `nivel=SONIDO` con el canal `recordatorios_sonido_v2` — sin arrancar
+`AlarmaSonidoService` — pero el sonido real que se escuchaba era el de Alarma.
+
+**Causa real, confirmada con `dumpsys notification` (no adivinada):** el canal
+`recordatorios_sonido_v2` tenía guardado `mSound=android.resource://com.aqpseller.lulaapp/2131623937`
+— convertido a hex (`0x7F0E0001`) y buscado en la tabla de recursos de la build actual con
+`aapt2 dump resources` (`C:\...\Sdk\build-tools\36.0.0\aapt2.exe dump resources app-debug.apk`),
+ese ID resultó ser **`raw/lula_alarma_gorrion_habla_ventana`**, no `raw/lula_mensaje`. Mismo
+mecanismo que el bug ya conocido del canal Alarma (`Plan/08-decisiones-tecnicas.md`, ronda
+anterior): los IDs de `R.raw.*` que asigna el compilador de Android **no son estables entre
+builds** — suelen asignarse en orden alfabético dentro del tipo de recurso, así que agregar
+`lula_alarma_gorrion_habla_ventana.wav` (que alfabéticamente va ANTES que `lula_mensaje.wav`) en
+algún momento corrió los IDs, y el archivo de mensaje pasó de `0x7F0E0001` a `0x7F0E0002`. El
+canal, creado en una build anterior a ese cambio, quedó con el número viejo grabado para
+siempre (Android no deja que la app actualice el sonido de un canal ya creado) — y ese número
+ahora resuelve al archivo equivocado.
+
+**Arreglo**: mismo patrón ya usado 3 veces para el canal Alarma — `RECORDATORIOS_SONIDO` pasa de
+`_v2` a `_v3`, agregado `recordatorios_sonido_v2` a `CANALES_HUERFANOS` (se borra solo al abrir
+la app). Verificado con `dumpsys notification` tras instalar: `recordatorios_sonido_v2` quedó
+`mDeleted=true`, `recordatorios_sonido_v3` se creó con `mSound=.../2131623938` (`0x7F0E0002`,
+confirmado con `aapt2` que es `raw/lula_mensaje`) y `mUserLockedFields=0` (limpio). Esto también
+explica retroactivamente el reporte de "Sonido sonó como Alarma" de rondas anteriores en esta
+misma sesión — no era un bug de código en `RecordatorioReceiver`/`PausarReanudarActividadUseCase`
+(esos sí tenían bugs reales, ya arreglados, pero no eran la causa de ESTE síntoma en particular),
+sino este canal con el ID pegado. **Lección para el futuro**: cualquier vez que se agregue un
+nuevo recurso `res/raw/*`, hay que revisar si empuja los IDs de los `raw` existentes y, si algún
+canal de notificación ya creado depende de uno de ellos, bumpear su sufijo de versión de una vez
+— no esperar a que un dispositivo real lo revele.
+
+Diagnosticado con evidencia real de punta a punta: `Log.i` en vivo (streamed con `adb logcat -v
+time` a un archivo mientras el usuario probaba), `sqlite3` sobre la base real para confirmar los
+niveles guardados, y `dumpsys notification` + `aapt2 dump resources` para encontrar la causa
+exacta del canal. Compilado limpio, `installDebug` en dispositivo real, sin crash verificado con
+`adb logcat`.
+
+**Confirmado por el usuario (2026-08-25, 21:07-21:15)**: 5 pruebas reales espaciadas 2 minutos —
+Silencioso, Sonido (x2, una de ellas el recordatorio de franja), Alarma (x2, una de ellas un
+Hábito viejo) — los 3 niveles sonaron como corresponde, verificado también en el log en vivo
+(`recordatorios_sonido_v3` en las de Sonido, `recordatorios_alarma_v4` en las de Alarma). De
+paso confirmó que "Pausar"/desactivar un Hábito con Alarma sonando ahora sí lo corta de verdad
+(el otro bug arreglado esta misma ronda). Cierra el hueco.
+

@@ -170,32 +170,20 @@ class RecordatorioReceiver : BroadcastReceiver() {
         recordatorioScheduler.programarRecordatorioFranja(momento, hora)
     }
 
+    /** Probado en Alarma el 2026-08-25 a pedido del usuario — resultó demasiado molesto (sonaba
+     * sin parar y no encontró cómo detenerla) y se revirtió el mismo día a Sonido, que es lo que
+     * de verdad quería: "avisar sin molestar mucho". Ver `Plan/08-decisiones-tecnicas.md`. */
     private fun mostrarNotificacionFranja(context: Context, momento: MomentoDelDia) {
         val claveNotificacion = "recordatorio_franja_${momento.name}".hashCode()
-        val intentContenido = Intent(context, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            putExtra(MainActivity.EXTRA_DESTINO, LulaDestinations.HOY)
-        }
-        val pendingIntentContenido = PendingIntent.getActivity(
-            context, claveNotificacion, intentContenido, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-        )
         val etiquetaMomento = when (momento) {
             MomentoDelDia.MANANA -> "la mañana"
             MomentoDelDia.TARDE -> "la tarde"
             MomentoDelDia.NOCHE -> "la noche"
         }
-        val builder = NotificationCompat.Builder(context, NotificationChannels.RECORDATORIOS_SONIDO)
-            .setSmallIcon(android.R.drawable.ic_popup_reminder)
-            .setContentTitle("🔔 ¿Revisaste Lula esta $etiquetaMomento?")
-            .setContentText("Dale un vistazo a lo que tienes pendiente hoy.")
-            .setAutoCancel(true)
-            .setContentIntent(pendingIntentContenido)
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-        runCatching {
-            NotificationManagerCompat.from(context).notify(claveNotificacion, builder.build())
-        }.onFailure { error ->
-            Log.e("RecordatorioReceiver", "No se pudo mostrar el recordatorio de franja ($momento)", error)
-        }
+        mostrarNotificacionConNivel(
+            context, claveNotificacion, LulaDestinations.HOY, "🔔 ¿Revisaste Lula esta $etiquetaMomento?",
+            "Dale un vistazo a lo que tienes pendiente hoy.", NivelRecordatorio.SONIDO, "franja=$momento",
+        )
     }
 
     /**
@@ -213,23 +201,13 @@ class RecordatorioReceiver : BroadcastReceiver() {
         )
     }
 
+    /** Mismo criterio que `mostrarNotificacionFranja` — vuelto a Sonido el mismo día. */
     private fun mostrarNotificacionCierreDia(context: Context) {
         val claveNotificacion = "cierre_dia".hashCode()
-        val intentContenido = Intent(context, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            putExtra(MainActivity.EXTRA_DESTINO, LulaDestinations.cerrarDia())
-        }
-        val pendingIntentContenido = PendingIntent.getActivity(
-            context, claveNotificacion, intentContenido, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        mostrarNotificacionConNivel(
+            context, claveNotificacion, LulaDestinations.cerrarDia(), "🔥 ¿Cómo te fue hoy?",
+            "Cierra tu día para no perder tu racha — cada intento cuenta.", NivelRecordatorio.SONIDO, "cierreDia",
         )
-        val builder = NotificationCompat.Builder(context, NotificationChannels.RECORDATORIOS_SONIDO)
-            .setSmallIcon(android.R.drawable.ic_popup_reminder)
-            .setContentTitle("🔥 ¿Cómo te fue hoy?")
-            .setContentText("Cierra tu día para no perder tu racha — cada intento cuenta.")
-            .setAutoCancel(true)
-            .setContentIntent(pendingIntentContenido)
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-        runCatching { NotificationManagerCompat.from(context).notify(claveNotificacion, builder.build()) }
     }
 
     /**
