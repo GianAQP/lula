@@ -5,13 +5,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aqpseller.lulaapp.domain.model.ActividadDetalle
 import com.aqpseller.lulaapp.domain.model.EstadoActividad
-import com.aqpseller.lulaapp.domain.model.PermisoCompartir
 import com.aqpseller.lulaapp.domain.model.SesionActual
 import com.aqpseller.lulaapp.domain.usecase.actividad.EliminarActividadUseCase
 import com.aqpseller.lulaapp.domain.usecase.actividad.ObtenerDetalleActividadUseCase
 import com.aqpseller.lulaapp.domain.usecase.actividad.ObtenerHistorialHabitoUseCase
 import com.aqpseller.lulaapp.domain.usecase.actividad.PausarReanudarActividadUseCase
-import com.aqpseller.lulaapp.domain.usecase.carecircle.CompartirActividadUseCase
 import com.aqpseller.lulaapp.domain.usecase.usuario.ObtenerSesionActualUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -31,16 +29,12 @@ class HabitDetailViewModel @Inject constructor(
     private val obtenerHistorialHabitoUseCase: ObtenerHistorialHabitoUseCase,
     private val pausarReanudarActividadUseCase: PausarReanudarActividadUseCase,
     private val eliminarActividadUseCase: EliminarActividadUseCase,
-    private val compartirActividadUseCase: CompartirActividadUseCase,
 ) : ViewModel() {
 
     val actividadId: String = checkNotNull(savedStateHandle["actividadId"])
 
     private val _uiState = MutableStateFlow(HabitDetailUiState())
     val uiState: StateFlow<HabitDetailUiState> = _uiState.asStateFlow()
-
-    private val _solicitudEnviada = MutableStateFlow(false)
-    val solicitudEnviada: StateFlow<Boolean> = _solicitudEnviada.asStateFlow()
 
     private var sesion: SesionActual? = null
 
@@ -87,17 +81,6 @@ class HabitDetailViewModel @Inject constructor(
             eliminarActividadUseCase(actividadId, sesionActual().usuarioId)
             _uiState.update { it.copy(eliminado = true) }
         }
-    }
-
-    fun compartir(contacto: String, permiso: PermisoCompartir) {
-        viewModelScope.launch {
-            compartirActividadUseCase(sesionActual().usuarioId, actividadId, _uiState.value.nombre, contacto, permiso)
-            _solicitudEnviada.value = true
-        }
-    }
-
-    fun solicitudEnviadaMostrada() {
-        _solicitudEnviada.value = false
     }
 
     private suspend fun sesionActual(): SesionActual = sesion ?: obtenerSesionActualUseCase().also { sesion = it }

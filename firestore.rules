@@ -79,9 +79,46 @@ service cloud.firestore {
     match /solicitudes_compartir/{solicitudId} {
       allow read: if request.auth != null &&
         (request.auth.uid == resource.data.deFirebaseUid || request.auth.token.email == resource.data.para);
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.deFirebaseUid;
+      allow create: if request.auth != null &&
+        (
+          // Camino normal: quien comparte crea su propia solicitud (queda PENDIENTE).
+          request.auth.uid == request.resource.data.deFirebaseUid ||
+          // Camino QR: quien escanea un código de "Compartir seguimiento" ya vigente y a su
+          // propio nombre crea la solicitud directamente ACEPTADA — el mismo id del documento
+          // es el id del código (ver `codigosCompartirActividad`), así esta regla puede
+          // verificar con get() que ese código de verdad fue reclamado por quien escribe, y que
+          // el remitente declarado coincide con quien lo generó. Ver
+          // `ReclamarCodigoCompartirActividadUseCase`/`Plan/08-decisiones-tecnicas.md`.
+          (
+            request.resource.data.estado == 'ACEPTADA' &&
+            request.auth.token.email == request.resource.data.para &&
+            get(/databases/$(database)/documents/codigosCompartirActividad/$(solicitudId)).data.reclamadoPor == request.auth.uid &&
+            get(/databases/$(database)/documents/codigosCompartirActividad/$(solicitudId)).data.deFirebaseUid == request.resource.data.deFirebaseUid
+          )
+        );
       allow update: if request.auth != null &&
         (request.auth.uid == resource.data.deFirebaseUid || request.auth.token.email == resource.data.para);
+      allow delete: if request.auth != null && request.auth.uid == resource.data.deFirebaseUid;
+    }
+
+    // Códigos de "Compartir seguimiento" (Círculo de cuidado) con tiempo de vida corto — mismo
+    // patrón que `codigosInvitacionEspacio` de Familia: escanear une de inmediato, sin paso de
+    // "aceptar" aparte, y el código solo sirve una vez (queda con `reclamadoPor` fijo).
+    match /codigosCompartirActividad/{codigoId} {
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.deFirebaseUid;
+      allow read: if request.auth != null;
+      allow update: if request.auth != null &&
+        (
+          // El dueño (quien comparte) puede seguir leyendo/gestionando su propio código.
+          request.auth.uid == resource.data.deFirebaseUid ||
+          // Quien escanea solo puede reclamarlo: sin reclamar, no vencido, y solo esos 3 campos.
+          (
+            resource.data.reclamadoPor == null &&
+            request.time.toMillis() < resource.data.expiraEn &&
+            request.resource.data.reclamadoPor == request.auth.uid &&
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reclamadoPor', 'reclamadoPorNombre', 'reclamadoPorCorreo'])
+          )
+        );
       allow delete: if request.auth != null && request.auth.uid == resource.data.deFirebaseUid;
     }
 

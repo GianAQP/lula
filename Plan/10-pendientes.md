@@ -6,6 +6,17 @@ pensado para leer "por qué se decidió X", no como lista de tareas). Cuando alg
 se construye, se borra de acá y el detalle de cómo se hizo queda en
 `08-decisiones-tecnicas.md` como siempre.
 
+**Pendiente, pedido por el usuario (2026-08-24)**: elegir un color (de una paleta) por Espacio
+Familia, para distinguirlas en la lista (hoy todas se ven igual, verde) — y también un color
+propio para el usuario. No construido todavía, queda para una ronda futura.
+
+**Pendiente, pedido por el usuario (2026-08-24)**: que un Medicamento se marque solo como
+"histórico" (`activa = false`) en cuanto pasa su `fechaFin`, en vez de quedar `activa = true`
+para siempre confiando solo en el filtro de fecha (`horariosParaFecha`) para que no vuelva a
+sonar. Hoy funciona bien igual (los vencidos no pueden disparar alarma), pero el usuario espera
+que quede como cerrado/histórico de verdad, mismo patrón que ya existe para Tarea vinculada a
+Medicamento/Cita (`CerrarTareasVinculadasVencidasUseCase`). No construido todavía.
+
 **Prueba real con dos dispositivos — hecha (2026-08-23)**: primera vez probando con dos cuentas
 de Google reales en dos celulares (Familia, código de invitación). Salieron 3 bugs reales, los 3
 arreglados el mismo día — ver `08-decisiones-tecnicas.md`. Círculo de cuidado (compartir una
@@ -37,9 +48,16 @@ usuario tenga/configure uno.
 
 **Código de invitación a Espacio Familia con tiempo de vida corto — construido (2026-08-23)**:
 escanear y quedar dentro al instante, sin paso de aceptar, código de 60s que se renueva solo.
-Falta el mismo mecanismo para Círculo de cuidado (compartir una Tarea/Medicamento puntual) — ya
-no está bloqueado (el contenido real ya se ve del otro lado, ver el punto de abajo), pero todavía
-no se construyó el código de unión instantánea ahí, queda para una ronda siguiente si hace falta.
+
+**"Compartir seguimiento" con QR instantáneo (Círculo de cuidado) — construido (2026-08-24)**:
+mismo mecanismo que Familia — QR como opción primaria del diálogo (antes pedía escribir nombre/
+correo/teléfono antes de mostrar cualquier QR, y ese QR ni siquiera era escaneable por la app).
+Código de 3 minutos, escanearlo crea la solicitud ya `ACEPTADA` directo en Firestore — sin esperar
+que la otra persona "acepte". **Alcance recortado el mismo día a pedido del usuario**: Hábito,
+Meta y Rutina son "más personales" y ya NO tienen botón de compartir en absoluto (se sacó por
+completo, no solo el QR); Tarea, Medicamento y Cita sí lo mantienen — el caso de cuidado real
+(medicamentos/citas de alguien a quien acompañas) y Tarea (que "reemplaza" a una meta compartida
+hasta cumplirse). Falta probarlo de punta a punta con los dos celulares reales.
 
 **Logo/ícono de la app que evoluciona con el tiempo — construido (2026-08-23)**: semilla (0-29
 días) → plantita sin flor (30-59 días, o 60+ sin racha activa) → flor (60+ días con racha activa
@@ -147,9 +165,17 @@ falta activar en cuanto exista:
   de miembros) ni "Se completa cuando: Cualquiera / Todos deben confirmar" de
   `02-pantallas.md` — se dejó afuera a propósito porque con un solo miembro real hoy no hay
   nada que elegir; tiene sentido construirlo junto con las invitaciones reales.
-- Espacio Familia: solo uno por usuario (no varios espacios familiares/equipo a la vez) — el
-  selector y las pantallas de `features/family/` asumen esto. Ampliarlo a varios espacios es
-  una extensión futura si hace falta, no un rediseño.
+**Varios Espacios Familia por usuario — construido (2026-08-24)**: antes la pantalla se quedaba
+solo con la primera Familia (`firstOrNull`); ahora `FamiliaScreen` lista todas ("Tus espacios
+familiares"), cada una con su propio "Administrar" (miembros, invitar, QR, renombrar, eliminar,
+salir) — pensado para el caso real de una persona con varias familias (la que formó, la de sus
+padres, la de su pareja). No fue un rediseño de datos/sync (ya soportaban N espacios sin cambios,
+solo la UI se quedaba con uno) — ver `08-decisiones-tecnicas.md`. Queda pendiente: "🏆 Retos
+familiares" solo se puede abrir para la Familia que sea el espacio ACTIVO en ese momento (arriba,
+"Tus espacios") — si administras una Familia distinta a la activa, ve un aviso de "cambia de
+espacio primero" en vez del botón. Extender Retos (y Tareas del hogar) para navegarse por
+`espacioId` explícito, sin depender del espacio activo, queda para una ronda futura si hace
+falta.
 - Aviso "tienes pendientes en Familia" en Hoy Personal (ver `08-decisiones-tecnicas.md`,
   2026-07-30): hoy es un contador simple (hábitos + tareas de hoy sin confirmar), no una vista
   unificada de todo lo pendiente en ambos espacios a la vez. Si más adelante hace falta algo

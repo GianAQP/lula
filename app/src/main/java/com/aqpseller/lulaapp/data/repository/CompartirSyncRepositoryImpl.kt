@@ -1,12 +1,15 @@
 package com.aqpseller.lulaapp.data.repository
 
+import com.aqpseller.lulaapp.core.utils.IdGenerator
 import com.aqpseller.lulaapp.domain.model.CanalEnvio
 import com.aqpseller.lulaapp.domain.model.Conexion
 import com.aqpseller.lulaapp.domain.model.EstadoSolicitud
 import com.aqpseller.lulaapp.domain.model.PermisoCompartir
 import com.aqpseller.lulaapp.domain.model.SolicitudCompartir
+import com.aqpseller.lulaapp.domain.model.TipoActividad
 import com.aqpseller.lulaapp.domain.model.TipoSolicitud
 import com.aqpseller.lulaapp.domain.model.Usuario
+import com.aqpseller.lulaapp.domain.repository.CodigoCompartirActividad
 import com.aqpseller.lulaapp.domain.repository.CompartirSyncRepository
 import com.aqpseller.lulaapp.domain.repository.PerfilRemoto
 import com.google.firebase.auth.FirebaseAuth
@@ -21,6 +24,8 @@ import javax.inject.Inject
 private const val COLECCION_USUARIOS = "usuarios"
 private const val COLECCION_SOLICITUDES = "solicitudes_compartir"
 private const val COLECCION_CONEXIONES = "conexiones"
+private const val COLECCION_CODIGOS_COMPARTIR = "codigosCompartirActividad"
+private const val DURACION_CODIGO_COMPARTIR_MS = 3 * 60 * 1000L
 
 /**
  * `de`/`para`/`usuarioA`/`usuarioB` son ids/contactos de la app (UUID local o texto libre), no
@@ -138,6 +143,77 @@ class CompartirSyncRepositoryImpl @Inject constructor(
             }
             trySend(solicitudes)
         }
+        awaitClose { registro.remove() }
+    }
+
+    override suspend fun generarCodigoCompartir(
+        actividadId: String,
+        tipoActividad: TipoActividad,
+        nombreActividad: String,
+        permiso: PermisoCompartir,
+        deUsuarioId: String,
+        deNombre: String,
+    ): CodigoCompartirActividad {
+        val miFirebaseUid = checkNotNull(firebaseAuth.currentUser?.uid) { "Necesita cuenta vinculada" }
+        val codigoId = IdGenerator.newId()
+        val expiraEn = System.currentTimeMillis() + DURACION_CODIGO_COMPARTIR_MS
+        val datos = mapOf(
+            "actividadId" to actividadId,
+            "tipoActividad" to tipoActividad.name,
+            "nombreActividad" to nombreActividad,
+            "permiso" to permiso.name,
+            "deUsuarioId" to deUsuarioId,
+            "deFirebaseUid" to miFirebaseUid,
+            "deNombre" to deNombre,
+            "expiraEn" to expiraEn,
+            "reclamadoPor" to null,
+            "reclamadoPorNombre" to null,
+            "reclamadoPorCorreo" to null,
+        )
+        firestore.collection(COLECCION_CODIGOS_COMPARTIR).document(codigoId).set(datos).await()
+        return CodigoCompartirActividad(codigoId, actividadId, tipoActividad, nombreActividad, permiso, deUsuarioId, miFirebaseUid, deNombre, expiraEn)
+    }
+
+    override suspend fun reclamarCodigoCompartir(codigoId: String, miNombre: String, miCorreo: String): CodigoCompartirActividad? {
+        val miFirebaseUid = firebaseAuth.currentUser?.uid ?: return null
+        val referencia = firestore.collection(COLECCION_CODIGOS_COMPARTIR).document(codigoId)
+        return runCatching {
+            firestore.runTransaction { transaccion ->
+                val doc = transaccion.get(referencia)
+                if (!doc.exists()) return@runTransaction null
+                val expiraEn = doc.getLong("expiraEn") ?: return@runTransaction null
+                val yaReclamado = doc.getString("reclamadoPor")
+                if (yaReclamado != null || expiraEn < System.currentTimeMillis()) return@runTransaction null
+                transaccion.update(
+                    referencia,
+                    mapOf("reclamadoPor" to miFirebaseUid, "reclamadoPorNombre" to miNombre, "reclamadoPorCorreo" to miCorreo),
+                )
+                CodigoCompartirActividad(
+                    codigoId = codigoId,
+                    actividadId = doc.getString("actividadId") ?: return@runTransaction null,
+                    tipoActividad = runCatching { TipoActividad.valueOf(doc.getString("tipoActividad") ?: "") }
+                        .getOrDefault(TipoActividad.HABITO),
+                    nombreActividad = doc.getString("nombreActividad") ?: "",
+                    permiso = runCatching { PermisoCompartir.valueOf(doc.getString("permiso") ?: "") }
+                        .getOrDefault(PermisoCompartir.PUEDE_VER),
+                    deUsuarioId = doc.getString("deUsuarioId") ?: return@runTransaction null,
+                    deFirebaseUid = doc.getString("deFirebaseUid") ?: return@runTransaction null,
+                    deNombre = doc.getString("deNombre") ?: "",
+                    expiraEn = expiraEn,
+                )
+            }.await()
+        }.getOrNull()
+    }
+
+    override fun escucharReclamoDeCodigoCompartir(codigoId: String): Flow<String?> = callbackFlow {
+        val registro = firestore.collection(COLECCION_CODIGOS_COMPARTIR).document(codigoId)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null || snapshot == null) {
+                    trySend(null)
+                    return@addSnapshotListener
+                }
+                trySend(snapshot.getString("reclamadoPorNombre"))
+            }
         awaitClose { registro.remove() }
     }
 }

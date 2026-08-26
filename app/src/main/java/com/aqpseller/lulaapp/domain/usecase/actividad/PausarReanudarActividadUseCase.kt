@@ -1,7 +1,9 @@
 package com.aqpseller.lulaapp.domain.usecase.actividad
 
 import com.aqpseller.lulaapp.core.notifications.RecordatorioScheduler
+import com.aqpseller.lulaapp.core.utils.instruccionParaHorario
 import com.aqpseller.lulaapp.domain.model.ActividadDetalle
+import com.aqpseller.lulaapp.domain.model.AnticipacionRecordatorio
 import com.aqpseller.lulaapp.domain.model.TipoEspacio
 import com.aqpseller.lulaapp.domain.repository.ActividadRepository
 import com.aqpseller.lulaapp.domain.repository.EspacioRepository
@@ -15,6 +17,10 @@ class PausarReanudarActividadUseCase @Inject constructor(
     private val personalSyncRepository: PersonalSyncRepository,
 ) {
     suspend operator fun invoke(actividadId: String, activa: Boolean, usuarioId: String) {
+        // Antes de pausar, se necesita el detalle VIEJO (con sus horarios/sesiones) para cancelar
+        // — después de `pausarReanudar` ya no importa, pero las alarmas siguen siendo las mismas.
+        val actividadAntes = actividadRepository.obtenerConDetalle(actividadId)
+
         actividadRepository.pausarReanudar(actividadId, activa, usuarioId)
 
         val actividadActualizada = actividadRepository.obtenerConDetalle(actividadId)
@@ -25,6 +31,25 @@ class PausarReanudarActividadUseCase @Inject constructor(
         }
 
         if (!activa) {
+            // Un Medicamento con varias tomas por día, o una Cita con varios recordatorios,
+            // tienen una alarma independiente por horario/anticipación (clave compuesta, ver
+            // `RecordatorioScheduler`) — cancelar solo `actividadId` (como antes) dejaba sonando
+            // las demás: "Pausar" parecía funcionar (la pantalla lo mostraba Pausado) pero las
+            // alarmas seguían armadas en `AlarmManager`, sin ninguna pista visible del error.
+            // Mismo patrón ya usado en `EliminarActividadUseCase`. Ver `Plan/08-decisiones-tecnicas.md`.
+            when (val detalle = actividadAntes?.detalle) {
+                is ActividadDetalle.Medicamento ->
+                    detalle.horariosCalculados.forEach { horario -> recordatorioScheduler.cancelarMedicamento(actividadId, horario) }
+                is ActividadDetalle.Cita ->
+                    if (detalle.esCurso) {
+                        actividadRepository.obtenerSesionesCita(actividadId).forEach { sesion ->
+                            AnticipacionRecordatorio.entries.forEach { recordatorioScheduler.cancelarSesionCita(actividadId, sesion.numeroSesion, it) }
+                        }
+                    } else {
+                        AnticipacionRecordatorio.entries.forEach { recordatorioScheduler.cancelarCita(actividadId, it) }
+                    }
+                else -> Unit
+            }
             recordatorioScheduler.cancelar(actividadId)
             return
         }
@@ -41,6 +66,12 @@ class PausarReanudarActividadUseCase @Inject constructor(
                     recordatorioScheduler.programarTarea(actividadId, actividad.nombre, fechaLimite, hora, detalle.nivelRecordatorio)
                 }
             }
+            is ActividadDetalle.Medicamento ->
+                detalle.horariosCalculados.forEachIndexed { index, horario ->
+                    recordatorioScheduler.programarMedicamento(
+                        actividadId, actividad.nombre, horario, instruccionParaHorario(detalle, index), detalle.nivelRecordatorio,
+                    )
+                }
             else -> Unit
         }
     }

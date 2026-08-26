@@ -4413,3 +4413,171 @@ publicadas por el usuario en Firebase Console. Pendiente probar de punta a punta
 celulares reales (quitar miembro, salir, dejar de ver, editar algo compartido) — ver
 `10-pendientes.md`.
 
+## "Compartir seguimiento" con QR instantáneo — añadido 2026-08-24
+
+El usuario probó compartir una Tarea y encontró que "🤝 Compartir seguimiento" pedía escribir
+nombre/correo/teléfono ANTES de mostrar cualquier QR — y ese QR (`InvitacionEnviadaDialog`) era
+solo texto de invitación para WhatsApp, no un código que la app supiera leer. Pidió explícitamente
+que todo lo compartible tuviera QR fácil, "parecido a Listas". Se rediseñó `CompartirActividadDialog`
+(un solo archivo, usado por los 5 detalles de Actividad: Hábito/Tarea/Rutina/Medicamento/Cita) con
+el mismo patrón de dos caminos que ya tenía `FamiliaScreen`: **QR primero** (sin escribir nada) y
+**correo/teléfono en texto** como opción secundaria, colapsada, para alguien que no está presente.
+
+**Diseño, mismo espíritu que `codigosInvitacionEspacio` de Familia pero async, sin necesitar que
+quien comparte esté mirando la pantalla en ese momento:**
+
+- Colección nueva `codigosCompartirActividad/{codigoId}` (Firestore) — un código de 3 minutos con
+  `actividadId`/`tipoActividad`/`nombreActividad`/`permiso`/`deUsuarioId`/`deFirebaseUid`/
+  `deNombre`/`expiraEn`/`reclamadoPor`. `GenerarCodigoCompartirActividadUseCase` lo crea;
+  `CompartirPorQrController` (clase con `@Inject constructor`, sin scope de Hilt — cada ViewModel
+  de detalle recibe su propia instancia, mismo criterio que la duplicación ya existente del botón/
+  diálogo en los 5 detalles) lo muestra como QR (`CompartirPorQrDialog`) y escucha en vivo el mismo
+  documento mientras el diálogo sigue abierto, para mostrar "✅ confirmado" apenas alguien lo
+  escanea — sin loop de auto-renovación (a diferencia del código de Familia): si vence sin
+  escanearse, pide tocar "Generar de nuevo", más simple de razonar que un timer en segundo plano.
+- **Reclamar el código NO pasa por "pendiente → aceptar" como el resto de Círculo de cuidado**:
+  `ReclamarCodigoCompartirActividadUseCase` reclama el código (transacción, igual que
+  `reclamarCodigoInvitacion`) y crea la `SolicitudCompartir` directo con `estado = ACEPTADA`,
+  usando el mismo id que el código (`solicitudId == codigoId`) — clave para la regla de
+  seguridad: la regla de `create` en `solicitudes_compartir` ahora también permite que sea
+  **quien escanea** quien cree el documento (no solo quien comparte, como antes), siempre que
+  declare `estado: ACEPTADA`, `para` == su propio correo verificado, y un `get()` confirme que
+  el código con ese mismo id de verdad fue reclamado por él y pertenece a quien dice compartir.
+  Sin este mecanismo, solo quien comparte podía escribir ahí — pero quien comparte no está
+  presente en el momento del escaneo para autorizarlo, así que la única forma de que sea
+  realmente instantáneo (sin depender de que el otro dispositivo esté online/escuchando) era que
+  quien escanea cree el documento él mismo, con la regla verificando la legitimidad vía el código
+  ya reclamado.
+- **El contenido real (`actividadesCompartidas`) sigue subiéndolo solo quien comparte** — eso no
+  cambió (la regla de esa colección exige `auth.uid == deFirebaseUid`, y sigue siendo así a
+  propósito). En la práctica esto ya se resuelve solo: `CareCircleViewModel` sincroniza
+  "solicitudes recibidas" (que ahora incluye esta, ya `ACEPTADA`, en cuanto quien comparte abra
+  "Mi círculo de cuidado" o la sincronización en vivo la traiga) y su colector de "enviadas" ya
+  resube el contenido apenas ve una solicitud propia en estado `ACEPTADA` — mismo mecanismo
+  best-effort que toda esta sección de la app, sin agregar nada nuevo para esto.
+- **Meta queda excluida a propósito**: `CompartirActividadDialog` ganó un parámetro
+  `soportaQr: Boolean = true`; `MetaDetailScreen` pasa `false`. Ofrecerle QR a Meta habría hecho
+  más engañoso el bug ya documentado (Meta no vive en `Actividad`, el contenido nunca llega) — el
+  QR mostraría "✅ confirmado" y después nunca aparecería nada del otro lado, peor que el estado
+  "Pendiente" honesto que ya tenía.
+- Escáner global: nuevo prefijo `LULA_CODIGO_COMPARTIR_V1:` (`CodigoCompartirActividadQrCodec.kt`),
+  agregado como cuarta rama en `TopBarStatsViewModel.escanear` (después de Lista, código de
+  Espacio, contacto).
+
+Compilado limpio (`compileDebugKotlin`), `installDebug` en dispositivo real, sin crash verificado
+con `adb logcat`. Reglas nuevas (`codigosCompartirActividad` + `create` ampliado de
+`solicitudes_compartir`) pendientes de publicar por el usuario en Firebase Console. Falta probar
+de punta a punta con los dos celulares reales.
+
+**Corrección del ícono de QR (mezclaba emoji con el ícono real) — añadido 2026-08-24**: el
+usuario probó la ronda anterior y notó que el botón nuevo de "Compartir seguimiento" usaba el
+emoji "🔳" como texto del botón, en vez del ícono real `Icons.Filled.QrCode` que ya se había
+definido (2026-08-20) para todo lo que "genera/muestra un QR" (Familia, Listas, Perfil) — con
+`Icons.Filled.QrCodeScanner` reservado solo para el botón de ESCANEAR de la barra superior. Se
+corrigió `CompartirActividadDialog.kt` para usar `Icon(Icons.Filled.QrCode, ...)` igual que los
+demás, y se sacó el emoji "🔳" de los textos de instrucción (`CompartirPorQrDialog.kt`),
+reemplazado por la misma frase que ya usaba Familia ("Con el botón de escanear de su Lula") en
+vez de referenciar un símbolo.
+
+## Recorte de alcance de "Compartir seguimiento" + varios Espacios Familia — añadido 2026-08-24
+
+Dos decisiones de producto tomadas juntas en la misma conversación.
+
+**1. "Compartir seguimiento" ya no existe en Hábito, Meta ni Rutina — son "más personales".**
+El usuario decidió explícitamente: Hábito/Meta/Rutina se sacan del todo (no solo el QR — el
+botón completo desaparece de esas 3 pantallas); Tarea, Medicamento y Cita lo mantienen. Razón
+dada por el usuario: Tarea "puede armarse con una persona y sería como una meta, y la tarea la
+reemplaza hasta que se cumpla" (Tarea ya cubre el caso de "meta compartida" sin necesitar que
+Meta tenga su propio mecanismo); Medicamento/Cita son el caso real de cuidado (acompañar a
+alguien con sus medicamentos/citas). Se eliminó `CompartirActividadDialog`/
+`CompartirPorQrDialog`/`CompartirActividadUseCase`/`CompartirPorQrController` por completo de
+`HabitDetailScreen`/`ViewModel`, `RoutineDetailScreen`/`ViewModel` y `MetaDetailScreen`/
+`ViewModel` (antes Meta solo tenía `soportaQr = false`; ahora no tiene ningún botón). El bug ya
+documentado de Meta (no vive en `Actividad`, el contenido nunca llegaría a "Lo que me comparten")
+queda sin efecto práctico porque ya no hay forma de intentar compartir una Meta.
+
+**2. Varios Espacios Familia por usuario.**
+El usuario preguntó cómo modelar el caso real: una persona pertenece a varias "familias" a la
+vez (la que formó con su pareja/hijos, la de sus padres/hermanos, la de su pareja/suegros).
+Investigación previa a construir (agente `Explore`) confirmó que **la capa de datos ya lo
+soportaba sin ningún cambio**: `Espacio`/`EspacioMiembro` (Room), `EspacioRepository` y todos los
+casos de uso de `domain/usecase/espacio/` ya están parametrizados por `espacioId` explícito
+(nunca buscan "la" Familia); Firestore (`misEspacios` puntero, reglas de `espacios/{espacioId}`)
+ya itera sobre todos los documentos sin límite por usuario. El único lugar que asumía "cero o una
+Familia" era `FamiliaViewModel`/`FamiliaScreen` (`espacios.firstOrNull { tipo == FAMILIA }`).
+
+Rediseño de `features/family/`:
+- `FamiliaUiState` gana `familias: List<FamiliaResumenUi>` (todas mis Familias) y
+  `familiaSeleccionadaId: String?` (cuál se está viendo/administrando) — **deliberadamente
+  independiente** de "espacio activo" (el selector de arriba, que sigue existiendo igual): así
+  se puede invitar a alguien a la Familia de tus padres sin tener que cambiar tu espacio de
+  trabajo del día a día.
+- `FamiliaScreen` ahora tiene una sección "Tus espacios familiares" con una fila por Familia +
+  botón "Administrar"/"Ocultar" cada una, y "+ Crear otro espacio familiar" siempre visible
+  (antes el botón de crear desaparecía en cuanto existía una).
+- `FamiliaViewModel.seleccionarFamilia(espacioId, nombre)` reemplaza la carga automática de "la"
+  Familia — cancela el listener de miembros anterior (`jobMiembros`) antes de escuchar la nueva,
+  para no mezclar datos de dos Familias si el usuario cambia de selección rápido.
+- Los 6 métodos de acción (renombrar/eliminar/salir/quitar miembro/invitar/generar QR) pasaron de
+  leer `espacioFamiliaId` a leer `familiaSeleccionadaId` — mismo patrón, ahora N-capaz.
+- **Límite conocido, no resuelto esta ronda**: "🏆 Retos familiares" navega usando el espacio
+  ACTIVO (`RetosFamiliaresViewModel`/`CrearRetoFamiliarViewModel` leen
+  `obtenerSesionActualUseCase().espacioId`, no reciben un `espacioId` explícito por navegación).
+  Si administras una Familia que no es la activa, el botón se reemplaza por un aviso de "cambia
+  de espacio primero" en vez de abrir los retos de la Familia equivocada. Extender Retos (y
+  Tareas del hogar) a navegación explícita por `espacioId` queda pendiente, ver
+  `10-pendientes.md`.
+
+Compilado limpio, `installDebug` en dispositivo real, sin crash verificado con `adb logcat`.
+Ningún cambio de esquema Room ni de `firestore.rules` en esta ronda (confirmando que era
+puramente un límite de UI). Falta probar con una segunda Familia real de punta a punta.
+
+## Dos bugs reales de "no se borra/no se cancela de verdad" — añadido 2026-08-24
+
+El usuario creó Familias de prueba, las eliminó, y siguieron apareciendo. Investigado con
+evidencia real (código + `sqlite3` sobre la base de datos real del dispositivo, no adivinado).
+
+**1. "Eliminar espacio Familia" no tocaba Firestore.** `EliminarEspacioFamiliaUseCase` solo
+borraba local (Room) — nunca borraba el documento `espacios/{id}`, su membresía, ni mi propio
+puntero `misEspacios/{id}`. Como `RestaurarEspaciosFamiliaUseCase` corre en **cada apertura de
+la app** (`AppViewModel.init`) y trae de vuelta todo lo que encuentra en `misEspacios`, la
+Familia "eliminada" volvía sola la siguiente vez que se abría Lula. Arreglado:
+`EspacioSyncRepository.eliminarEspacioCompleto(espacioId)` nuevo — borra las 4 subcolecciones
+(`actividades`/`retos`/`registrosReto`/`miembros`), el documento raíz, y mi puntero. **El orden
+importa** por las reglas de seguridad: cada borrado depende de que mi propia membresía siga
+existiendo (`esMiembro()`/`esAdmin()`), así que mi propio documento de `miembros` se borra
+**al final**, después de todo lo demás (esa regla no depende de nada más:
+`auth.uid == miembroFirebaseUid`). Los punteros `misEspacios` de otros miembros quedan
+huérfanos pero inofensivos — `descubrirMisEspacios` los descarta solo en cuanto el documento raíz
+ya no existe. De paso: `EliminarEspacioFamiliaUseCase` ahora exige ser admin (antes cualquier
+miembro podía borrar la Familia entera).
+
+**2. "Pausar" un Medicamento (o una Cita con varias sesiones) no cancelaba sus alarmas de
+verdad.** Bug distinto, encontrado mientras se investigaba un reporte de "configuré Sonido y
+sonó como Alarma". Medicamento programa una alarma independiente por horario (clave compuesta
+`"$actividadId:$horario"`, ver `RecordatorioScheduler.claveRequestCode`) — pero
+`PausarReanudarActividadUseCase` llamaba `recordatorioScheduler.cancelar(actividadId)` sin
+horario, que solo cancela la clave simple (la que usan Hábito/Tarea). Este mismo bug **ya se
+había encontrado y arreglado para "Eliminar"** (`EliminarActividadUseCase`, Fase 0.8,
+2026-07-28) pero nunca se replicó a "Pausar" — quedó con el bug original. Resultado real: la
+pantalla mostraba "Pausado", pero las alarmas seguían armadas en `AlarmManager` y sonaban en su
+horario normal, sin ninguna pista de que algo estaba mal. Arreglado replicando exactamente el
+mismo patrón de `EliminarActividadUseCase` (cancelar por cada horario de Medicamento, por cada
+sesión×anticipación de Cita); de paso se agregó que **reanudar** un Medicamento pausado también
+reprograma sus alarmas (antes tampoco pasaba, mismo hueco al revés).
+
+**Diagnóstico de la base de datos real (no explicó la causa, pero confirmó otra cosa útil):**
+`sqlite3` sobre la base pulled del dispositivo mostró varios Medicamentos de prueba del usuario
+todavía `activa = 1` con `fechaFin` ya vencido hace días — pero `horariosParaFecha` (usado tanto
+por `RecordatorioReceiver` al mostrar como por `ReprogramarTodosLosRecordatoriosUseCase` al
+reabrir la app) ya respeta `fechaFin` correctamente (arreglado en una ronda anterior, ver
+comentario en el propio código) — confirmado que esos específicos ya no pueden sonar. El bug de
+"Pausar" (arriba) es la explicación más probable del reporte real. Se le sugirió al usuario
+limpiar (pausar/eliminar) esos Medicamentos de prueba igual, por prolijidad — pendiente de que
+lo confirme.
+
+Se agregó además un `Log.i` permanente en `RecordatorioReceiver.mostrarNotificacionConNivel`
+(nivel + canal usado) para diagnosticar con evidencia real cualquier caso futuro, en vez de
+adivinar. Compilado limpio, `installDebug` en dispositivo real, sin crash verificado con
+`adb logcat`.
+

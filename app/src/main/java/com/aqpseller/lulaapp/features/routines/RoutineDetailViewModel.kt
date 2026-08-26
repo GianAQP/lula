@@ -5,12 +5,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aqpseller.lulaapp.domain.model.ActividadDetalle
 import com.aqpseller.lulaapp.domain.model.EstadoActividad
-import com.aqpseller.lulaapp.domain.model.PermisoCompartir
 import com.aqpseller.lulaapp.domain.model.SesionActual
 import com.aqpseller.lulaapp.domain.usecase.actividad.EliminarActividadUseCase
 import com.aqpseller.lulaapp.domain.usecase.actividad.MarcarActividadUseCase
 import com.aqpseller.lulaapp.domain.usecase.actividad.ObtenerDetalleActividadUseCase
-import com.aqpseller.lulaapp.domain.usecase.carecircle.CompartirActividadUseCase
 import com.aqpseller.lulaapp.domain.usecase.usuario.ObtenerSesionActualUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,16 +25,12 @@ class RoutineDetailViewModel @Inject constructor(
     private val obtenerDetalleActividadUseCase: ObtenerDetalleActividadUseCase,
     private val marcarActividadUseCase: MarcarActividadUseCase,
     private val eliminarActividadUseCase: EliminarActividadUseCase,
-    private val compartirActividadUseCase: CompartirActividadUseCase,
 ) : ViewModel() {
 
     val actividadId: String = checkNotNull(savedStateHandle["actividadId"])
 
     private val _uiState = MutableStateFlow(RoutineDetailUiState())
     val uiState: StateFlow<RoutineDetailUiState> = _uiState.asStateFlow()
-
-    private val _solicitudEnviada = MutableStateFlow(false)
-    val solicitudEnviada: StateFlow<Boolean> = _solicitudEnviada.asStateFlow()
 
     private var sesion: SesionActual? = null
 
@@ -96,17 +90,6 @@ class RoutineDetailViewModel @Inject constructor(
             eliminarActividadUseCase(actividadId, sesionActual().usuarioId)
             _uiState.update { it.copy(eliminada = true) }
         }
-    }
-
-    fun compartir(contacto: String, permiso: PermisoCompartir) {
-        viewModelScope.launch {
-            compartirActividadUseCase(sesionActual().usuarioId, actividadId, _uiState.value.nombre, contacto, permiso)
-            _solicitudEnviada.value = true
-        }
-    }
-
-    fun solicitudEnviadaMostrada() {
-        _solicitudEnviada.value = false
     }
 
     private suspend fun sesionActual(): SesionActual = sesion ?: obtenerSesionActualUseCase().also { sesion = it }

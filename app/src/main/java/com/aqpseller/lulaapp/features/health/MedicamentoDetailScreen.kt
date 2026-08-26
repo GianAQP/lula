@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.aqpseller.lulaapp.core.ui.CompartirActividadDialog
+import com.aqpseller.lulaapp.core.ui.CompartirPorQrDialog
 import com.aqpseller.lulaapp.core.ui.ConfirmarEliminarDialog
 import com.aqpseller.lulaapp.core.ui.InvitacionEnviadaDialog
 import com.aqpseller.lulaapp.domain.model.EstadoActividad
@@ -42,6 +43,7 @@ fun MedicamentoDetailScreen(
     val solicitudEnviada by viewModel.solicitudEnviada.collectAsState()
     var mostrarConfirmacion by remember { mutableStateOf(false) }
     var mostrarCompartir by remember { mutableStateOf(false) }
+    var mostrarCodigoQr by remember { mutableStateOf(false) }
     var permisoPendiente by remember { mutableStateOf(PermisoCompartir.PUEDE_VER) }
     var invitacionEnviada by remember { mutableStateOf(false) }
     LaunchedEffect(uiState.eliminado) { if (uiState.eliminado) onEliminado() }
@@ -112,12 +114,28 @@ fun MedicamentoDetailScreen(
     if (mostrarCompartir) {
         CompartirActividadDialog(
             nombreActividad = uiState.nombre,
+            onElegirQr = { permiso ->
+                mostrarCompartir = false
+                permisoPendiente = permiso
+                mostrarCodigoQr = true
+                viewModel.generarCodigoQr(permiso)
+            },
             onEnviar = { contacto, permiso ->
                 mostrarCompartir = false
                 permisoPendiente = permiso
                 viewModel.compartir(contacto, permiso)
             },
             onCancelar = { mostrarCompartir = false },
+        )
+    }
+
+    if (mostrarCodigoQr) {
+        val estadoQr by viewModel.estadoCompartirQr.collectAsState()
+        CompartirPorQrDialog(
+            nombreActividad = uiState.nombre,
+            estado = estadoQr,
+            onReintentar = { viewModel.generarCodigoQr(permisoPendiente) },
+            onCerrar = { mostrarCodigoQr = false; viewModel.ocultarCodigoQr() },
         )
     }
 

@@ -26,6 +26,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -77,104 +78,141 @@ fun FamiliaScreen(
 
         HorizontalDivider(modifier = Modifier.padding(vertical = 24.dp))
 
-        if (uiState.espacioFamiliaId == null) {
-            if (!uiState.mostrarFormularioCrear) {
-                Text(
-                    text = "Todavía no tienes un espacio familiar. Ahí van a vivir las tareas del " +
-                        "hogar y los retos familiares — por ahora es solo para ti, hasta que se " +
-                        "puedan invitar personas de verdad.",
-                    style = MaterialTheme.typography.bodySmall,
-                )
-                Button(onClick = viewModel::mostrarFormularioCrear, modifier = Modifier.padding(top = 12.dp)) {
-                    Text("+ Crear espacio familiar")
-                }
-            } else {
-                Text(text = "Crear espacio familiar", style = MaterialTheme.typography.titleSmall)
-                DictationTextField(
-                    value = nombreNuevoEspacio,
-                    onValueChange = { nombreNuevoEspacio = it },
-                    label = "Nombre (ej. \"Familia García\")",
-                    modifier = Modifier.padding(top = 8.dp),
-                )
-                Row(modifier = Modifier.padding(top = 12.dp)) {
-                    Button(
-                        onClick = { viewModel.crearEspacioFamilia(nombreNuevoEspacio) },
-                        modifier = Modifier.padding(end = 8.dp),
-                    ) { Text("Crear") }
-                    TextButton(onClick = viewModel::ocultarFormularioCrear) { Text("Cancelar") }
-                }
+        Text(text = "Tus espacios familiares", style = MaterialTheme.typography.titleSmall)
+        Text(
+            text = "Puedes tener más de uno — por ejemplo la familia que formaste (pareja e hijos), " +
+                "la de tus padres y hermanos, y la de tu pareja. Cada una es independiente: sus " +
+                "propios miembros, tareas del hogar y retos.",
+            style = MaterialTheme.typography.bodySmall,
+            modifier = Modifier.padding(top = 4.dp),
+        )
+
+        uiState.familias.forEach { familia ->
+            val estaSeleccionada = uiState.familiaSeleccionadaId == familia.id
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(text = "👨‍👩‍👧 ${familia.nombre}", modifier = Modifier.weight(1f))
+                TextButton(
+                    onClick = {
+                        if (estaSeleccionada) viewModel.cerrarFamiliaSeleccionada() else viewModel.seleccionarFamilia(familia.id, familia.nombre)
+                    },
+                ) { Text(if (estaSeleccionada) "Ocultar" else "Administrar") }
             }
-        } else if (uiState.mostrarFormularioRenombrar) {
-            Text(text = "Renombrar espacio familiar", style = MaterialTheme.typography.titleSmall)
+        }
+
+        if (!uiState.mostrarFormularioCrear) {
+            Button(onClick = viewModel::mostrarFormularioCrear, modifier = Modifier.padding(top = 12.dp)) {
+                Text(if (uiState.familias.isEmpty()) "+ Crear espacio familiar" else "+ Crear otro espacio familiar")
+            }
+        } else {
+            Text(text = "Crear espacio familiar", style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(top = 16.dp))
             DictationTextField(
-                value = nombreRenombrar,
-                onValueChange = { nombreRenombrar = it },
-                label = "Nombre",
+                value = nombreNuevoEspacio,
+                onValueChange = { nombreNuevoEspacio = it },
+                label = "Nombre (ej. \"Familia García\" o \"Familia de mis papás\")",
                 modifier = Modifier.padding(top = 8.dp),
             )
             Row(modifier = Modifier.padding(top = 12.dp)) {
                 Button(
-                    onClick = { viewModel.renombrarEspacioFamilia(nombreRenombrar) },
+                    onClick = { viewModel.crearEspacioFamilia(nombreNuevoEspacio); nombreNuevoEspacio = "" },
                     modifier = Modifier.padding(end = 8.dp),
-                ) { Text("Guardar") }
-                TextButton(onClick = viewModel::ocultarFormularioRenombrar) { Text("Cancelar") }
+                ) { Text("Crear") }
+                TextButton(onClick = viewModel::ocultarFormularioCrear) { Text("Cancelar") }
             }
-        } else {
-            Text(text = "👨‍👩‍👧 ${uiState.nombreEspacioFamilia}", style = MaterialTheme.typography.titleSmall)
-            Text(text = "Miembros", modifier = Modifier.padding(top = 12.dp))
-            uiState.miembros.forEach { miembro ->
-                Row(modifier = Modifier.padding(top = 4.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                    Text(text = "🙋 ${miembro.nombre} — ${miembro.rol}", modifier = Modifier.weight(1f))
-                    if (uiState.soyAdmin && !miembro.esUnoMismo) {
-                        TextButton(onClick = { miembroAQuitar = miembro }) { Text("Quitar") }
-                    }
-                }
-            }
-            if (!uiState.cuentaVinculada) {
-                Text(
-                    text = "Para invitar a alguien de verdad, primero vincula tu cuenta con Google " +
-                        "(Perfil → \"🔑 Cuenta\").",
-                    style = MaterialTheme.typography.bodySmall,
+        }
+
+        if (uiState.familiaSeleccionadaId != null) {
+            HorizontalDivider(modifier = Modifier.padding(vertical = 24.dp))
+
+            if (uiState.mostrarFormularioRenombrar) {
+                Text(text = "Renombrar espacio familiar", style = MaterialTheme.typography.titleSmall)
+                DictationTextField(
+                    value = nombreRenombrar,
+                    onValueChange = { nombreRenombrar = it },
+                    label = "Nombre",
                     modifier = Modifier.padding(top = 8.dp),
                 )
-            } else if (uiState.mostrarFormularioInvitar) {
-                DictationTextField(
-                    value = contactoInvitar,
-                    onValueChange = { contactoInvitar = it },
-                    label = "Correo de la persona (o pega el que escaneaste con \"🔳\" arriba)",
-                    modifier = Modifier.padding(top = 12.dp),
-                )
-                Row(modifier = Modifier.padding(top = 8.dp)) {
+                Row(modifier = Modifier.padding(top = 12.dp)) {
                     Button(
-                        onClick = { viewModel.invitar(contactoInvitar); contactoInvitar = "" },
+                        onClick = { viewModel.renombrarEspacioFamilia(nombreRenombrar) },
                         modifier = Modifier.padding(end = 8.dp),
-                    ) { Text("Enviar invitación") }
-                    TextButton(onClick = viewModel::ocultarFormularioInvitar) { Text("Cancelar") }
+                    ) { Text("Guardar") }
+                    TextButton(onClick = viewModel::ocultarFormularioRenombrar) { Text("Cancelar") }
                 }
             } else {
+                Text(text = "👨‍👩‍👧 ${uiState.nombreEspacioFamilia}", style = MaterialTheme.typography.titleSmall)
+                Text(text = "Miembros", modifier = Modifier.padding(top = 12.dp))
+                uiState.miembros.forEach { miembro ->
+                    Row(modifier = Modifier.padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text(text = "🙋 ${miembro.nombre} — ${miembro.rol}", modifier = Modifier.weight(1f))
+                        if (uiState.soyAdmin && !miembro.esUnoMismo) {
+                            TextButton(onClick = { miembroAQuitar = miembro }) { Text("Quitar") }
+                        }
+                    }
+                }
+                if (!uiState.cuentaVinculada) {
+                    Text(
+                        text = "Para invitar a alguien de verdad, primero vincula tu cuenta con Google " +
+                            "(Perfil → \"🔑 Cuenta\").",
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(top = 8.dp),
+                    )
+                } else if (uiState.mostrarFormularioInvitar) {
+                    DictationTextField(
+                        value = contactoInvitar,
+                        onValueChange = { contactoInvitar = it },
+                        label = "Correo de la persona",
+                        modifier = Modifier.padding(top = 12.dp),
+                    )
+                    Row(modifier = Modifier.padding(top = 8.dp)) {
+                        Button(
+                            onClick = { viewModel.invitar(contactoInvitar); contactoInvitar = "" },
+                            modifier = Modifier.padding(end = 8.dp),
+                        ) { Text("Enviar invitación") }
+                        TextButton(onClick = viewModel::ocultarFormularioInvitar) { Text("Cancelar") }
+                    }
+                } else {
+                    Row(modifier = Modifier.padding(top = 8.dp)) {
+                        Button(onClick = viewModel::mostrarFormularioInvitar, modifier = Modifier.padding(end = 8.dp)) {
+                            Text("+ Invitar a alguien")
+                        }
+                        OutlinedButton(onClick = viewModel::mostrarCodigoQr) {
+                            Icon(Icons.Filled.QrCode, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Text(" Que escaneen para entrar")
+                        }
+                    }
+                }
+                // Retos familiares siempre es del espacio ACTIVO (arriba), no de la Familia que
+                // estás administrando acá si son distintas — evita mostrar retos de la familia
+                // equivocada. Ver `Plan/10-pendientes.md`.
+                val esLaActiva = uiState.espacios.find { it.esActivo }?.id == uiState.familiaSeleccionadaId
+                if (esLaActiva) {
+                    TextButton(
+                        onClick = { onVerRetosFamiliares() },
+                        modifier = Modifier.padding(top = 16.dp).fillMaxWidth(),
+                    ) {
+                        Text("🏆 Retos familiares")
+                    }
+                } else {
+                    Text(
+                        text = "Cambia a este espacio (arriba, \"Tus espacios\") para ver sus retos familiares.",
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(top = 16.dp),
+                    )
+                }
                 Row(modifier = Modifier.padding(top = 8.dp)) {
-                    Button(onClick = viewModel::mostrarFormularioInvitar, modifier = Modifier.padding(end = 8.dp)) {
-                        Text("+ Invitar a alguien")
+                    OutlinedButton(onClick = viewModel::mostrarFormularioRenombrar, modifier = Modifier.padding(end = 8.dp)) {
+                        Text("✏️ Renombrar")
                     }
-                    OutlinedButton(onClick = viewModel::mostrarCodigoQr) {
-                        Icon(Icons.Filled.QrCode, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Text(" Que escaneen para entrar")
+                    OutlinedButton(onClick = { mostrarConfirmarEliminar = true }) {
+                        Text("🗑️ Eliminar")
                     }
                 }
-            }
-            TextButton(onClick = onVerRetosFamiliares, modifier = Modifier.padding(top = 16.dp).fillMaxWidth()) {
-                Text("🏆 Retos familiares")
-            }
-            Row(modifier = Modifier.padding(top = 8.dp)) {
-                OutlinedButton(onClick = viewModel::mostrarFormularioRenombrar, modifier = Modifier.padding(end = 8.dp)) {
-                    Text("✏️ Renombrar")
+                TextButton(onClick = { mostrarConfirmarSalir = true }, modifier = Modifier.padding(top = 8.dp)) {
+                    Text("🚪 Salir de este espacio")
                 }
-                OutlinedButton(onClick = { mostrarConfirmarEliminar = true }) {
-                    Text("🗑️ Eliminar")
-                }
-            }
-            TextButton(onClick = { mostrarConfirmarSalir = true }, modifier = Modifier.padding(top = 8.dp)) {
-                Text("🚪 Salir de este espacio")
             }
         }
     }

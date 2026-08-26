@@ -3,6 +3,7 @@ package com.aqpseller.lulaapp.navigation
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aqpseller.lulaapp.core.utils.DateTimeUtils
+import com.aqpseller.lulaapp.core.utils.decodificarCodigoCompartirQr
 import com.aqpseller.lulaapp.core.utils.decodificarCodigoEspacioQr
 import com.aqpseller.lulaapp.core.utils.decodificarContactoQr
 import com.aqpseller.lulaapp.core.utils.decodificarListaQr
@@ -11,6 +12,8 @@ import com.aqpseller.lulaapp.domain.model.TipoMovimientoFinanciero
 import com.aqpseller.lulaapp.domain.repository.EspacioRepository
 import com.aqpseller.lulaapp.domain.repository.UsuarioRepository
 import com.aqpseller.lulaapp.domain.usecase.carecircle.ObtenerSolicitudesRecibidasUseCase
+import com.aqpseller.lulaapp.domain.usecase.carecircle.ReclamarCodigoCompartirActividadUseCase
+import com.aqpseller.lulaapp.domain.usecase.carecircle.ResultadoReclamoCompartir
 import com.aqpseller.lulaapp.domain.usecase.espacio.ResultadoUnionEspacio
 import com.aqpseller.lulaapp.domain.usecase.espacio.SincronizarEspacioFamiliaUseCase
 import com.aqpseller.lulaapp.domain.usecase.espacio.UnirseAEspacioConCodigoUseCase
@@ -54,6 +57,7 @@ class TopBarStatsViewModel @Inject constructor(
     private val importarListaDesdeQrUseCase: ImportarListaDesdeQrUseCase,
     private val sincronizarEspacioFamiliaUseCase: SincronizarEspacioFamiliaUseCase,
     private val unirseAEspacioConCodigoUseCase: UnirseAEspacioConCodigoUseCase,
+    private val reclamarCodigoCompartirActividadUseCase: ReclamarCodigoCompartirActividadUseCase,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(TopBarStatsUiState())
@@ -107,6 +111,21 @@ class TopBarStatsViewModel @Inject constructor(
                         mensaje = when (resultado) {
                             is ResultadoUnionEspacio.Exito -> "Te uniste a \"${resultado.nombreEspacio}\" ✅"
                             ResultadoUnionEspacio.CodigoInvalido -> "Ese código ya venció — pídele que muestre uno nuevo"
+                        },
+                    )
+                }
+                return@launch
+            }
+            val codigoCompartir = decodificarCodigoCompartirQr(qrTexto)
+            if (codigoCompartir != null) {
+                val resultado = reclamarCodigoCompartirActividadUseCase(codigoCompartir.codigoId)
+                _uiState.update {
+                    it.copy(
+                        mensaje = when (resultado) {
+                            is ResultadoReclamoCompartir.Exito ->
+                                "Ahora acompañas a ${resultado.deNombre} en \"${resultado.nombreActividad}\" ✅"
+                            ResultadoReclamoCompartir.CodigoInvalido ->
+                                "Ese código ya venció, o necesitas tu cuenta vinculada con Google — pídele uno nuevo"
                         },
                     )
                 }

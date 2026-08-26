@@ -369,6 +369,11 @@ class RecordatorioReceiver : BroadcastReceiver() {
         nivel: NivelRecordatorio,
         logTag: String,
     ) {
+        // Diagnóstico permanente: el usuario reportó un "Sonido" que sonó como Alarma — para
+        // confirmar la próxima vez si es la app la que arma la Alarma por error, o el canal del
+        // sistema el que tiene un sonido pegado (mismo canal, sonido distinto al que Lula pidió).
+        // Ver `Plan/08-decisiones-tecnicas.md`.
+        Log.i("RecordatorioReceiver", "Mostrando nivel=$nivel canal=${NotificationChannels.canalPara(nivel)} ($logTag)")
         val intentContenido = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             putExtra(MainActivity.EXTRA_DESTINO, destino)

@@ -7,6 +7,13 @@ data class EspacioUi(
     val esActivo: Boolean,
 )
 
+/** Una fila de la lista "Tus espacios familiares" — puede haber varias (la que formaste, la de
+ * tus padres, la de tu pareja...), cada una independiente. */
+data class FamiliaResumenUi(
+    val id: String,
+    val nombre: String,
+)
+
 data class MiembroUi(
     val usuarioId: String,
     val firebaseUid: String?,
@@ -18,7 +25,12 @@ data class MiembroUi(
 data class FamiliaUiState(
     val cargando: Boolean = true,
     val espacios: List<EspacioUi> = emptyList(),
-    val espacioFamiliaId: String? = null,
+    /** Todas mis Familias — un usuario puede tener varias (la que formó, la de sus padres, la de
+     * su pareja), cada una con sus propios miembros y contenido. */
+    val familias: List<FamiliaResumenUi> = emptyList(),
+    /** Cuál Familia se está viendo/administrando ahora — independiente de cuál es el "espacio
+     * activo" de arriba (administrar una Familia no te cambia de espacio de trabajo). */
+    val familiaSeleccionadaId: String? = null,
     val nombreEspacioFamilia: String = "",
     val miembros: List<MiembroUi> = emptyList(),
     /** Solo el admin puede quitar a otros miembros. */

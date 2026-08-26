@@ -23,13 +23,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.aqpseller.lulaapp.core.ui.CompartirActividadDialog
 import com.aqpseller.lulaapp.core.ui.ConfirmarEliminarDialog
-import com.aqpseller.lulaapp.core.ui.InvitacionEnviadaDialog
 import com.aqpseller.lulaapp.core.ui.SonidoCheckViewModel
 import com.aqpseller.lulaapp.core.utils.SonidoUtils
 import com.aqpseller.lulaapp.domain.model.EstadoActividad
-import com.aqpseller.lulaapp.domain.model.PermisoCompartir
 
 @Composable
 fun RoutineDetailScreen(
@@ -41,19 +38,9 @@ fun RoutineDetailScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val sonidoCheckHabilitado by sonidoCheckViewModel.habilitado.collectAsState()
-    val solicitudEnviada by viewModel.solicitudEnviada.collectAsState()
     var mostrarConfirmacion by remember { mutableStateOf(false) }
-    var mostrarCompartir by remember { mutableStateOf(false) }
-    var permisoPendiente by remember { mutableStateOf(PermisoCompartir.PUEDE_VER) }
-    var invitacionEnviada by remember { mutableStateOf(false) }
     LaunchedEffect(uiState.eliminada) { if (uiState.eliminada) onEliminada() }
     LaunchedEffect(Unit) { viewModel.recargar() }
-    LaunchedEffect(solicitudEnviada) {
-        if (solicitudEnviada) {
-            invitacionEnviada = true
-            viewModel.solicitudEnviadaMostrada()
-        }
-    }
 
     if (uiState.cargando) return
 
@@ -101,9 +88,6 @@ fun RoutineDetailScreen(
                 Text("Eliminar rutina")
             }
         }
-        OutlinedButton(onClick = { mostrarCompartir = true }, modifier = Modifier.padding(top = 8.dp)) {
-            Text("🤝 Compartir seguimiento")
-        }
     }
 
     if (mostrarConfirmacion) {
@@ -111,26 +95,6 @@ fun RoutineDetailScreen(
             mensaje = "Esto elimina la rutina \"${uiState.nombre}\" — los hábitos/tareas que agrupa NO se eliminan.",
             onConfirmar = { mostrarConfirmacion = false; viewModel.eliminar() },
             onCancelar = { mostrarConfirmacion = false },
-        )
-    }
-
-    if (mostrarCompartir) {
-        CompartirActividadDialog(
-            nombreActividad = uiState.nombre,
-            onEnviar = { contacto, permiso ->
-                mostrarCompartir = false
-                permisoPendiente = permiso
-                viewModel.compartir(contacto, permiso)
-            },
-            onCancelar = { mostrarCompartir = false },
-        )
-    }
-
-    if (invitacionEnviada) {
-        InvitacionEnviadaDialog(
-            nombreActividad = uiState.nombre,
-            permiso = permisoPendiente,
-            onCerrar = { invitacionEnviada = false },
         )
     }
 }

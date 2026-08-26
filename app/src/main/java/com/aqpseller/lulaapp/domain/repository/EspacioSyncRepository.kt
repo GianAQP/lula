@@ -41,6 +41,10 @@ interface EspacioSyncRepository {
      * esa persona O admin del espacio, ver `firestore.rules`). */
     suspend fun eliminarMiembro(espacioId: String, miembroFirebaseUid: String)
 
+    /** Borra el Espacio completo (todas sus subcolecciones + el puntero `misEspacios` propio) —
+     * a diferencia de [eliminarMiembro], esto es "eliminar para siempre", no "salir". */
+    suspend fun eliminarEspacioCompleto(espacioId: String)
+
     suspend fun subirTarea(espacioId: String, actividad: Actividad, detalle: ActividadDetalle.Tarea)
     suspend fun subirReto(espacioId: String, reto: RetoFamiliar)
     suspend fun subirRegistroReto(espacioId: String, registro: RegistroRetoRemoto)

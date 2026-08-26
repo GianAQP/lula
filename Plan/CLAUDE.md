@@ -1161,3 +1161,39 @@ Medicamento/Cita/Fecha importante compartido no se estaba re-subiendo — los 6
 casos de Marcar. Reglas de Firestore nuevas (`esAdmin()`, delete ampliado en `miembros` y
 `actividadesCompartidas`) publicadas por el usuario. Detalle completo en
 `Plan/08-decisiones-tecnicas.md`.
+
+**"Compartir seguimiento" con QR instantáneo** (2026-08-24): el usuario probó compartir una
+Tarea y encontró que pedía escribir nombre/correo/teléfono antes de mostrar cualquier QR, y ese
+QR ni siquiera era escaneable por la app — pidió que todo lo compartible tuviera QR fácil, "como
+Listas". Se rediseñó el diálogo de "Compartir seguimiento" (un solo archivo, usado por Hábito/
+Tarea/Rutina/Medicamento/Cita) con el mismo patrón de Familia: QR primero (sin escribir nada,
+código de 3 minutos), correo/teléfono como opción secundaria. A diferencia de compartir por
+correo (queda "Pendiente" hasta que acepten), escanear el QR acompaña al instante — la persona
+que escanea crea su propia solicitud ya `ACEPTADA` directo en Firestore, validado por una regla
+de seguridad nueva que verifica que el código fue reclamado de verdad por quien escribe. Meta
+queda excluida a propósito (su contenido real sigue sin conectar a "Lo que me comparten", ver
+bug ya documentado) — ofrecerle QR ahí solo haría más engañoso ese hueco. Detalle completo en
+`Plan/08-decisiones-tecnicas.md`.
+
+**Recorte de "Compartir seguimiento" + varios Espacios Familia** (2026-08-24): dos decisiones del
+usuario en la misma conversación. (1) Corregido el ícono de QR que mezclaba el emoji "🔳" con el
+`Icons.Filled.QrCode` ya definido (el usuario lo notó al probar). (2) "Compartir seguimiento" se
+sacó por completo de Hábito, Meta y Rutina ("son más personales") — se queda solo en Tarea,
+Medicamento y Cita (el caso real de cuidado, y Tarea "reemplaza" a una meta compartida). (3)
+Un usuario puede tener **varias Familias** ahora (la que formó, la de sus padres, la de su
+pareja) — `FamiliaScreen` lista todas con su propio "Administrar", independiente de cuál sea el
+espacio activo. Sorpresa técnica: la capa de datos/sync ya soportaba N Familias sin ningún
+cambio — el límite de "solo una" vivía únicamente en `FamiliaViewModel`/`FamiliaScreen`. Detalle
+completo en `Plan/08-decisiones-tecnicas.md`.
+
+**Dos bugs reales de "no se borra/cancela de verdad"** (2026-08-24): el usuario reportó que
+Familias eliminadas volvían a aparecer, y un Medicamento en "Sonido" sonando como Alarma.
+(1) "Eliminar espacio Familia" solo borraba local, nunca Firestore — la app la traía de vuelta
+sola en cada apertura (`RestaurarEspaciosFamiliaUseCase`). Arreglado: borra las 4 subcolecciones
++ documento raíz + mi puntero, con el orden correcto para las reglas de seguridad. (2) "Pausar"
+un Medicamento/Cita no cancelaba de verdad sus alarmas (clave de cancelación equivocada) — mismo
+bug que ya se había arreglado para "Eliminar" hace semanas, nunca replicado a "Pausar". La
+pantalla decía "Pausado" pero seguía sonando. Diagnosticado con `sqlite3` sobre la base real del
+dispositivo (no adivinado) — de paso confirmó que el filtro de fecha de vencimiento ya funciona
+bien. Se agregó un log permanente para diagnosticar más rápido la próxima vez. Detalle completo
+en `Plan/08-decisiones-tecnicas.md`.

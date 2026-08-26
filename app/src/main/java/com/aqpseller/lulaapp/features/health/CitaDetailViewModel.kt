@@ -3,10 +3,13 @@ package com.aqpseller.lulaapp.features.health
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.aqpseller.lulaapp.core.ui.CompartirPorQrController
+import com.aqpseller.lulaapp.core.ui.CompartirQrEstado
 import com.aqpseller.lulaapp.domain.model.ActividadDetalle
 import com.aqpseller.lulaapp.domain.model.EstadoActividad
 import com.aqpseller.lulaapp.domain.model.PermisoCompartir
 import com.aqpseller.lulaapp.domain.model.SesionActual
+import com.aqpseller.lulaapp.domain.model.TipoActividad
 import com.aqpseller.lulaapp.domain.usecase.actividad.EliminarActividadUseCase
 import com.aqpseller.lulaapp.domain.usecase.actividad.MarcarActividadUseCase
 import com.aqpseller.lulaapp.domain.usecase.actividad.ObtenerDetalleActividadUseCase
@@ -36,6 +39,7 @@ class CitaDetailViewModel @Inject constructor(
     private val obtenerSesionesCitaUseCase: ObtenerSesionesCitaUseCase,
     private val marcarSesionCitaUseCase: MarcarSesionCitaUseCase,
     private val reprogramarSesionCitaUseCase: ReprogramarSesionCitaUseCase,
+    private val compartirPorQrController: CompartirPorQrController,
 ) : ViewModel() {
 
     val actividadId: String = checkNotNull(savedStateHandle["actividadId"])
@@ -144,6 +148,17 @@ class CitaDetailViewModel @Inject constructor(
     fun solicitudEnviadaMostrada() {
         _solicitudEnviada.value = false
     }
+
+    val estadoCompartirQr: StateFlow<CompartirQrEstado> = compartirPorQrController.estado
+
+    fun generarCodigoQr(permiso: PermisoCompartir) {
+        viewModelScope.launch {
+            val usuarioId = sesionActual().usuarioId
+            compartirPorQrController.generar(viewModelScope, usuarioId, actividadId, TipoActividad.CITA, _uiState.value.nombre, permiso)
+        }
+    }
+
+    fun ocultarCodigoQr() = compartirPorQrController.ocultar()
 
     private suspend fun sesionActual(): SesionActual = sesion ?: obtenerSesionActualUseCase().also { sesion = it }
 }

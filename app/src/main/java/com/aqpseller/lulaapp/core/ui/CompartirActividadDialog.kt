@@ -2,9 +2,18 @@ package com.aqpseller.lulaapp.core.ui
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.QrCode
+import androidx.compose.material3.Button
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -23,33 +32,33 @@ private fun etiquetaPermiso(permiso: PermisoCompartir): String = when (permiso) 
 }
 
 /**
- * "Compartir seguimiento" desde el detalle de cualquier elemento — primer paso del flujo de
- * `Plan/02-pantallas.md` (Círculo de cuidado, fase 1.0). Crea una `SolicitudCompartir`
- * `PENDIENTE`; se sincroniza con Firestore si la otra persona tiene cuenta vinculada — ver
- * `Plan/12-firebase-auth-y-sync.md`. El correo se puede pegar directo (escaneado con el botón
- * "🔳" de la barra superior en vez de escribirlo a mano).
+ * "Compartir seguimiento" desde el detalle de cualquier elemento (Círculo de cuidado). Dos
+ * caminos, igual que Familia (`FamiliaScreen`): **QR** (primario, sin escribir nada — acompaña
+ * al instante en cuanto la otra persona escanea, sin esperar "aceptar") o **correo/teléfono en
+ * texto**, para alguien que no está físicamente presente ahora — esa queda `PENDIENTE` hasta
+ * que la otra persona la acepte de verdad. Ver `Plan/08-decisiones-tecnicas.md`.
  */
 @Composable
 fun CompartirActividadDialog(
     nombreActividad: String,
+    onElegirQr: (permiso: PermisoCompartir) -> Unit,
     onEnviar: (contacto: String, permiso: PermisoCompartir) -> Unit,
     onCancelar: () -> Unit,
+    /** Meta todavía no tiene el contenido real conectado a "Lo que me comparten" (vive en su
+     * propia tabla, no en `Actividad`) — ofrecer QR ahí prometería un "✅ confirmado" que nunca
+     * muestra nada del otro lado. Solo Meta pasa `false`. Ver `Plan/10-pendientes.md`. */
+    soportaQr: Boolean = true,
 ) {
     var contacto by remember { mutableStateOf("") }
     var permiso by remember { mutableStateOf(PermisoCompartir.PUEDE_VER) }
+    var mostrarFormularioContacto by remember { mutableStateOf(!soportaQr) }
 
     AlertDialog(
         onDismissRequest = onCancelar,
         title = { Text("Compartir \"$nombreActividad\"") },
         text = {
             Column {
-                Text("Con quién (nombre, correo o teléfono):")
-                OutlinedTextField(
-                    value = contacto,
-                    onValueChange = { contacto = it },
-                    modifier = Modifier.padding(top = 8.dp),
-                )
-                Text("¿Qué puede hacer esta persona?", modifier = Modifier.padding(top = 16.dp))
+                Text("¿Qué puede hacer esta persona?")
                 Row(modifier = Modifier.padding(top = 8.dp)) {
                     PermisoCompartir.entries.forEach { opcion ->
                         FilterChip(
@@ -60,12 +69,37 @@ fun CompartirActividadDialog(
                         )
                     }
                 }
+
+                if (!mostrarFormularioContacto && soportaQr) {
+                    Button(onClick = { onElegirQr(permiso) }, modifier = Modifier.padding(top = 16.dp).fillMaxWidth()) {
+                        Icon(Icons.Filled.QrCode, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Text(" Que te acompañen escaneando")
+                    }
+                    Text(
+                        text = "Sin escribir nada — queda acompañándote apenas escanea con el botón de escanear de su Lula.",
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(top = 4.dp),
+                    )
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
+                    OutlinedButton(onClick = { mostrarFormularioContacto = true }, modifier = Modifier.fillMaxWidth()) {
+                        Text("Invitar por correo o teléfono")
+                    }
+                } else {
+                    Text("Con quién (nombre, correo o teléfono):", modifier = Modifier.padding(top = 16.dp))
+                    OutlinedTextField(
+                        value = contacto,
+                        onValueChange = { contacto = it },
+                        modifier = Modifier.padding(top = 8.dp),
+                    )
+                }
             }
         },
         confirmButton = {
-            TextButton(
-                onClick = { if (contacto.isNotBlank()) onEnviar(contacto, permiso) },
-            ) { Text("Enviar solicitud") }
+            if (mostrarFormularioContacto) {
+                TextButton(
+                    onClick = { if (contacto.isNotBlank()) onEnviar(contacto, permiso) },
+                ) { Text("Enviar solicitud") }
+            }
         },
         dismissButton = {
             TextButton(onClick = onCancelar) { Text("Cancelar") }

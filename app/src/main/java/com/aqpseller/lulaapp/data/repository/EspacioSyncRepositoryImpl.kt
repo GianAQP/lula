@@ -106,6 +106,42 @@ class EspacioSyncRepositoryImpl @Inject constructor(
             .collection("miembros").document(miembroFirebaseUid).delete().await()
     }
 
+    /** Borra el Espacio completo de Firestore: las 4 subcolecciones + el documento raíz +
+     * mi propio puntero `misEspacios`. Sin esto, `descubrirMisEspacios` seguía encontrando el
+     * espacio (documento raíz y membresía intactos) y lo resucitaba local en cada apertura de
+     * la app — bug real reportado por el usuario, ver `Plan/08-decisiones-tecnicas.md`. Los
+     * punteros `misEspacios` de OTROS miembros quedan huérfanos pero inofensivos: en cuanto el
+     * documento raíz ya no existe, `descubrirMisEspacios` los descarta solo (`espacioDoc.exists()`
+     * es falso) — no hace falta (ni se puede, por reglas de seguridad) borrarlos desde acá.
+     *
+     * Orden importa para las reglas de seguridad (`firestore.rules`): `actividades`/`retos`/
+     * `registrosReto` exigen `esMiembro()` (mi propia membresía tiene que seguir existiendo);
+     * borrar la membresía de OTROS exige `esAdmin()` (también depende de que mi membresía siga
+     * existiendo); el documento raíz exige `esMiembro()` de nuevo. Mi propia membresía se borra
+     * SIEMPRE al final — esa regla no depende de nada más (`auth.uid == miembroFirebaseUid`). */
+    override suspend fun eliminarEspacioCompleto(espacioId: String) {
+        val documentoEspacio = firestore.collection(COLECCION_ESPACIOS).document(espacioId)
+        val miFirebaseUid = firebaseAuth.currentUser?.uid
+
+        for (subcoleccion in listOf("actividades", "retos", "registrosReto")) {
+            val docs = documentoEspacio.collection(subcoleccion).get().await()
+            for (doc in docs.documents) doc.reference.delete().await()
+        }
+
+        val miembros = documentoEspacio.collection("miembros").get().await()
+        for (doc in miembros.documents) {
+            if (doc.id != miFirebaseUid) doc.reference.delete().await()
+        }
+
+        documentoEspacio.delete().await()
+
+        if (miFirebaseUid != null) {
+            documentoEspacio.collection("miembros").document(miFirebaseUid).delete().await()
+            firestore.collection("usuarios").document(miFirebaseUid)
+                .collection("misEspacios").document(espacioId).delete().await()
+        }
+    }
+
     override suspend fun generarCodigoInvitacion(espacioId: String, nombreEspacio: String, deNombre: String): CodigoInvitacionEspacio {
         val miFirebaseUid = checkNotNull(firebaseAuth.currentUser?.uid) { "Necesita cuenta vinculada" }
         val codigoId = IdGenerator.newId()

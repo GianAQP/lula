@@ -30,9 +30,11 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
- * "Familia / Espacios" (CONFIGURACIÓN en el menú "⋮") — crear el espacio Familia, ver quién es
- * miembro y cambiar el espacio activo. Solo un espacio Familia por usuario en esta pasada, ver
- * `Plan/08-decisiones-tecnicas.md` (base local de Fase 1.5, sin invitaciones reales todavía).
+ * "Familia / Espacios" (CONFIGURACIÓN en el menú "⋮") — crear espacios Familia, ver quién es
+ * miembro de cada uno y cambiar el espacio activo. Un usuario puede tener varias Familias (la
+ * que formó, la de sus padres, la de su pareja) — cada una es un `Espacio` independiente; la
+ * capa de datos/sync ya lo soporta sin cambios, esta pantalla es la que antes se quedaba solo
+ * con la primera. Ver `Plan/08-decisiones-tecnicas.md`.
  */
 @HiltViewModel
 class FamiliaViewModel @Inject constructor(
@@ -56,6 +58,7 @@ class FamiliaViewModel @Inject constructor(
     private var sesion: SesionActual? = null
     private var nombreUsuarioActual: String = "Tú"
     private var jobCodigoQr: Job? = null
+    private var jobMiembros: Job? = null
 
     init {
         viewModelScope.launch {
@@ -67,7 +70,7 @@ class FamiliaViewModel @Inject constructor(
         viewModelScope.launch {
             val sesionActual = sesionActual()
             obtenerEspaciosDeUsuarioUseCase(sesionActual.usuarioId).collectLatest { espacios ->
-                val familia = espacios.firstOrNull { it.tipo == TipoEspacio.FAMILIA }
+                val familias = espacios.filter { it.tipo == TipoEspacio.FAMILIA }
                 _uiState.update { estado ->
                     estado.copy(
                         cargando = false,
@@ -79,17 +82,30 @@ class FamiliaViewModel @Inject constructor(
                                 esActivo = espacio.id == sesionActual.espacioId,
                             )
                         },
-                        espacioFamiliaId = familia?.id,
-                        nombreEspacioFamilia = familia?.nombre.orEmpty(),
+                        familias = familias.map { FamiliaResumenUi(id = it.id, nombre = it.nombre) },
+                        // Si la Familia que estaba viendo se eliminó/dejé de ser miembro (ej. la
+                        // borró otro admin), cierro el detalle en vez de dejarlo mostrando datos
+                        // de un espacio que ya no existe para mí.
+                        familiaSeleccionadaId = estado.familiaSeleccionadaId?.takeIf { id -> familias.any { it.id == id } },
                     )
                 }
-                if (familia != null) cargarMiembros(familia.id)
             }
         }
     }
 
-    private fun cargarMiembros(espacioId: String) {
-        viewModelScope.launch {
+    /** Ver/administrar una Familia puntual — independiente del "espacio activo" de arriba, así
+     * no hace falta cambiar de espacio de trabajo solo para invitar a alguien a otra Familia. */
+    fun seleccionarFamilia(espacioId: String, nombre: String) {
+        jobMiembros?.cancel()
+        _uiState.update {
+            it.copy(
+                familiaSeleccionadaId = espacioId,
+                nombreEspacioFamilia = nombre,
+                mostrarFormularioRenombrar = false,
+                mostrarFormularioInvitar = false,
+            )
+        }
+        jobMiembros = viewModelScope.launch {
             obtenerMiembrosEspacioUseCase(espacioId).collect { miembros ->
                 val miUsuarioId = sesionActual().usuarioId
                 _uiState.update { estado ->
@@ -97,11 +113,11 @@ class FamiliaViewModel @Inject constructor(
                         soyAdmin = miembros.find { it.usuarioId == miUsuarioId }?.rol == RolEnEspacio.ADMIN,
                         miembros = miembros.map { miembro ->
                             val esUnoMismo = miembro.usuarioId == miUsuarioId
-                            val nombre = if (esUnoMismo) nombreUsuarioActual else miembro.nombre ?: "Alguien"
+                            val nombreMiembro = if (esUnoMismo) nombreUsuarioActual else miembro.nombre ?: "Alguien"
                             MiembroUi(
                                 usuarioId = miembro.usuarioId,
                                 firebaseUid = miembro.firebaseUid,
-                                nombre = nombre,
+                                nombre = nombreMiembro,
                                 rol = if (miembro.rol == RolEnEspacio.ADMIN) "Admin" else "Miembro",
                                 esUnoMismo = esUnoMismo,
                             )
@@ -110,6 +126,11 @@ class FamiliaViewModel @Inject constructor(
                 }
             }
         }
+    }
+
+    fun cerrarFamiliaSeleccionada() {
+        jobMiembros?.cancel()
+        _uiState.update { it.copy(familiaSeleccionadaId = null, miembros = emptyList()) }
     }
 
     fun mostrarFormularioCrear() {
@@ -145,32 +166,34 @@ class FamiliaViewModel @Inject constructor(
 
     fun renombrarEspacioFamilia(nuevoNombre: String) {
         if (nuevoNombre.isBlank()) return
-        val espacioId = _uiState.value.espacioFamiliaId ?: return
+        val espacioId = _uiState.value.familiaSeleccionadaId ?: return
         viewModelScope.launch {
             renombrarEspacioFamiliaUseCase(espacioId, nuevoNombre, sesionActual().usuarioId)
-            _uiState.update { it.copy(mostrarFormularioRenombrar = false) }
+            _uiState.update { it.copy(mostrarFormularioRenombrar = false, nombreEspacioFamilia = nuevoNombre) }
         }
     }
 
     fun eliminarEspacioFamilia() {
-        val espacioId = _uiState.value.espacioFamiliaId ?: return
+        val espacioId = _uiState.value.familiaSeleccionadaId ?: return
         viewModelScope.launch {
             eliminarEspacioFamiliaUseCase(espacioId, sesionActual().usuarioId)
+            cerrarFamiliaSeleccionada()
         }
     }
 
     /** Salir del espacio yo mismo — el contenido ya creado ahí se queda tal cual. */
     fun salirDeEspacioFamilia() {
-        val espacioId = _uiState.value.espacioFamiliaId ?: return
+        val espacioId = _uiState.value.familiaSeleccionadaId ?: return
         viewModelScope.launch {
             salirDeEspacioFamiliaUseCase(espacioId, sesionActual().usuarioId)
+            cerrarFamiliaSeleccionada()
         }
     }
 
     /** Quitar a otra persona — solo tiene efecto si yo soy admin (verificado también del lado
      * del servidor, ver `firestore.rules`). */
     fun eliminarMiembro(miembro: MiembroUi) {
-        val espacioId = _uiState.value.espacioFamiliaId ?: return
+        val espacioId = _uiState.value.familiaSeleccionadaId ?: return
         viewModelScope.launch {
             eliminarMiembroEspacioUseCase(espacioId, miembro.usuarioId, miembro.firebaseUid, sesionActual().usuarioId)
         }
@@ -186,7 +209,7 @@ class FamiliaViewModel @Inject constructor(
 
     fun invitar(contacto: String) {
         if (contacto.isBlank()) return
-        val espacioId = _uiState.value.espacioFamiliaId ?: return
+        val espacioId = _uiState.value.familiaSeleccionadaId ?: return
         val nombreEspacio = _uiState.value.nombreEspacioFamilia
         viewModelScope.launch {
             invitarAEspacioUseCase(sesionActual().usuarioId, espacioId, nombreEspacio, contacto)
@@ -201,7 +224,7 @@ class FamiliaViewModel @Inject constructor(
     /** Genera un código y lo renueva solo, mientras el diálogo siga abierto, un poco antes de
      * que cada uno venza — así siempre hay un QR vigente en pantalla. */
     fun mostrarCodigoQr() {
-        val espacioId = _uiState.value.espacioFamiliaId ?: return
+        val espacioId = _uiState.value.familiaSeleccionadaId ?: return
         val nombreEspacio = _uiState.value.nombreEspacioFamilia
         _uiState.update { it.copy(mostrarCodigoQr = true) }
         jobCodigoQr?.cancel()

@@ -24,13 +24,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.aqpseller.lulaapp.core.ui.CompartirActividadDialog
 import com.aqpseller.lulaapp.core.ui.ConfirmarEliminarDialog
-import com.aqpseller.lulaapp.core.ui.InvitacionEnviadaDialog
 import com.aqpseller.lulaapp.core.ui.LulaProgressBar
 import com.aqpseller.lulaapp.core.ui.SelectorFechaRapida
 import com.aqpseller.lulaapp.core.utils.DateTimeUtils
-import com.aqpseller.lulaapp.domain.model.PermisoCompartir
 
 @Composable
 fun MetaDetailScreen(
@@ -40,21 +37,11 @@ fun MetaDetailScreen(
     viewModel: MetaDetailViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val solicitudEnviada by viewModel.solicitudEnviada.collectAsState()
     var incrementoTexto by remember { mutableStateOf("") }
     var mostrarConfirmacion by remember { mutableStateOf(false) }
-    var mostrarCompartir by remember { mutableStateOf(false) }
-    var permisoPendiente by remember { mutableStateOf(PermisoCompartir.PUEDE_VER) }
-    var invitacionEnviada by remember { mutableStateOf(false) }
     var mostrarAplazar by remember { mutableStateOf(false) }
     LaunchedEffect(uiState.eliminada) { if (uiState.eliminada) onEliminada() }
     LaunchedEffect(Unit) { viewModel.recargar() }
-    LaunchedEffect(solicitudEnviada) {
-        if (solicitudEnviada) {
-            invitacionEnviada = true
-            viewModel.solicitudEnviadaMostrada()
-        }
-    }
 
     if (uiState.cargando) return
 
@@ -125,9 +112,6 @@ fun MetaDetailScreen(
                 Text("Eliminar meta")
             }
         }
-        OutlinedButton(onClick = { mostrarCompartir = true }, modifier = Modifier.padding(top = 8.dp)) {
-            Text("🤝 Compartir seguimiento")
-        }
     }
 
     if (mostrarConfirmacion) {
@@ -135,26 +119,6 @@ fun MetaDetailScreen(
             mensaje = "Esto elimina la meta \"${uiState.nombre}\" y su progreso para siempre.",
             onConfirmar = { mostrarConfirmacion = false; viewModel.eliminar() },
             onCancelar = { mostrarConfirmacion = false },
-        )
-    }
-
-    if (mostrarCompartir) {
-        CompartirActividadDialog(
-            nombreActividad = uiState.nombre,
-            onEnviar = { contacto, permiso ->
-                mostrarCompartir = false
-                permisoPendiente = permiso
-                viewModel.compartir(contacto, permiso)
-            },
-            onCancelar = { mostrarCompartir = false },
-        )
-    }
-
-    if (invitacionEnviada) {
-        InvitacionEnviadaDialog(
-            nombreActividad = uiState.nombre,
-            permiso = permisoPendiente,
-            onCerrar = { invitacionEnviada = false },
         )
     }
 }

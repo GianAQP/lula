@@ -1,7 +1,9 @@
 package com.aqpseller.lulaapp.domain.repository
 
 import com.aqpseller.lulaapp.domain.model.Conexion
+import com.aqpseller.lulaapp.domain.model.PermisoCompartir
 import com.aqpseller.lulaapp.domain.model.SolicitudCompartir
+import com.aqpseller.lulaapp.domain.model.TipoActividad
 import com.aqpseller.lulaapp.domain.model.Usuario
 import kotlinx.coroutines.flow.Flow
 
@@ -15,6 +17,22 @@ data class PerfilRemoto(
     val horaAlmuerzo: String?,
     val horaCena: String?,
     val onboardingCompletadoEn: Long?,
+)
+
+/** Código para "Compartir seguimiento" con tiempo de vida corto — igual que
+ * `CodigoInvitacionEspacio` de Familia, pero para una Actividad puntual (Hábito/Tarea/Rutina/
+ * Medicamento/Cita). Escanearlo acompaña de inmediato, sin un paso de "aceptar" aparte — ver
+ * `Plan/08-decisiones-tecnicas.md`. */
+data class CodigoCompartirActividad(
+    val codigoId: String,
+    val actividadId: String,
+    val tipoActividad: TipoActividad,
+    val nombreActividad: String,
+    val permiso: PermisoCompartir,
+    val deUsuarioId: String,
+    val deFirebaseUid: String,
+    val deNombre: String,
+    val expiraEn: Long,
 )
 
 /**
@@ -39,4 +57,24 @@ interface CompartirSyncRepository {
      * este dispositivo lo que pase del otro lado (alguien acepta/rechaza, o me llega una
      * nueva). Vacío mientras [miCorreo] esté en blanco (cuenta sin vincular todavía). */
     fun escucharSolicitudes(miUsuarioId: String, miCorreo: String): Flow<List<SolicitudCompartir>>
+
+    /** Genera un código de "Compartir seguimiento" de corta duración, para mostrar como QR. */
+    suspend fun generarCodigoCompartir(
+        actividadId: String,
+        tipoActividad: TipoActividad,
+        nombreActividad: String,
+        permiso: PermisoCompartir,
+        deUsuarioId: String,
+        deNombre: String,
+    ): CodigoCompartirActividad
+
+    /** Reclama un código escaneado — si sigue vigente y nadie más lo reclamó, marca quién lo
+     * reclamó (transacción, mismo patrón que `EspacioSyncRepository.reclamarCodigoInvitacion`)
+     * y devuelve sus datos para poder crear la solicitud ya aceptada. */
+    suspend fun reclamarCodigoCompartir(codigoId: String, miNombre: String, miCorreo: String): CodigoCompartirActividad?
+
+    /** Escucha en vivo un código que yo generé — mientras el diálogo del QR sigue abierto, para
+     * mostrar la confirmación apenas la otra persona lo escanea. Emite el nombre de quien lo
+     * reclamó, o null mientras nadie lo haya hecho todavía. */
+    fun escucharReclamoDeCodigoCompartir(codigoId: String): Flow<String?>
 }
