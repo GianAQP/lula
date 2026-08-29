@@ -154,7 +154,15 @@ service cloud.firestore {
 
       match /miembros/{miembroFirebaseUid} {
         allow read: if esMiembro();
-        allow create, update: if request.auth != null && request.auth.uid == miembroFirebaseUid;
+        allow create: if request.auth != null && request.auth.uid == miembroFirebaseUid;
+        // Uno mismo puede actualizar su propia fila (ej. nombre) libremente. Un admin además
+        // puede "hacer admin" a otro miembro — pero SOLO ese campo (`rol`), nunca el nombre ni
+        // nada más de otra persona. Ver `HacerAdminEspacioUseCase`.
+        allow update: if request.auth != null &&
+          (
+            request.auth.uid == miembroFirebaseUid ||
+            (esAdmin() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['rol']))
+          );
         // Salir del espacio (borrar la propia membresía) o que un admin quite a otra persona.
         allow delete: if request.auth != null && (request.auth.uid == miembroFirebaseUid || esAdmin());
       }

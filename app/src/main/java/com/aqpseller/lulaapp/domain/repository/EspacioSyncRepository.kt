@@ -6,6 +6,7 @@ import com.aqpseller.lulaapp.domain.model.EstadoActividad
 import com.aqpseller.lulaapp.domain.model.Espacio
 import com.aqpseller.lulaapp.domain.model.EspacioMiembro
 import com.aqpseller.lulaapp.domain.model.RetoFamiliar
+import com.aqpseller.lulaapp.domain.model.RolEnEspacio
 import kotlinx.coroutines.flow.Flow
 
 /** Un registro de "cumplido hoy" de Reto familiar tal como llega de Firestore. */
@@ -35,6 +36,11 @@ interface EspacioSyncRepository {
     /** Siempre escribe MI PROPIA membresía (la sesión autenticada actual) — nunca en nombre de
      * otro, las reglas de seguridad no lo permitirían. */
     suspend fun subirMiembro(espacioId: String, miembro: EspacioMiembro)
+
+    /** Un admin cambia el rol de OTRO miembro (hacer admin / quitar admin) — a diferencia de
+     * [subirMiembro], sí escribe en el documento de otra persona; la regla de seguridad solo
+     * permite tocar el campo `rol` en ese caso. */
+    suspend fun actualizarRolMiembro(espacioId: String, miembroFirebaseUid: String, nuevoRol: RolEnEspacio)
 
     /** Borra la membresía de [miembroFirebaseUid] — sirve tanto para "salir del espacio" (borro
      * la mía) como para que un admin quite a otra persona (las reglas de seguridad exigen ser

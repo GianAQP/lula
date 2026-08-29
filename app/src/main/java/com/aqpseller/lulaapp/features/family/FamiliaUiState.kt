@@ -12,6 +12,8 @@ data class EspacioUi(
 data class FamiliaResumenUi(
     val id: String,
     val nombre: String,
+    /** usuarioId de quien la creó — para saber quién conserva el privilegio de eliminarla. */
+    val creadoPor: String,
 )
 
 data class MiembroUi(
@@ -20,6 +22,13 @@ data class MiembroUi(
     val nombre: String,
     val rol: String,
     val esUnoMismo: Boolean,
+    /** Quien creó el espacio no lo puede sacar otro admin — solo puede salir él mismo. */
+    val esCreador: Boolean,
+)
+
+data class HistorialEventoUi(
+    val fecha: String,
+    val texto: String,
 )
 
 data class FamiliaUiState(
@@ -33,8 +42,11 @@ data class FamiliaUiState(
     val familiaSeleccionadaId: String? = null,
     val nombreEspacioFamilia: String = "",
     val miembros: List<MiembroUi> = emptyList(),
-    /** Solo el admin puede quitar a otros miembros. */
+    /** Admin (puede haber varios — co-admins) — agregar/quitar miembros, hacer admin a otro. */
     val soyAdmin: Boolean = false,
+    /** Solo quien creó el espacio — además de todo lo de admin, puede eliminar el espacio
+     * completo y no puede ser quitado por otro admin. */
+    val soyCreador: Boolean = false,
     val mostrarFormularioCrear: Boolean = false,
     val mostrarFormularioRenombrar: Boolean = false,
     val mostrarFormularioInvitar: Boolean = false,
@@ -49,4 +61,7 @@ data class FamiliaUiState(
      * paso de aceptar aparte. Se renueva solo mientras el diálogo sigue abierto. */
     val mostrarCodigoQr: Boolean = false,
     val codigoQrTexto: String? = null,
+    /** Solo visible para admins — quién quitó a quién de este espacio. */
+    val mostrarHistorial: Boolean = false,
+    val historial: List<HistorialEventoUi> = emptyList(),
 )

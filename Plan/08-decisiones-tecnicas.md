@@ -4643,3 +4643,105 @@ Hábito viejo) — los 3 niveles sonaron como corresponde, verificado también e
 paso confirmó que "Pausar"/desactivar un Hábito con Alarma sonando ahora sí lo corta de verdad
 (el otro bug arreglado esta misma ronda). Cierra el hueco.
 
+## Bug real: creador de Familia bajado a Miembro solo + co-admins/historial — añadido 2026-08-27
+
+El usuario creó una Familia, agregó un miembro, y reportó "dice Alguien - Miembro, no encuentro
+cómo borrarla" — ni él mismo aparecía como admin. Confirmado con `sqlite3` sobre la base real:
+**ningún miembro tenía `rol = 'ADMIN'`**, ni siquiera el creador.
+
+**Causa real**: `SincronizarEspacioFamiliaUseCase.respaldarMiPresenciaRemota` — pensado para
+"autorreparar" un Espacio viejo subiendo mi propia membresía si Firestore no la tenía — usaba
+`RolEnEspacio.MIEMBRO` como valor por defecto cuando mi fila local (`encontrado`) resultaba
+`null`. Si este método corre en una carrera de tiempos justo después de crear el espacio (antes
+de que la fila local de ADMIN terminara de guardarse), pisaba mi propia membresía con MIEMBRO
+tanto en Firestore como local — y el listener en vivo de `escucharMiembros` bajaba la copia
+local ya buena a MIEMBRO también, vía `EspacioRepositoryImpl.agregarMiembro`, que sobrescribe
+`rol` sin ninguna protección (a diferencia de `nombre`/`firebaseUid`, que si vienen `null`
+preservan el valor ya guardado). **Arreglado en la fuente**: el fallback ahora usa
+`Espacio.creadoPor` (dato estable, no depende de una carrera) — si nadie más es admin y yo soy
+quien creó el espacio, me quedo/vuelvo ADMIN. Esto también autorrepara una Familia que ya haya
+quedado corrupta por este bug, la próxima vez que ese Espacio vuelva a ser el activo.
+
+**Aprovechando la pregunta, el usuario pidió un modelo de permisos más completo** (respuesta
+detallada a `AskUserQuestion`):
+- **Co-admins**: puede haber varios admins a la vez (no una sola persona) — nuevo
+  `HacerAdminEspacioUseCase`/`QuitarAdminEspacioUseCase`, botones simétricos "Hacer admin"/
+  "Quitar admin" por fila de miembro, ambos con confirmación (`ConfirmarEliminarDialog` ganó
+  `titulo`/`textoConfirmar` opcionales para reusarse acá, no solo para eliminar).
+- **El creador está protegido**: ni "Quitar" ni "Quitar admin" tienen efecto sobre quien creó el
+  espacio si lo ejecuta OTRO admin — solo él mismo podría (`SalirDeEspacioFamiliaUseCase`, ya
+  existente). Verificado en `EliminarMiembroEspacioUseCase`/`QuitarAdminEspacioUseCase`.
+- **Solo el creador elimina el espacio completo**: `EliminarEspacioFamiliaUseCase` pasó de
+  "cualquier admin" a `espacio.creadoPor == usuarioId` — un co-admin puede agregar/quitar gente
+  pero no borrar todo el grupo.
+- **Historial visible solo para admins**: nuevo `HistorialCambiosRepository` (dominio, primera
+  vez que se LEE `HistorialCambios` — existía desde Fase 0.1 solo para escribir) +
+  `ObtenerHistorialMiembrosEspacioUseCase`, filtrado a `accion = 'ELIMINAR'` sobre
+  `entidad = 'espacio_miembro'` (a propósito sin incluir `CREAR`, que se dispara en cada
+  sync/merge de rutina y ensuciaría el historial con ruido en vez de "quién quitó a quién").
+  Botón "📜 Ver historial de quitados", solo visible si `soyAdmin`.
+
+**Bug encontrado y arreglado mientras se construía esto**: `EspacioSyncRepositoryImpl.subirMiembro`
+siempre escribe en el documento de **quien llama** (usa `firebaseAuth.currentUser.uid` como id
+del documento, ignorando lo que diga el `EspacioMiembro` pasado) — funcionaba bien para todos los
+usos anteriores (siempre alguien subiendo su PROPIA membresía), pero "Hacer admin"/"Quitar admin"
+necesitan escribir en el documento de OTRA persona. Se agregó
+`EspacioSyncRepository.actualizarRolMiembro(espacioId, miembroFirebaseUid, nuevoRol)` — un
+`update` de un solo campo (`rol`) al documento correcto, sin tocar `subirMiembro` (para no
+arriesgar sus usos ya establecidos).
+
+**Reglas de Firestore ampliadas**: `miembros/{miembroFirebaseUid}` — `update` ahora permite,
+además de uno mismo, que un admin cambie el campo `rol` de otra persona
+(`esAdmin() && diff().affectedKeys().hasOnly(['rol'])` — ningún otro campo).
+
+Compilado limpio, `installDebug` en dispositivo real, sin crash verificado con `adb logcat`.
+Pendiente que el usuario republique las reglas y confirme que su Familia se autorreparó.
+
+## Bajar admin a Miembro + confirmación + un bug de verificación real — añadido 2026-08-28
+
+**"Quitar admin"** (bajar a un co-admin a Miembro normal, contraparte de "Hacer admin") y
+confirmación (`ConfirmarEliminarDialog` ganó `titulo`/`textoConfirmar` opcionales) para ambas
+acciones — a pedido del usuario ("no hay llave o pregunta de seguridad"). Nuevo
+`QuitarAdminEspacioUseCase`, con la misma protección al creador que el resto (otro admin no
+puede bajarle el admin al creador).
+
+**Bug real encontrado de paso en código recién escrito**: `subirMiembro` siempre escribe en el
+documento de QUIEN LLAMA (usa `firebaseAuth.currentUser.uid`, ignorando lo que diga el
+`EspacioMiembro` pasado) — bien para todos los usos anteriores (siempre alguien subiendo su
+propia membresía), pero "Hacer admin"/"Quitar admin" necesitan escribir en el documento de OTRA
+persona. Se agregó `EspacioSyncRepository.actualizarRolMiembro(espacioId, miembroFirebaseUid,
+nuevoRol)` — un `update` de un solo campo al documento correcto, sin tocar `subirMiembro`.
+Reglas de Firestore ampliadas para permitir que un admin cambie solo el campo `rol` de otro.
+
+**El episodio más importante de esta ronda no fue de la app — fue de cómo se estaba verificando
+que las builds funcionaran.** El usuario probó "Quitar admin" y no aparecía en pantalla, en
+ningún lado, ni siquiera invisible (se descartó tocando toda la fila). Investigado con
+evidencia real, en capas:
+1. `sqlite3` sobre la base del dispositivo — confirmó datos correctos.
+2. `adb shell dumpsys package ... | grep lastUpdateTime` — mostró que la fecha de instalación
+   NUNCA cambiaba entre intentos, ni con `./gradlew clean installDebug`.
+3. `adb pull` del APK realmente instalado (`pm path` para encontrarlo) + extraer los `.dex` +
+   `grep` binario por el texto `"Quitar admin"` — **cero coincidencias**. El APK instalado en el
+   dispositivo era, byte a byte, una build anterior a la que se creía haber instalado.
+4. Revisando `app/build/outputs/apk/` directamente — ni siquiera existía un APK local. La build
+   nunca había llegado a empaquetar nada.
+5. Recién ahí apareció la causa real: `./gradlew installDebug -q 2>&1 | tail -N` — el flag `-q`
+   más el pipe a `tail` **ocultaban tanto errores reales de compilación como el código de
+   salida real** (en un pipeline de shell, el código de salida que ve quien llama es el de
+   `tail`, no el de `gradlew` — `tail` casi siempre "sale bien" aunque el comando anterior haya
+   fallado). El error real: `EspacioSyncRepository.kt` — se agregó el parámetro
+   `nuevoRol: RolEnEspacio` a la interfaz sin importar `RolEnEspacio`, lo que rompía la
+   compilación desde la ronda anterior. Cada "compilado limpio ✅" reportado desde ese momento
+   fue una falsa confirmación — el proyecto llevaba build tras build reinstalando la MISMA APK
+   vieja sin que ninguna señal lo delatara, hasta que se comparó el binario real.
+
+**Corrección permanente**: de acá en adelante, los comandos de compilar/instalar se corren SIN
+pipes que puedan enmascarar el código de salida (ni `| tail`, ni `-q` combinado con pipe) —
+dejando que el propio mecanismo de tareas en segundo plano reporte éxito/fallo real a partir del
+código de salida verdadero, y revisando el archivo de salida completo cuando hace falta ver el
+motivo de un fallo. Import agregado, recompilado (esta vez con el método correcto, que si
+mostró `BUILD FAILED` real la primera vez que aún faltaba el celular conectado), instalado, y
+confirmado con las mismas 3 capas de evidencia (fecha de instalación nueva, tamaño de APK
+distinto, y el texto "Quitar admin" presente en el `.dex` real) antes de decirle al usuario que
+ya estaba listo — nunca más solo "el comando no tiró error".
+

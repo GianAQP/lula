@@ -15,13 +15,19 @@ fun ConfirmarEliminarDialog(
     mensaje: String,
     onConfirmar: () -> Unit,
     onCancelar: () -> Unit,
+    /** Mismo diálogo, reutilizado también para otras acciones que merecen una pregunta de
+     * seguridad antes de un solo toque (ej. "Hacer admin"/"Quitar admin" en Familia) — no todas
+     * son una eliminación, así que el título/texto del botón se pueden personalizar. Por
+     * defecto sigue igual que siempre. */
+    titulo: String = "¿Eliminar?",
+    textoConfirmar: String = "Eliminar",
 ) {
     AlertDialog(
         onDismissRequest = onCancelar,
-        title = { Text("¿Eliminar?") },
+        title = { Text(titulo) },
         text = { Text(mensaje) },
         confirmButton = {
-            TextButton(onClick = onConfirmar) { Text("Eliminar") }
+            TextButton(onClick = onConfirmar) { Text(textoConfirmar) }
         },
         dismissButton = {
             TextButton(onClick = onCancelar) { Text("Cancelar") }

@@ -3,6 +3,7 @@ package com.aqpseller.lulaapp.features.family
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -49,6 +50,8 @@ fun FamiliaScreen(
     var mostrarConfirmarEliminar by remember { mutableStateOf(false) }
     var mostrarConfirmarSalir by remember { mutableStateOf(false) }
     var miembroAQuitar by remember { mutableStateOf<MiembroUi?>(null) }
+    var miembroAHacerAdmin by remember { mutableStateOf<MiembroUi?>(null) }
+    var miembroAQuitarAdmin by remember { mutableStateOf<MiembroUi?>(null) }
     LaunchedEffect(uiState.espacioCambiado) { if (uiState.espacioCambiado) onEspacioCambiado() }
     LaunchedEffect(uiState.mostrarFormularioRenombrar) {
         if (uiState.mostrarFormularioRenombrar) nombreRenombrar = uiState.nombreEspacioFamilia
@@ -96,7 +99,7 @@ fun FamiliaScreen(
                 Text(text = "👨‍👩‍👧 ${familia.nombre}", modifier = Modifier.weight(1f))
                 TextButton(
                     onClick = {
-                        if (estaSeleccionada) viewModel.cerrarFamiliaSeleccionada() else viewModel.seleccionarFamilia(familia.id, familia.nombre)
+                        if (estaSeleccionada) viewModel.cerrarFamiliaSeleccionada() else viewModel.seleccionarFamilia(familia)
                     },
                 ) { Text(if (estaSeleccionada) "Ocultar" else "Administrar") }
             }
@@ -146,10 +149,25 @@ fun FamiliaScreen(
                 Text(text = "Miembros", modifier = Modifier.padding(top = 12.dp))
                 uiState.miembros.forEach { miembro ->
                     Row(modifier = Modifier.padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Text(text = "🙋 ${miembro.nombre} — ${miembro.rol}", modifier = Modifier.weight(1f))
-                        if (uiState.soyAdmin && !miembro.esUnoMismo) {
+                        Text(
+                            text = "🙋 ${miembro.nombre} — ${miembro.rol}" + if (miembro.esCreador) " (creador)" else "",
+                            modifier = Modifier.weight(1f),
+                        )
+                        if (uiState.soyAdmin && !miembro.esUnoMismo && !miembro.esCreador) {
+                            if (miembro.rol == "Admin") {
+                                TextButton(onClick = { miembroAQuitarAdmin = miembro }) { Text("Quitar admin") }
+                            } else {
+                                TextButton(onClick = { miembroAHacerAdmin = miembro }) { Text("Hacer admin") }
+                            }
+                        }
+                        if (uiState.soyAdmin && !miembro.esUnoMismo && !miembro.esCreador) {
                             TextButton(onClick = { miembroAQuitar = miembro }) { Text("Quitar") }
                         }
+                    }
+                }
+                if (uiState.soyAdmin) {
+                    TextButton(onClick = viewModel::mostrarHistorial, modifier = Modifier.padding(top = 4.dp)) {
+                        Text("📜 Ver historial de quitados")
                     }
                 }
                 if (!uiState.cuentaVinculada) {
@@ -206,8 +224,10 @@ fun FamiliaScreen(
                     OutlinedButton(onClick = viewModel::mostrarFormularioRenombrar, modifier = Modifier.padding(end = 8.dp)) {
                         Text("✏️ Renombrar")
                     }
-                    OutlinedButton(onClick = { mostrarConfirmarEliminar = true }) {
-                        Text("🗑️ Eliminar")
+                    if (uiState.soyCreador) {
+                        OutlinedButton(onClick = { mostrarConfirmarEliminar = true }) {
+                            Text("🗑️ Eliminar")
+                        }
                     }
                 }
                 TextButton(onClick = { mostrarConfirmarSalir = true }, modifier = Modifier.padding(top = 8.dp)) {
@@ -241,6 +261,26 @@ fun FamiliaScreen(
             onCancelar = { miembroAQuitar = null },
         )
     }
+    miembroAHacerAdmin?.let { miembro ->
+        ConfirmarEliminarDialog(
+            titulo = "¿Hacer admin?",
+            textoConfirmar = "Hacer admin",
+            mensaje = "\"${miembro.nombre}\" va a poder invitar, quitar miembros y nombrar otros admins en " +
+                "\"${uiState.nombreEspacioFamilia}\", igual que tú.",
+            onConfirmar = { viewModel.hacerAdmin(miembro); miembroAHacerAdmin = null },
+            onCancelar = { miembroAHacerAdmin = null },
+        )
+    }
+    miembroAQuitarAdmin?.let { miembro ->
+        ConfirmarEliminarDialog(
+            titulo = "¿Quitar admin?",
+            textoConfirmar = "Quitar admin",
+            mensaje = "\"${miembro.nombre}\" deja de ser admin de \"${uiState.nombreEspacioFamilia}\" — pasa a " +
+                "miembro normal, ya no puede invitar, quitar gente ni nombrar otros admins.",
+            onConfirmar = { viewModel.quitarAdmin(miembro); miembroAQuitarAdmin = null },
+            onCancelar = { miembroAQuitarAdmin = null },
+        )
+    }
     if (uiState.mostrarInvitacionEnviada) {
         InvitacionQrDialog(
             titulo = "Invitación enviada",
@@ -272,6 +312,31 @@ fun FamiliaScreen(
                         Image(bitmap = qr, contentDescription = null, modifier = Modifier.size(220.dp))
                     } else {
                         Text("Generando código nuevo…", style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+            },
+        )
+    }
+    if (uiState.mostrarHistorial) {
+        AlertDialog(
+            onDismissRequest = viewModel::ocultarHistorial,
+            confirmButton = { TextButton(onClick = viewModel::ocultarHistorial) { Text("Cerrar") } },
+            title = { Text("Historial de quitados") },
+            text = {
+                if (uiState.historial.isEmpty()) {
+                    Text(
+                        text = "Todavía nadie salió ni fue quitado de \"${uiState.nombreEspacioFamilia}\".",
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                } else {
+                    Column(modifier = Modifier.heightIn(max = 320.dp).verticalScroll(rememberScrollState())) {
+                        uiState.historial.forEach { evento ->
+                            Column(modifier = Modifier.padding(vertical = 6.dp)) {
+                                Text(text = evento.texto, style = MaterialTheme.typography.bodyMedium)
+                                Text(text = evento.fecha, style = MaterialTheme.typography.bodySmall)
+                            }
+                            HorizontalDivider()
+                        }
                     }
                 }
             },

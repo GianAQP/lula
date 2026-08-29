@@ -1211,3 +1211,30 @@ sonaran como Alarma en vez de Sonido — resultó demasiado molesto en la práct
 parar, no encontró cómo pararlo) y se revirtió el mismo día. Confirmado con 5 pruebas reales
 espaciadas 2 minutos: los 3 niveles ya suenan correctamente. Detalle completo en
 `Plan/08-decisiones-tecnicas.md`.
+
+**Bug real: creador de Familia bajado a Miembro solo + modelo de permisos completo** (2026-08-27):
+el usuario creó una Familia y nadie quedó como admin, ni él mismo — confirmado con `sqlite3`.
+Causa real: una carrera de tiempos en la auto-reparación de membresías (`respaldarMiPresenciaRemota`)
+podía pisar el rol ADMIN del creador con MIEMBRO por defecto; arreglado usando `Espacio.creadoPor`
+(dato estable) en vez de un valor fijo, lo que también autorrepara Familias ya afectadas. De paso,
+a pedido del usuario, se construyó un modelo de permisos más completo: **varios co-admins**
+(botones "Hacer admin"/"Quitar admin", ambos con confirmación), **el creador protegido** (nadie
+más lo puede quitar ni bajarle el admin), **solo el creador elimina el espacio completo**, y un
+**historial "quién quitó a quién"** visible solo para admins (primera vez que se lee
+`HistorialCambios`, existía desde Fase 0.1 solo para escribir). Bug encontrado de paso mientras
+se construía: `subirMiembro` siempre escribía en el documento de quien llama, no en el de la
+persona a la que se le cambiaba el rol — se agregó `actualizarRolMiembro` dedicado. Reglas de
+Firestore ampliadas (`miembros` ahora permite que un admin cambie solo el campo `rol` de otro).
+Detalle completo en `Plan/08-decisiones-tecnicas.md`.
+
+**"Quitar admin" + un bug de verificación, no de la app** (2026-08-28): se agregó "Quitar admin"
+(bajar a un co-admin) con confirmación, simétrico a "Hacer admin". Lo importante de esta ronda
+no fue la funcionalidad — fue descubrir que **varias "compilaciones exitosas" reportadas en
+rondas anteriores eran falsas**: `./gradlew ... -q 2>&1 | tail -N` ocultaba tanto errores reales
+de Kotlin como el código de salida real (el pipe hace que el resultado visible sea el de `tail`,
+no el de `gradlew`). La causa concreta: un `import` faltante rompía la compilación desde la
+ronda anterior, y el dispositivo llevaba build tras build reinstalando la misma APK vieja sin
+ninguna señal de error. Se encontró comparando el APK realmente instalado (extraído del
+dispositivo con `adb pull` + `pm path`) contra el código fuente, byte a byte. Desde ahora, los
+comandos de compilar/instalar corren sin pipes que puedan ocultar el código de salida. Detalle
+completo en `Plan/08-decisiones-tecnicas.md`.

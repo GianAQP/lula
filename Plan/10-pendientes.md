@@ -133,12 +133,15 @@ falta activar en cuanto exista:
   activarse solo una vez haya una solicitud real pendiente — falta confirmarlo con una segunda
   cuenta real.
 - **Fase 1.5 — Familia/Equipo**: invitar miembros de verdad (2026-08-20) y sincronizar el
-  contenido — Tareas y Retos familiares (2026-08-21) — ya están construidos. Falta probar todo
-  junto con una segunda cuenta/dispositivo real. Sigue pendiente: roles admin/miembro con
-  sentido real (hoy quien invita queda admin, quien acepta siempre entra como `MIEMBRO` sin
-  forma de cambiarlo), progreso de un Reto familiar con más de un participante real (falta
-  probarlo con alguien de verdad), y sincronizar Hábitos/Medicamentos/Citas dentro de un Espacio
-  Familia (a propósito fuera de alcance — son de uso personal, ver `08-decisiones-tecnicas.md`).
+  contenido — Tareas y Retos familiares (2026-08-21) — ya están construidos. Roles admin/miembro
+  con sentido real — **construido (2026-08-27/28)**: varios co-admins, "Hacer admin"/"Quitar
+  admin" con confirmación, el creador protegido (nadie más lo puede quitar ni bajarle el admin),
+  solo el creador elimina el espacio completo, historial "quién quitó a quién" visible solo para
+  admins. Ver `08-decisiones-tecnicas.md`. Falta probar todo junto con una segunda cuenta/
+  dispositivo real. Sigue pendiente: progreso de un Reto familiar con más de un participante real
+  (falta probarlo con alguien de verdad), y sincronizar Hábitos/Medicamentos/Citas dentro de un
+  Espacio Familia (a propósito fuera de alcance — son de uso personal, ver
+  `08-decisiones-tecnicas.md`).
 - **Compartir una Lista en seguimiento conjunto con un amigo puntual** (no solo dentro de un
   espacio Familia) — mismo patrón que ya existe en Retos familiares ("X de Y ya cumplieron
   hoy"), aplicado a una Lista. Pedido por el usuario 2026-08-15, ver `08-decisiones-tecnicas.md`.

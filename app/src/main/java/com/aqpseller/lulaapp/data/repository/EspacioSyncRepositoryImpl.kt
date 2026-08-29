@@ -65,6 +65,19 @@ class EspacioSyncRepositoryImpl @Inject constructor(
             .collection("miembros").document(miFirebaseUid).set(datos).await()
     }
 
+    /** A diferencia de [subirMiembro] (que siempre escribe MI PROPIA membresía, usando mi
+     * propio uid como id del documento pase lo que pase en `miembro`), esto escribe en el
+     * documento de OTRA persona — necesario para "Hacer admin"/"Quitar admin" (un admin cambia
+     * el rol de otro miembro). Se usa `update` de un solo campo, no `set`, porque la regla de
+     * seguridad solo permite tocar `rol` en ese caso (`diff().affectedKeys().hasOnly(['rol'])`)
+     * — un `set` con el mapa completo (aunque los demás valores no cambien) arriesga violar esa
+     * regla. Ver `Plan/08-decisiones-tecnicas.md`. */
+    override suspend fun actualizarRolMiembro(espacioId: String, miembroFirebaseUid: String, nuevoRol: RolEnEspacio) {
+        firestore.collection(COLECCION_ESPACIOS).document(espacioId)
+            .collection("miembros").document(miembroFirebaseUid)
+            .update("rol", nuevoRol.name).await()
+    }
+
     override suspend fun subirPunteroMiEspacio(espacioId: String) {
         val miFirebaseUid = firebaseAuth.currentUser?.uid ?: return
         firestore.collection("usuarios").document(miFirebaseUid)

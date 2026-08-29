@@ -10,6 +10,7 @@ import com.aqpseller.lulaapp.data.repository.ConexionRepositoryImpl
 import com.aqpseller.lulaapp.data.repository.EntradaDiarioRepositoryImpl
 import com.aqpseller.lulaapp.data.repository.EspacioRepositoryImpl
 import com.aqpseller.lulaapp.data.repository.EspacioSyncRepositoryImpl
+import com.aqpseller.lulaapp.data.repository.HistorialCambiosRepositoryImpl
 import com.aqpseller.lulaapp.data.repository.PersonalSyncRepositoryImpl
 import com.aqpseller.lulaapp.data.repository.FinanzasRepositoryImpl
 import com.aqpseller.lulaapp.data.repository.ListaRepositoryImpl
@@ -30,6 +31,7 @@ import com.aqpseller.lulaapp.domain.repository.ConexionRepository
 import com.aqpseller.lulaapp.domain.repository.EntradaDiarioRepository
 import com.aqpseller.lulaapp.domain.repository.EspacioRepository
 import com.aqpseller.lulaapp.domain.repository.EspacioSyncRepository
+import com.aqpseller.lulaapp.domain.repository.HistorialCambiosRepository
 import com.aqpseller.lulaapp.domain.repository.PersonalSyncRepository
 import com.aqpseller.lulaapp.domain.repository.FinanzasRepository
 import com.aqpseller.lulaapp.domain.repository.ListaRepository
@@ -135,4 +137,8 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindCareCircleContenidoSyncRepository(impl: CareCircleContenidoSyncRepositoryImpl): CareCircleContenidoSyncRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindHistorialCambiosRepository(impl: HistorialCambiosRepositoryImpl): HistorialCambiosRepository
 }

@@ -60,18 +60,35 @@ class SincronizarEspacioFamiliaUseCase @Inject constructor(
     private suspend fun respaldarMiPresenciaRemota(espacioId: String, miUsuarioId: String) {
         runCatching {
             val espacio = espacioRepository.obtenerEspacioSiEsMiembro(espacioId, miUsuarioId) ?: return
-            val encontrado = espacioRepository.observarMiembros(espacioId).first().find { it.usuarioId == miUsuarioId }
+            val miembrosLocales = espacioRepository.observarMiembros(espacioId).first()
+            val encontrado = miembrosLocales.find { it.usuarioId == miUsuarioId }
             // Si mi fila de miembro es de antes de que existiera `nombre` (o nunca se guardó),
             // se autorrepara acá mismo con mi nombre actual — mismo criterio que el resto de
             // este método (arreglar espacios/membresías viejas de paso, sin migración especial).
             val miNombre = encontrado?.nombre ?: usuarioRepository.observarUsuario().first()?.nombrePreferido
-            val miMiembro = (encontrado ?: EspacioMiembro(espacioId = espacioId, usuarioId = miUsuarioId, rol = RolEnEspacio.MIEMBRO))
-                .copy(nombre = miNombre)
+            // Bug real encontrado 2026-08-27: acá abajo el rol por defecto para "encontrado ==
+            // null" era MIEMBRO a secas — si este método corría en una carrera de tiempos justo
+            // después de `CrearEspacioFamiliaUseCase` (antes de que mi propia fila local de
+            // ADMIN terminara de guardarse), pisaba mi membresía real con MIEMBRO, tanto acá
+            // como en Firestore — y de ahí el listener de `escucharMiembros` bajaba también la
+            // copia local ya buena a MIEMBRO. Nunca asumir MIEMBRO por defecto para quien de
+            // verdad creó el espacio: si no hay nadie con ADMIN todavía y yo soy `creadoPor`,
+            // me quedo como ADMIN — esto también autorrepara un espacio que ya haya quedado sin
+            // ningún admin por este mismo bug. Ver `Plan/08-decisiones-tecnicas.md`.
+            val soyCreador = espacio.creadoPor == miUsuarioId
+            val nadieEsAdmin = miembrosLocales.none { it.rol == RolEnEspacio.ADMIN }
+            val miRol = when {
+                encontrado?.rol == RolEnEspacio.ADMIN -> RolEnEspacio.ADMIN
+                soyCreador && (encontrado == null || nadieEsAdmin) -> RolEnEspacio.ADMIN
+                else -> encontrado?.rol ?: RolEnEspacio.MIEMBRO
+            }
+            val miMiembro = (encontrado ?: EspacioMiembro(espacioId = espacioId, usuarioId = miUsuarioId, rol = miRol))
+                .copy(nombre = miNombre, rol = miRol)
             espacioSyncRepository.subirEspacio(espacio)
             espacioSyncRepository.subirMiembro(espacioId, miMiembro)
             espacioSyncRepository.subirPunteroMiEspacio(espacioId)
-            if (encontrado?.nombre == null && miNombre != null) {
-                espacioRepository.agregarMiembro(espacioId, miUsuarioId, miMiembro.rol, miNombre)
+            if (encontrado?.nombre == null || encontrado.rol != miRol) {
+                espacioRepository.agregarMiembro(espacioId, miUsuarioId, miRol, miNombre)
             }
         }
     }

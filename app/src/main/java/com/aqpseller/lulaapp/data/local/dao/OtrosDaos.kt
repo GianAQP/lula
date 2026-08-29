@@ -117,4 +117,11 @@ interface HistorialCambiosDao {
 
     @Query("SELECT * FROM historial_cambios WHERE entidad = :entidad AND accion = :accion AND timestamp BETWEEN :desde AND :hasta ORDER BY timestamp DESC")
     suspend fun obtenerPorEntidadYAccionEnRango(entidad: String, accion: String, desde: Long, hasta: Long): List<HistorialCambiosEntity>
+
+    /** Solo ELIMINAR (quitar/salir de un Espacio) — a propósito no incluye CREAR, que se dispara
+     * en cada sync/merge de rutina y ensuciaría el historial con ruido, no con lo que un admin
+     * de verdad quiere ver ("a quién se quitó y quién lo hizo"). Ver
+     * `Plan/08-decisiones-tecnicas.md`. */
+    @Query("SELECT * FROM historial_cambios WHERE entidad = 'espacio_miembro' AND accion = 'ELIMINAR' AND entidadId LIKE :prefijoEspacioId ORDER BY timestamp DESC")
+    fun observarEliminacionesDeMiembros(prefijoEspacioId: String): Flow<List<HistorialCambiosEntity>>
 }
