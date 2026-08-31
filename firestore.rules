@@ -39,6 +39,12 @@ service cloud.firestore {
         allow read, write: if request.auth != null && request.auth.uid == firebaseUid;
       }
 
+      // Ajustes de pantalla (barra inferior, duración de alarma, etc.) — subcolección aparte del
+      // documento raíz a propósito, ver `CompartirSyncRepositoryImpl.subirAjustes`.
+      match /ajustes/{docId} {
+        allow read, write: if request.auth != null && request.auth.uid == firebaseUid;
+      }
+
       // Resto de lo Personal (Finanzas, Diario, Notas, Metas, Listas, Mi propósito) — mismo
       // patrón privado que arriba: solo el dueño de la cuenta lee/escribe. Ver
       // `Plan/12-firebase-auth-y-sync.md`.
@@ -70,6 +76,11 @@ service cloud.firestore {
         allow read, write: if request.auth != null && request.auth.uid == firebaseUid;
       }
       match /registrosSemanales/{registroId} {
+        allow read, write: if request.auth != null && request.auth.uid == firebaseUid;
+      }
+      // Historial de "🔔 Notificaciones" — para que no se pierda al cambiar de celular. Ver
+      // `Plan/08-decisiones-tecnicas.md`.
+      match /notificaciones/{notificacionId} {
         allow read, write: if request.auth != null && request.auth.uid == firebaseUid;
       }
     }
@@ -209,6 +220,15 @@ service cloud.firestore {
         request.resource.data.reclamadoPor == request.auth.uid &&
         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reclamadoPor']);
       allow delete: if request.auth != null && request.auth.uid == resource.data.deFirebaseUid;
+    }
+
+    // "Recordarle" (Círculo de cuidado, permiso PUEDE_VER_Y_RECORDAR) — quien acompaña crea el
+    // aviso, solo quien comparte (a quien va dirigido) puede leerlo o borrarlo. No es push real,
+    // solo se ve si la app de quien comparte está abierta/en memoria cuando llega. Ver
+    // `Plan/08-decisiones-tecnicas.md`.
+    match /recordatoriosSolicitados/{recordatorioId} {
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.deFirebaseUid;
+      allow read, delete: if request.auth != null && request.auth.uid == resource.data.paraFirebaseUid;
     }
 
     // Cualquier otra colección no listada arriba: denegada por defecto.

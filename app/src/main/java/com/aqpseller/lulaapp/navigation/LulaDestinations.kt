@@ -39,6 +39,7 @@ object LulaDestinations {
     const val CITA_DETALLE = "cita/{actividadId}"
     const val ACCION_TOMA = "toma_accion/{actividadId}/{horario}"
     const val CIRCULO_CUIDADO = "circulo_cuidado"
+    const val NOTIFICACIONES = "notificaciones"
     const val LO_QUE_ME_COMPARTEN = "lo_que_me_comparten"
     const val FECHAS_IMPORTANTES = "fechas_importantes"
     const val CREAR_FECHA_IMPORTANTE = "crear_fecha_importante?actividadId={actividadId}"
@@ -50,8 +51,8 @@ object LulaDestinations {
     const val DIARIO_CALENDARIO = "diario_calendario"
     const val PROGRESO = "progreso"
     const val FAMILIA = "familia"
-    const val RETOS_FAMILIARES = "retos_familiares"
-    const val CREAR_RETO_FAMILIAR = "crear_reto_familiar"
+    const val RETOS_FAMILIARES = "retos_familiares/{espacioId}"
+    const val CREAR_RETO_FAMILIAR = "crear_reto_familiar/{espacioId}"
     const val PROPOSITO_PERSONAL = "proposito_personal"
     const val EDITAR_RESPUESTA_PROPOSITO = "editar_respuesta_proposito/{preguntaId}"
     const val TEXTO_LEGAL = "texto_legal/{tipo}"
@@ -78,6 +79,8 @@ object LulaDestinations {
     fun crearFechaImportante(actividadId: String? = null) = "crear_fecha_importante" + (actividadId?.let { "?actividadId=$it" } ?: "")
     fun notaEditor(notaId: String? = null) = "nota" + (notaId?.let { "?notaId=$it" } ?: "")
     fun editarRespuestaProposito(preguntaId: String) = "editar_respuesta_proposito/$preguntaId"
+    fun retosFamiliares(espacioId: String) = "retos_familiares/$espacioId"
+    fun crearRetoFamiliar(espacioId: String) = "crear_reto_familiar/$espacioId"
     fun textoLegal(tipo: String) = "texto_legal/$tipo"
     fun diarioEntrada(entradaId: String? = null, fecha: Long? = null): String {
         val params = listOfNotNull(entradaId?.let { "entradaId=$it" }, fecha?.let { "fecha=$it" })

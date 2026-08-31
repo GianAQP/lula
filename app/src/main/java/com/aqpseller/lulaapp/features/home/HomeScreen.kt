@@ -178,6 +178,28 @@ fun HomeScreen(
             }
         }
 
+        // Motivador, no de castigo — a propósito no usa el color de error de los banners de
+        // arriba. La racha 🔥 ya no baja sola (ver `08-decisiones-tecnicas.md`), esto solo
+        // invita a cerrar el día que se quedó pendiente para que siga sumando.
+        if (uiState.diaAnteriorSinCerrar) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(lulaContainerColor(LulaPrimaryContainerLight, LulaPrimaryContainerDark))
+                    .clickable(onClick = onVerCalendario)
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = "🔥 Ayer se quedó sin cerrar — ciérralo desde el calendario y tu racha sigue sumando",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = lulaContentColorSobreContainer(),
+                    modifier = Modifier.weight(1f),
+                )
+                Text(text = "Cerrar →", style = MaterialTheme.typography.labelLarge, color = lulaContentColorSobreContainer())
+            }
+        }
+
         if (!uiState.hayAlgoParaHoy) {
             EmptyState(
                 emoji = "🌱",

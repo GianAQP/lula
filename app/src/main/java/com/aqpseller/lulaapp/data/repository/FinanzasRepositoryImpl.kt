@@ -66,4 +66,7 @@ class FinanzasRepositoryImpl @Inject constructor(
 
     override fun observarMovimientosEntrePeriodo(espacioId: String, desde: Long, hasta: Long): Flow<List<MovimientoFinanciero>> =
         finanzasDao.observarEntrePeriodo(espacioId, desde, hasta).map { lista -> lista.map { it.toDomain() } }
+
+    override fun buscarMovimientos(espacioId: String, consulta: String): Flow<List<MovimientoFinanciero>> =
+        finanzasDao.buscar(espacioId, consulta).map { lista -> lista.map { it.toDomain() } }
 }

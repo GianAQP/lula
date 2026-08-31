@@ -5,13 +5,18 @@ import androidx.lifecycle.viewModelScope
 import com.aqpseller.lulaapp.core.utils.DateTimeUtils
 import com.aqpseller.lulaapp.domain.model.EntradaDiario
 import com.aqpseller.lulaapp.domain.model.SesionActual
+import com.aqpseller.lulaapp.domain.usecase.diario.BuscarEntradasDiarioUseCase
 import com.aqpseller.lulaapp.domain.usecase.diario.EliminarEntradaDiarioUseCase
 import com.aqpseller.lulaapp.domain.usecase.diario.ObtenerEntradasDiarioUseCase
 import com.aqpseller.lulaapp.domain.usecase.usuario.ObtenerSesionActualUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -26,16 +31,19 @@ private fun EntradaDiario.aItemUi(): DiaryEntryItemUi {
     )
 }
 
+@OptIn(FlowPreview::class)
 @HiltViewModel
 class DiaryListViewModel @Inject constructor(
     private val obtenerSesionActualUseCase: ObtenerSesionActualUseCase,
     private val obtenerEntradasDiarioUseCase: ObtenerEntradasDiarioUseCase,
+    private val buscarEntradasDiarioUseCase: BuscarEntradasDiarioUseCase,
     private val eliminarEntradaDiarioUseCase: EliminarEntradaDiarioUseCase,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(DiaryListUiState())
     val uiState: StateFlow<DiaryListUiState> = _uiState.asStateFlow()
 
+    private val consulta = MutableStateFlow("")
     private var sesion: SesionActual? = null
 
     init {
@@ -44,10 +52,27 @@ class DiaryListViewModel @Inject constructor(
             sesion = sesionActual
             // Diario es privado (vive detrás de Zona Privada) — siempre el espacio Personal, sin
             // importar cuál esté activo. Ver `SesionActual`, `08-decisiones-tecnicas.md`.
-            obtenerEntradasDiarioUseCase(sesionActual.espacioPersonalId).collect { entradas ->
-                _uiState.value = DiaryListUiState(cargando = false, entradas = entradas.map { it.aItemUi() })
-            }
+            // `debounce` evita disparar una consulta nueva en cada tecla mientras se escribe —
+            // pedido explícito: un buscador eficiente que no se sienta lento. `flatMapLatest`
+            // cancela la búsqueda anterior si llega una consulta más nueva antes de que termine.
+            consulta
+                .debounce(250)
+                .flatMapLatest { texto ->
+                    if (texto.isBlank()) {
+                        obtenerEntradasDiarioUseCase(sesionActual.espacioPersonalId)
+                    } else {
+                        buscarEntradasDiarioUseCase(sesionActual.espacioPersonalId, texto.trim())
+                    }
+                }
+                .collect { entradas ->
+                    _uiState.update { it.copy(cargando = false, entradas = entradas.map { e -> e.aItemUi() }) }
+                }
         }
+    }
+
+    fun buscar(texto: String) {
+        consulta.value = texto
+        _uiState.update { it.copy(consulta = texto) }
     }
 
     fun eliminar(entradaId: String) {

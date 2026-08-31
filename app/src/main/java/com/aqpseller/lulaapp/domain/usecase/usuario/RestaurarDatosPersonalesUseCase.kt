@@ -7,6 +7,7 @@ import com.aqpseller.lulaapp.domain.repository.FinanzasRepository
 import com.aqpseller.lulaapp.domain.repository.ListaRepository
 import com.aqpseller.lulaapp.domain.repository.MetaRepository
 import com.aqpseller.lulaapp.domain.repository.NotaRepository
+import com.aqpseller.lulaapp.domain.repository.NotificacionRepository
 import com.aqpseller.lulaapp.domain.repository.PersonalSyncRepository
 import com.aqpseller.lulaapp.domain.repository.PropositoPersonalRepository
 import com.aqpseller.lulaapp.domain.repository.RegistroDiarioRepository
@@ -33,6 +34,7 @@ class RestaurarDatosPersonalesUseCase @Inject constructor(
     private val propositoPersonalRepository: PropositoPersonalRepository,
     private val registroDiarioRepository: RegistroDiarioRepository,
     private val registroSemanalRepository: RegistroSemanalRepository,
+    private val notificacionRepository: NotificacionRepository,
 ) {
     suspend operator fun invoke(usuarioId: String) {
         val espacioPersonalId = espacioRepository.obtenerEspacioPersonal(usuarioId)?.id ?: return
@@ -91,6 +93,9 @@ class RestaurarDatosPersonalesUseCase @Inject constructor(
         }
         personalSyncRepository.restaurarRegistrosSemanales().forEach { registro ->
             registroSemanalRepository.guardarRevision(registro.copy(espacioId = espacioPersonalId), usuarioId)
+        }
+        personalSyncRepository.restaurarNotificaciones().forEach { notificacion ->
+            notificacionRepository.restaurarDesdeRemota(notificacion)
         }
     }
 }

@@ -19,6 +19,7 @@ import com.aqpseller.lulaapp.domain.model.MomentoRelativoComida
 import com.aqpseller.lulaapp.domain.model.MovimientoFinanciero
 import com.aqpseller.lulaapp.domain.model.NivelRecordatorio
 import com.aqpseller.lulaapp.domain.model.Nota
+import com.aqpseller.lulaapp.domain.model.Notificacion
 import com.aqpseller.lulaapp.domain.model.Privacidad
 import com.aqpseller.lulaapp.domain.model.PropositoPersonal
 import com.aqpseller.lulaapp.domain.model.RecordatorioCita
@@ -53,6 +54,7 @@ private const val SUBCOLECCION_LISTAS = "listas"
 private const val SUBCOLECCION_PROPOSITO = "proposito"
 private const val SUBCOLECCION_REGISTROS_DIARIOS = "registrosDiarios"
 private const val SUBCOLECCION_REGISTROS_SEMANALES = "registrosSemanales"
+private const val SUBCOLECCION_NOTIFICACIONES = "notificaciones"
 
 /**
  * `usuarios/{miFirebaseUid}/actividadesPersonales/{actividadId}` (Hábitos y Tareas, discriminados
@@ -730,6 +732,39 @@ class PersonalSyncRepositoryImpl @Inject constructor(
                 queLogre = doc.getString("queLogre"),
                 queNoFunciono = doc.getString("queNoFunciono"),
                 queAjusto = doc.getString("queAjusto"),
+            )
+        }
+    }
+
+    override suspend fun subirNotificacion(notificacion: Notificacion) {
+        val coleccion = coleccion(SUBCOLECCION_NOTIFICACIONES) ?: return
+        val datos = mapOf(
+            "emoji" to notificacion.emoji,
+            "titulo" to notificacion.titulo,
+            "cuerpo" to notificacion.cuerpo,
+            "fecha" to notificacion.fecha,
+            "leido" to notificacion.leido,
+            "solicitudId" to notificacion.solicitudId,
+        )
+        coleccion.document(notificacion.id).set(datos).await()
+    }
+
+    override suspend fun marcarNotificacionLeidaRemota(notificacionId: String) {
+        val coleccion = coleccion(SUBCOLECCION_NOTIFICACIONES) ?: return
+        coleccion.document(notificacionId).update("leido", true).await()
+    }
+
+    override suspend fun restaurarNotificaciones(): List<Notificacion> {
+        val coleccion = coleccion(SUBCOLECCION_NOTIFICACIONES) ?: return emptyList()
+        return coleccion.get().await().documents.mapNotNull { doc ->
+            Notificacion(
+                id = doc.id,
+                emoji = doc.getString("emoji") ?: return@mapNotNull null,
+                titulo = doc.getString("titulo") ?: return@mapNotNull null,
+                cuerpo = doc.getString("cuerpo") ?: "",
+                fecha = doc.getLong("fecha") ?: 0L,
+                leido = doc.getBoolean("leido") ?: false,
+                solicitudId = doc.getString("solicitudId"),
             )
         }
     }

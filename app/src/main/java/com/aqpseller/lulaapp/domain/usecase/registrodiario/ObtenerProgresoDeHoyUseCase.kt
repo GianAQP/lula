@@ -15,26 +15,27 @@ class ObtenerProgresoDeHoyUseCase @Inject constructor(
     }
 
     /**
-     * Racha = días consecutivos con el día cerrado y ≥1 actividad cumplida (`01-arquitectura.md`).
-     * Si hoy todavía no se cerró, no cuenta como "racha rota" — se sigue mostrando la racha hasta
-     * ayer (cerrar hoy la extiende en +1, no aparece de golpe). Antes se empezaba a contar
-     * siempre desde hoy, así que una racha real de varios días se veía en 0 toda la mañana hasta
-     * cerrar el día, como si se hubiera perdido sin haberse perdido — a pedido del usuario. Ver
+     * Racha = total de días cerrados con ≥1 actividad cumplida, sin importar si hay huecos entre
+     * medio — a propósito NO es "días consecutivos" (así era antes): si te saltas un día, la
+     * racha simplemente se queda igual, nunca baja ni se rompe a 0. Un fuego que retrocede se
+     * siente como un castigo por algo que ya pasó, no como algo que motive a seguir — a pedido
+     * del usuario, y coincide con la práctica de apps de hábitos con "perdón" de días. Ver
      * `Plan/08-decisiones-tecnicas.md`.
      */
-    suspend fun calcularRachaActual(espacioId: String): Int {
-        val historialPorFecha = registroDiarioRepository.observarHistorial(espacioId).first()
-            .associateBy { it.fecha }
-        var fecha = DateTimeUtils.hoy().toEpochDays().toLong()
-        if ((historialPorFecha[fecha]?.actividadesCompletadas ?: 0) <= 0) fecha--
-        var racha = 0
-        while (true) {
-            val registro = historialPorFecha[fecha] ?: break
-            if (registro.actividadesCompletadas <= 0) break
-            racha++
-            fecha--
-        }
-        return racha
+    suspend fun calcularRachaActual(espacioId: String): Int =
+        registroDiarioRepository.observarHistorial(espacioId).first().count { it.actividadesCompletadas > 0 }
+
+    /**
+     * true si ayer se quedó sin cerrar y esta persona ya tiene el hábito de cerrar (al menos un
+     * día cerrado antes) — así no le aparece a alguien que recién instaló la app y obviamente no
+     * cerró "ayer". Pensado para un aviso motivador en Hoy que invite a cerrarlo desde el
+     * calendario, no para culpar. Ver `Plan/08-decisiones-tecnicas.md`.
+     */
+    suspend fun diaAnteriorSinCerrar(espacioId: String): Boolean {
+        val historial = registroDiarioRepository.observarHistorial(espacioId).first()
+        if (historial.none { it.actividadesCompletadas > 0 }) return false
+        val ayer = DateTimeUtils.hoy().toEpochDays().toLong() - 1
+        return historial.none { it.fecha == ayer && it.actividadesCompletadas > 0 }
     }
 
     /**

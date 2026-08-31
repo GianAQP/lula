@@ -39,6 +39,7 @@ class AceptarSolicitudCompartirUseCase @Inject constructor(
     private val usuarioRepository: UsuarioRepository,
 ) {
     suspend operator fun invoke(solicitud: SolicitudCompartir, miUsuarioId: String) {
+        val miNombre = usuarioRepository.observarUsuario().first()?.nombrePreferido
         solicitudCompartirRepository.responder(solicitud.id, EstadoSolicitud.ACEPTADA, miUsuarioId)
         conexionRepository.crearSiNoExiste(
             usuarioA = solicitud.de,
@@ -62,7 +63,6 @@ class AceptarSolicitudCompartirUseCase @Inject constructor(
                     creadoPor = solicitud.de,
                     tipo = TipoEspacio.FAMILIA,
                 )
-                val miNombre = usuarioRepository.observarUsuario().first()?.nombrePreferido
                 espacioRepository.agregarMiembro(
                     espacioId = solicitud.elementoId,
                     usuarioId = miUsuarioId,
@@ -80,7 +80,11 @@ class AceptarSolicitudCompartirUseCase @Inject constructor(
         }
         runCatching {
             compartirSyncRepository.subirSolicitud(
-                solicitud.copy(estado = EstadoSolicitud.ACEPTADA, fechaRespuesta = DateTimeUtils.ahoraEpochMillis()),
+                solicitud.copy(
+                    estado = EstadoSolicitud.ACEPTADA,
+                    fechaRespuesta = DateTimeUtils.ahoraEpochMillis(),
+                    nombreQuienResponde = miNombre,
+                ),
             )
         }
     }

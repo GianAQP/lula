@@ -54,11 +54,14 @@ class AlarmaSonidoService : Service() {
     private var wakeLock: PowerManager.WakeLock? = null
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private var jobDuracionMaxima: Job? = null
+    private var ultimoStartId: Int = 0
 
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val claveNotificacion = intent?.getIntExtra(EXTRA_CLAVE_NOTIFICACION, 0) ?: 0
+        Log.i(TAG, "onStartCommand startId=$startId accion=${intent?.action} clave=$claveNotificacion mediaPlayerActivo=${mediaPlayer != null}")
+        ultimoStartId = startId
         if (intent?.action == ACTION_DETENER) {
             detener(claveNotificacion)
         } else {
@@ -67,6 +70,13 @@ class AlarmaSonidoService : Service() {
         return START_NOT_STICKY
     }
 
+    /** `@Synchronized` a propósito: si Android llega a entregar el disparo de una misma alarma
+     * dos veces (redelivery de `AlarmManager`, más probable bajo presión de CPU/batería como una
+     * videollamada activa — caso real reportado por el usuario, donde el botón "Detener" pareció
+     * funcionar pero el sonido siguió), sin esto dos `onStartCommand` casi simultáneos podían
+     * pisarse el campo `mediaPlayer` entre sí y dejar un reproductor huérfano sonando sin que
+     * ninguna notificación visible ya apuntara a él. Ver `Plan/08-decisiones-tecnicas.md`. */
+    @Synchronized
     private fun iniciar(claveNotificacion: Int) {
         detenerReproduccion()
         val notificacionServicio = NotificationCompat.Builder(this, NotificationChannels.RECORDATORIOS_ALARMA)
@@ -155,7 +165,9 @@ class AlarmaSonidoService : Service() {
         audioFocusRequest = null
     }
 
+    @Synchronized
     private fun detener(claveNotificacion: Int) {
+        Log.i(TAG, "detener() clave=$claveNotificacion mediaPlayerActivo=${mediaPlayer != null}")
         jobDuracionMaxima?.cancel()
         jobDuracionMaxima = null
         detenerReproduccion()
@@ -163,11 +175,19 @@ class AlarmaSonidoService : Service() {
             NotificationManagerCompat.from(this).cancel(claveNotificacion)
         }
         stopForeground(STOP_FOREGROUND_REMOVE)
-        stopSelf()
+        // `stopSelf(startId)` en vez de `stopSelf()` — la versión sin argumentos detiene el
+        // Service sin importar si ya llegó un `onStartCommand` más nuevo mientras tanto (ej. un
+        // segundo disparo de la misma alarma); con `startId` solo se detiene si este sigue
+        // siendo el último comando recibido.
+        stopSelf(ultimoStartId)
     }
 
+    @Synchronized
     private fun detenerReproduccion() {
-        mediaPlayer?.let { runCatching { it.stop() }; it.release() }
+        mediaPlayer?.let { player ->
+            runCatching { player.stop() }.onFailure { Log.e(TAG, "Error al detener el MediaPlayer de la alarma", it) }
+            runCatching { player.release() }.onFailure { Log.e(TAG, "Error al liberar el MediaPlayer de la alarma", it) }
+        }
         mediaPlayer = null
         abandonarAudioFocus()
         wakeLock?.let { if (it.isHeld) it.release() }

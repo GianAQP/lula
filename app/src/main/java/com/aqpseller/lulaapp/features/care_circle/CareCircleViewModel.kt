@@ -100,6 +100,11 @@ class CareCircleViewModel @Inject constructor(
         viewModelScope.launch {
             val solicitud = recibidasCache.find { it.id == solicitudId } ?: return@launch
             aceptarSolicitudCompartirUseCase(solicitud, sesionActual().usuarioId)
+            val mensaje = when (solicitud.tipo) {
+                TipoSolicitud.ESPACIO -> "🎉 ¡Bienvenido a la Familia \"${solicitud.contexto}\"! Ahora pueden acompañarse en su camino."
+                TipoSolicitud.ACTIVIDAD -> "🎉 ¡Listo! Ahora acompañas a ${solicitud.deNombre} en \"${solicitud.contexto}\"."
+            }
+            _uiState.update { it.copy(mensajeBienvenida = mensaje) }
         }
     }
 
@@ -108,6 +113,10 @@ class CareCircleViewModel @Inject constructor(
             val solicitud = recibidasCache.find { it.id == solicitudId } ?: return@launch
             rechazarSolicitudCompartirUseCase(solicitud, sesionActual().usuarioId)
         }
+    }
+
+    fun mensajeBienvenidaMostrado() {
+        _uiState.update { it.copy(mensajeBienvenida = null) }
     }
 
     private suspend fun sesionActual(): SesionActual = sesion ?: obtenerSesionActualUseCase().also { sesion = it }

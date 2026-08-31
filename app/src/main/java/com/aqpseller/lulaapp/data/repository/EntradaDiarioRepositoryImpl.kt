@@ -56,4 +56,7 @@ class EntradaDiarioRepositoryImpl @Inject constructor(
 
     override fun observarPorEspacio(espacioId: String): Flow<List<EntradaDiario>> =
         entradaDiarioDao.observarPorEspacio(espacioId).map { lista -> lista.map { it.toDomain() } }
+
+    override fun buscar(espacioId: String, consulta: String): Flow<List<EntradaDiario>> =
+        entradaDiarioDao.buscar(espacioId, consulta).map { lista -> lista.map { it.toDomain() } }
 }

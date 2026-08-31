@@ -6,7 +6,9 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.aqpseller.lulaapp.domain.model.MomentoDelDia
+import com.aqpseller.lulaapp.domain.repository.AjustesRemotos
 import com.aqpseller.lulaapp.domain.repository.AjustesRepository
+import com.aqpseller.lulaapp.domain.repository.CompartirSyncRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,6 +20,7 @@ import javax.inject.Singleton
 @Singleton
 class AjustesRepositoryImpl @Inject constructor(
     @ApplicationContext private val context: Context,
+    private val compartirSyncRepository: CompartirSyncRepository,
 ) : AjustesRepository {
 
     private val sonidoCheckKey = booleanPreferencesKey("sonido_check_habilitado")
@@ -47,6 +50,7 @@ class AjustesRepositoryImpl @Inject constructor(
 
     override suspend fun setSonidoCheckHabilitado(habilitado: Boolean) {
         context.ajustesDataStore.edit { it[sonidoCheckKey] = habilitado }
+        sincronizarConNube()
     }
 
     override fun observarDiaRevisionSemanal() =
@@ -54,6 +58,7 @@ class AjustesRepositoryImpl @Inject constructor(
 
     override suspend fun setDiaRevisionSemanal(diaIso: Int) {
         context.ajustesDataStore.edit { it[diaRevisionSemanalKey] = diaIso }
+        sincronizarConNube()
     }
 
     override fun observarHoraRecordatorioCierreDia() =
@@ -63,6 +68,7 @@ class AjustesRepositoryImpl @Inject constructor(
         context.ajustesDataStore.edit {
             if (hora != null) it[horaRecordatorioCierreDiaKey] = hora else it.remove(horaRecordatorioCierreDiaKey)
         }
+        sincronizarConNube()
     }
 
     override fun observarHoraRecordatorioFranja(momento: MomentoDelDia) =
@@ -73,6 +79,7 @@ class AjustesRepositoryImpl @Inject constructor(
         context.ajustesDataStore.edit {
             if (hora != null) it[key] = hora else it.remove(key)
         }
+        sincronizarConNube()
     }
 
     // Valores por defecto = "Hoy | 🎙️ Asistente | + | ✅ Hábitos | 💰 Finanzas" de `02-pantallas.md`.
@@ -81,6 +88,7 @@ class AjustesRepositoryImpl @Inject constructor(
 
     override suspend fun setBottomBarPosicion2(opcionId: String) {
         context.ajustesDataStore.edit { it[bottomBarPosicion2Key] = opcionId }
+        sincronizarConNube()
     }
 
     override fun observarBottomBarPosicion3() =
@@ -88,6 +96,7 @@ class AjustesRepositoryImpl @Inject constructor(
 
     override suspend fun setBottomBarPosicion3(opcionId: String) {
         context.ajustesDataStore.edit { it[bottomBarPosicion3Key] = opcionId }
+        sincronizarConNube()
     }
 
     override fun observarBottomBarPosicion4() =
@@ -95,6 +104,7 @@ class AjustesRepositoryImpl @Inject constructor(
 
     override suspend fun setBottomBarPosicion4(opcionId: String) {
         context.ajustesDataStore.edit { it[bottomBarPosicion4Key] = opcionId }
+        sincronizarConNube()
     }
 
     override suspend fun obtenerEspacioActivoId(): String? = espacioActivoId.value
@@ -118,6 +128,32 @@ class AjustesRepositoryImpl @Inject constructor(
     override suspend fun setDuracionMaximaAlarmaMin(minutos: Int?) {
         context.ajustesDataStore.edit {
             if (minutos != null) it[duracionMaximaAlarmaMinKey] = minutos else it.remove(duracionMaximaAlarmaMinKey)
+        }
+        sincronizarConNube()
+    }
+
+    /** Sube una foto completa de todos los Ajustes sincronizables cada vez que cambia cualquiera
+     * — más simple que rastrear qué campo cambió, y el documento entero es chico. No-op si la
+     * cuenta no está vinculada (lo resuelve `CompartirSyncRepository.subirAjustes`). A propósito
+     * NO incluye `espacioActivoId` (vive solo en memoria, ver el campo de esta clase) ni
+     * `ultimoHitoRachaCelebrado` (no es una preferencia real). Ver
+     * `Plan/08-decisiones-tecnicas.md`. */
+    private suspend fun sincronizarConNube() {
+        runCatching {
+            compartirSyncRepository.subirAjustes(
+                AjustesRemotos(
+                    sonidoCheckHabilitado = observarSonidoCheckHabilitado().first(),
+                    diaRevisionSemanal = observarDiaRevisionSemanal().first(),
+                    horaRecordatorioCierreDia = observarHoraRecordatorioCierreDia().first(),
+                    horaRecordatorioFranjaManana = observarHoraRecordatorioFranja(MomentoDelDia.MANANA).first(),
+                    horaRecordatorioFranjaTarde = observarHoraRecordatorioFranja(MomentoDelDia.TARDE).first(),
+                    horaRecordatorioFranjaNoche = observarHoraRecordatorioFranja(MomentoDelDia.NOCHE).first(),
+                    bottomBarPosicion2 = observarBottomBarPosicion2().first(),
+                    bottomBarPosicion3 = observarBottomBarPosicion3().first(),
+                    bottomBarPosicion4 = observarBottomBarPosicion4().first(),
+                    duracionMaximaAlarmaMin = observarDuracionMaximaAlarmaMin().first(),
+                ),
+            )
         }
     }
 }

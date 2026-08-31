@@ -25,4 +25,6 @@ data class CareCircleUiState(
     val cargando: Boolean = true,
     val enviadas: List<SolicitudEnviadaUi> = emptyList(),
     val recibidas: List<SolicitudRecibidaUi> = emptyList(),
+    /** Mensaje de bienvenida al aceptar una invitación — transitorio, se limpia solo. */
+    val mensajeBienvenida: String? = null,
 )

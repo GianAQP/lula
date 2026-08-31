@@ -24,4 +24,5 @@ data class SolicitudCompartirEntity(
     val canalEnvio: String?,
     val fechaSolicitud: Long,
     val fechaRespuesta: Long?,
+    val nombreQuienResponde: String? = null,
 )

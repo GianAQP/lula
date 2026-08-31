@@ -8,6 +8,7 @@ import com.aqpseller.lulaapp.domain.model.ListaConItems
 import com.aqpseller.lulaapp.domain.model.Meta
 import com.aqpseller.lulaapp.domain.model.MovimientoFinanciero
 import com.aqpseller.lulaapp.domain.model.Nota
+import com.aqpseller.lulaapp.domain.model.Notificacion
 import com.aqpseller.lulaapp.domain.model.PropositoPersonal
 import com.aqpseller.lulaapp.domain.model.RegistroDiario
 import com.aqpseller.lulaapp.domain.model.RegistroSemanal
@@ -63,6 +64,8 @@ interface PersonalSyncRepository {
     suspend fun subirProposito(proposito: PropositoPersonal)
     suspend fun subirRegistroDiario(registro: RegistroDiario)
     suspend fun subirRegistroSemanal(registro: RegistroSemanal)
+    suspend fun subirNotificacion(notificacion: Notificacion)
+    suspend fun marcarNotificacionLeidaRemota(notificacionId: String)
 
     suspend fun restaurarHabitos(): List<Pair<Actividad, ActividadDetalle.Habito>>
     suspend fun restaurarRegistrosHabito(): List<RegistroHabitoRemoto>
@@ -81,4 +84,5 @@ interface PersonalSyncRepository {
     suspend fun restaurarProposito(): PropositoPersonal?
     suspend fun restaurarRegistrosDiarios(): List<RegistroDiario>
     suspend fun restaurarRegistrosSemanales(): List<RegistroSemanal>
+    suspend fun restaurarNotificaciones(): List<Notificacion>
 }

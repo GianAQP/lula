@@ -330,7 +330,10 @@ class HomeViewModel @Inject constructor(
     private suspend fun refrescarProgresoDelDia(sesionActual: SesionActual) {
         val racha = obtenerProgresoDeHoyUseCase.calcularRachaActual(sesionActual.espacioId)
         val registroHoy = obtenerProgresoDeHoyUseCase.registroDeHoy(sesionActual.espacioId)
-        _uiState.update { it.copy(racha = racha, diaYaCerrado = registroHoy != null) }
+        val diaAnteriorSinCerrar = obtenerProgresoDeHoyUseCase.diaAnteriorSinCerrar(sesionActual.espacioId)
+        _uiState.update {
+            it.copy(racha = racha, diaYaCerrado = registroHoy != null, diaAnteriorSinCerrar = diaAnteriorSinCerrar)
+        }
     }
 
     private fun List<Actividad>.aUi(

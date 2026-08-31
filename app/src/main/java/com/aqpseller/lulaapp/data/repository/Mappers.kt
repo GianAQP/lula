@@ -563,6 +563,7 @@ fun SolicitudCompartir.toEntity() = SolicitudCompartirEntity(
     canalEnvio = canalEnvio?.name,
     fechaSolicitud = fechaSolicitud,
     fechaRespuesta = fechaRespuesta,
+    nombreQuienResponde = nombreQuienResponde,
 )
 
 fun SolicitudCompartirEntity.toDomain() = SolicitudCompartir(
@@ -579,6 +580,7 @@ fun SolicitudCompartirEntity.toDomain() = SolicitudCompartir(
     canalEnvio = canalEnvio?.let { CanalEnvio.valueOf(it) },
     fechaSolicitud = fechaSolicitud,
     fechaRespuesta = fechaRespuesta,
+    nombreQuienResponde = nombreQuienResponde,
 )
 
 // --- Nota ---

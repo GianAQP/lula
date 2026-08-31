@@ -9,4 +9,5 @@ data class DiaryEntryItemUi(
 data class DiaryListUiState(
     val cargando: Boolean = true,
     val entradas: List<DiaryEntryItemUi> = emptyList(),
+    val consulta: String = "",
 )

@@ -39,7 +39,7 @@ import com.aqpseller.lulaapp.core.utils.QrCodeGenerator
 @Composable
 fun FamiliaScreen(
     onEspacioCambiado: () -> Unit,
-    onVerRetosFamiliares: () -> Unit,
+    onVerRetosFamiliares: (espacioId: String) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: FamiliaViewModel = hiltViewModel(),
 ) {
@@ -202,23 +202,14 @@ fun FamiliaScreen(
                         }
                     }
                 }
-                // Retos familiares siempre es del espacio ACTIVO (arriba), no de la Familia que
-                // estás administrando acá si son distintas — evita mostrar retos de la familia
-                // equivocada. Ver `Plan/10-pendientes.md`.
-                val esLaActiva = uiState.espacios.find { it.esActivo }?.id == uiState.familiaSeleccionadaId
-                if (esLaActiva) {
-                    TextButton(
-                        onClick = { onVerRetosFamiliares() },
-                        modifier = Modifier.padding(top = 16.dp).fillMaxWidth(),
-                    ) {
-                        Text("🏆 Retos familiares")
-                    }
-                } else {
-                    Text(
-                        text = "Cambia a este espacio (arriba, \"Tus espacios\") para ver sus retos familiares.",
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(top = 16.dp),
-                    )
+                // Antes solo se podía abrir para el espacio ACTIVO (arriba) — ahora navega con
+                // el espacioId de la Familia que se está administrando, sin importar cuál sea
+                // el activo. Ver `Plan/08-decisiones-tecnicas.md`.
+                TextButton(
+                    onClick = { uiState.familiaSeleccionadaId?.let(onVerRetosFamiliares) },
+                    modifier = Modifier.padding(top = 16.dp).fillMaxWidth(),
+                ) {
+                    Text("🏆 Retos familiares")
                 }
                 Row(modifier = Modifier.padding(top = 8.dp)) {
                     OutlinedButton(onClick = viewModel::mostrarFormularioRenombrar, modifier = Modifier.padding(end = 8.dp)) {

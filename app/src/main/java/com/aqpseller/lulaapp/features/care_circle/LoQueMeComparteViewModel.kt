@@ -10,17 +10,21 @@ import com.aqpseller.lulaapp.domain.repository.ActividadCompartidaRemota
 import com.aqpseller.lulaapp.domain.repository.UsuarioRepository
 import com.aqpseller.lulaapp.domain.usecase.carecircle.DejarDeVerActividadCompartidaUseCase
 import com.aqpseller.lulaapp.domain.usecase.carecircle.ObtenerActividadesCompartidasConmigoUseCase
+import com.aqpseller.lulaapp.domain.usecase.carecircle.SolicitarRecordatorioUseCase
 import com.aqpseller.lulaapp.domain.usecase.usuario.ObtenerSesionActualUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class ActividadCompartidaUi(
     val solicitudId: String,
+    val actividadId: String,
+    val deFirebaseUid: String,
     val emoji: String,
     val nombre: String,
     val deNombre: String,
@@ -31,6 +35,9 @@ data class ActividadCompartidaUi(
 data class LoQueMeComparteUiState(
     val cargando: Boolean = true,
     val actividades: List<ActividadCompartidaUi> = emptyList(),
+    /** true un momento después de tocar "Recordarle" — la pantalla lo muestra como confirmación
+     * breve y se limpia sola. */
+    val recordatorioEnviadoA: String? = null,
 )
 
 private fun emojiPara(tipo: TipoActividad): String = when (tipo) {
@@ -75,6 +82,7 @@ private fun subtituloPara(item: ActividadCompartidaRemota): String = when (item.
 class LoQueMeComparteViewModel @Inject constructor(
     private val obtenerActividadesCompartidasConmigoUseCase: ObtenerActividadesCompartidasConmigoUseCase,
     private val dejarDeVerActividadCompartidaUseCase: DejarDeVerActividadCompartidaUseCase,
+    private val solicitarRecordatorioUseCase: SolicitarRecordatorioUseCase,
     private val obtenerSesionActualUseCase: ObtenerSesionActualUseCase,
     private val usuarioRepository: UsuarioRepository,
 ) : ViewModel() {
@@ -89,23 +97,40 @@ class LoQueMeComparteViewModel @Inject constructor(
         }
     }
 
+    /** Solo tiene sentido si `item.permiso == PUEDE_VER_Y_RECORDAR` — la pantalla ya solo
+     * muestra el botón en ese caso. */
+    fun recordar(item: ActividadCompartidaUi) {
+        viewModelScope.launch {
+            solicitarRecordatorioUseCase(item.actividadId, item.nombre, item.deFirebaseUid)
+            _uiState.update { it.copy(recordatorioEnviadoA = item.deNombre) }
+        }
+    }
+
+    fun recordatorioEnviadoMostrado() {
+        _uiState.update { it.copy(recordatorioEnviadoA = null) }
+    }
+
     init {
         viewModelScope.launch {
             val correo = usuarioRepository.observarUsuario().first()?.correo ?: ""
             obtenerActividadesCompartidasConmigoUseCase(correo).collect { actividades ->
-                _uiState.value = LoQueMeComparteUiState(
-                    cargando = false,
-                    actividades = actividades.map { item ->
-                        ActividadCompartidaUi(
-                            solicitudId = item.solicitudId,
-                            emoji = emojiPara(item.actividad.tipo),
-                            nombre = item.actividad.nombre,
-                            deNombre = item.deNombre,
-                            permiso = item.permiso,
-                            subtitulo = subtituloPara(item),
-                        )
-                    },
-                )
+                _uiState.update {
+                    it.copy(
+                        cargando = false,
+                        actividades = actividades.map { item ->
+                            ActividadCompartidaUi(
+                                solicitudId = item.solicitudId,
+                                actividadId = item.actividad.id,
+                                deFirebaseUid = item.deFirebaseUid,
+                                emoji = emojiPara(item.actividad.tipo),
+                                nombre = item.actividad.nombre,
+                                deNombre = item.deNombre,
+                                permiso = item.permiso,
+                                subtitulo = subtituloPara(item),
+                            )
+                        },
+                    )
+                }
             }
         }
     }

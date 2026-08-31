@@ -215,3 +215,36 @@ val MIGRATION_31_32 = object : Migration(31, 32) {
         db.execSQL("ALTER TABLE espacio_miembro ADD COLUMN firebaseUid TEXT DEFAULT NULL")
     }
 }
+
+/** `solicitud_compartir` gana `nombreQuienResponde` — para poder avisarle a quien invitó con un
+ * nombre real cuando la otra persona acepta/rechaza, en vez de solo su correo/teléfono. Ver
+ * `Plan/08-decisiones-tecnicas.md`. */
+val MIGRATION_32_33 = object : Migration(32, 33) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE solicitud_compartir ADD COLUMN nombreQuienResponde TEXT DEFAULT NULL")
+    }
+}
+
+/** Historial permanente de notificaciones (invitaciones, respuestas, "Recordarle") — antes solo
+ * se posteaban al sistema y se perdían, sin quedar registradas en la app. Ver
+ * `Plan/08-decisiones-tecnicas.md`. */
+val MIGRATION_33_34 = object : Migration(33, 34) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `notificacion` (
+                `id` TEXT NOT NULL,
+                `emoji` TEXT NOT NULL,
+                `titulo` TEXT NOT NULL,
+                `cuerpo` TEXT NOT NULL,
+                `fecha` INTEGER NOT NULL,
+                `leido` INTEGER NOT NULL DEFAULT 0,
+                `solicitudId` TEXT,
+                PRIMARY KEY(`id`)
+            )
+            """.trimIndent(),
+        )
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_notificacion_fecha` ON `notificacion` (`fecha`)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_notificacion_leido` ON `notificacion` (`leido`)")
+    }
+}

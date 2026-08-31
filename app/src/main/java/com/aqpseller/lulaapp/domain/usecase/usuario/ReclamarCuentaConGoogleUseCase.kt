@@ -14,8 +14,9 @@ import javax.inject.Inject
  * `Plan/12-firebase-auth-y-sync.md`, sección 5.
  *
  * También restaura el respaldo personal (Hábitos/Tareas), los Espacios Familia en los que ya
- * era miembro, y el perfil (nombre real, horarios) si esta cuenta ya tenía algo guardado en la
- * nube desde otro dispositivo — idempotente, no duplica nada si no había nada que traer.
+ * era miembro, el perfil (nombre real, horarios), y los Ajustes de pantalla (barra inferior,
+ * duración de alarma) si esta cuenta ya tenía algo guardado en la nube desde otro dispositivo —
+ * idempotente, no duplica nada si no había nada que traer.
  */
 class ReclamarCuentaConGoogleUseCase @Inject constructor(
     private val authRepository: AuthRepository,
@@ -23,6 +24,7 @@ class ReclamarCuentaConGoogleUseCase @Inject constructor(
     private val compartirSyncRepository: CompartirSyncRepository,
     private val restaurarDatosPersonalesUseCase: RestaurarDatosPersonalesUseCase,
     private val restaurarEspaciosFamiliaUseCase: RestaurarEspaciosFamiliaUseCase,
+    private val restaurarAjustesUseCase: RestaurarAjustesUseCase,
 ) {
     /** true si esta cuenta ya había completado el registro en otro dispositivo — quien llama
      * (el onboarding) lo usa para saltarse el resto del wizard en vez de volver a preguntarlo. */
@@ -54,6 +56,7 @@ class ReclamarCuentaConGoogleUseCase @Inject constructor(
         }
         runCatching { restaurarDatosPersonalesUseCase(usuarioId) }
         runCatching { restaurarEspaciosFamiliaUseCase(usuarioId) }
+        runCatching { restaurarAjustesUseCase(sesion.firebaseUid) }
         val yaTeniaRegistroCompleto = perfilRemoto?.onboardingCompletadoEn != null
         return yaTeniaRegistroCompleto
     }

@@ -16,6 +16,7 @@ import com.aqpseller.lulaapp.data.repository.FinanzasRepositoryImpl
 import com.aqpseller.lulaapp.data.repository.ListaRepositoryImpl
 import com.aqpseller.lulaapp.data.repository.MetaRepositoryImpl
 import com.aqpseller.lulaapp.data.repository.NotaRepositoryImpl
+import com.aqpseller.lulaapp.data.repository.NotificacionRepositoryImpl
 import com.aqpseller.lulaapp.data.repository.PropositoPersonalRepositoryImpl
 import com.aqpseller.lulaapp.data.repository.RegistroDiarioRepositoryImpl
 import com.aqpseller.lulaapp.data.repository.RegistroSemanalRepositoryImpl
@@ -37,6 +38,7 @@ import com.aqpseller.lulaapp.domain.repository.FinanzasRepository
 import com.aqpseller.lulaapp.domain.repository.ListaRepository
 import com.aqpseller.lulaapp.domain.repository.MetaRepository
 import com.aqpseller.lulaapp.domain.repository.NotaRepository
+import com.aqpseller.lulaapp.domain.repository.NotificacionRepository
 import com.aqpseller.lulaapp.domain.repository.PrivacidadRepository
 import com.aqpseller.lulaapp.domain.repository.PropositoPersonalRepository
 import com.aqpseller.lulaapp.domain.repository.RegistroDiarioRepository
@@ -105,6 +107,10 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindNotaRepository(impl: NotaRepositoryImpl): NotaRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindNotificacionRepository(impl: NotificacionRepositoryImpl): NotificacionRepository
 
     @Binds
     @Singleton

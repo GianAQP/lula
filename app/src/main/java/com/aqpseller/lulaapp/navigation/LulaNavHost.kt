@@ -22,6 +22,7 @@ import com.aqpseller.lulaapp.domain.model.TipoActividad
 import com.aqpseller.lulaapp.features.calendar.CalendarScreen
 import com.aqpseller.lulaapp.features.care_circle.CareCircleScreen
 import com.aqpseller.lulaapp.features.care_circle.LoQueMeComparteScreen
+import com.aqpseller.lulaapp.features.notifications.NotificacionesScreen
 import com.aqpseller.lulaapp.features.common.ProximamenteScreen
 import com.aqpseller.lulaapp.features.daily_review.CerrarDiaScreen
 import com.aqpseller.lulaapp.features.diary.DiaryCalendarScreen
@@ -126,6 +127,7 @@ fun LulaNavHost(
                 onAbrirPerfil = { navController.navigate(LulaDestinations.PERFIL) },
                 onAbrirFamilia = { navController.navigate(LulaDestinations.FAMILIA) },
                 onAbrirCirculoDeCuidado = { navController.navigate(LulaDestinations.CIRCULO_CUIDADO) },
+                onAbrirNotificaciones = { navController.navigate(LulaDestinations.NOTIFICACIONES) },
                 onVerHistorial = { navController.navigate(LulaDestinations.HISTORIAL) },
                 onVerFinanzas = { navController.navigate(LulaDestinations.ZONA_PRIVADA_GATE) },
                 onAbrirDiario = { navController.navigate(LulaDestinations.ZONA_PRIVADA_GATE_DIARIO) },
@@ -397,15 +399,22 @@ fun LulaNavHost(
                             popUpTo(LulaDestinations.HOY) { inclusive = true }
                         }
                     },
-                    onVerRetosFamiliares = { navController.navigate(LulaDestinations.RETOS_FAMILIARES) },
+                    onVerRetosFamiliares = { espacioId -> navController.navigate(LulaDestinations.retosFamiliares(espacioId)) },
                 )
             }
-            composable(LulaDestinations.RETOS_FAMILIARES) {
+            composable(
+                LulaDestinations.RETOS_FAMILIARES,
+                arguments = listOf(navArgument("espacioId") { type = NavType.StringType }),
+            ) { backStackEntry ->
+                val espacioId = checkNotNull(backStackEntry.arguments?.getString("espacioId"))
                 RetosFamiliaresScreen(
-                    onCrearReto = { navController.navigate(LulaDestinations.CREAR_RETO_FAMILIAR) },
+                    onCrearReto = { navController.navigate(LulaDestinations.crearRetoFamiliar(espacioId)) },
                 )
             }
-            composable(LulaDestinations.CREAR_RETO_FAMILIAR) {
+            composable(
+                LulaDestinations.CREAR_RETO_FAMILIAR,
+                arguments = listOf(navArgument("espacioId") { type = NavType.StringType }),
+            ) {
                 CrearRetoFamiliarScreen(onGuardado = { navController.popBackStack() })
             }
             composable(LulaDestinations.LISTAS) {
@@ -495,6 +504,11 @@ fun LulaNavHost(
             }
             composable(LulaDestinations.LO_QUE_ME_COMPARTEN) {
                 LoQueMeComparteScreen()
+            }
+            composable(LulaDestinations.NOTIFICACIONES) {
+                NotificacionesScreen(
+                    onAbrirCirculoDeCuidado = { navController.navigate(LulaDestinations.CIRCULO_CUIDADO) },
+                )
             }
             composable(LulaDestinations.FECHAS_IMPORTANTES) {
                 ImportantDatesListScreen(

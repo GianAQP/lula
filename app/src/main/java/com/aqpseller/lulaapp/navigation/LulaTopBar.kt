@@ -10,13 +10,19 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.QrCodeScanner
+import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -27,6 +33,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
@@ -55,6 +62,7 @@ fun LulaTopBar(
     onAbrirPerfil: () -> Unit,
     onAbrirFamilia: () -> Unit,
     onAbrirCirculoDeCuidado: () -> Unit,
+    onAbrirNotificaciones: () -> Unit,
     onVerHistorial: () -> Unit,
     onVerFinanzas: () -> Unit,
     onAbrirDiario: () -> Unit,
@@ -62,6 +70,7 @@ fun LulaTopBar(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var mostrarMenu by remember { mutableStateOf(false) }
+    var mostrarExplicacionRacha by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val clipboardManager = LocalClipboardManager.current
     val scope = rememberCoroutineScope()
@@ -121,7 +130,7 @@ fun LulaTopBar(
                 colorContenedor = LulaRachaContainerLight,
                 modifier = Modifier
                     .padding(end = 8.dp)
-                    .clickable(onClick = onVerHistorial),
+                    .clickable { mostrarExplicacionRacha = true },
             )
             StatPill(
                 emoji = "💰",
@@ -139,9 +148,26 @@ fun LulaTopBar(
 
             Box(modifier = Modifier.weight(1f))
 
-            if (uiState.solicitudesPendientes > 0) {
-                IconButton(onClick = onAbrirCirculoDeCuidado) {
-                    Text("📩", style = MaterialTheme.typography.titleLarge)
+            // Siempre visible (antes solo aparecía si había algo pendiente) — abre el historial
+            // real de notificaciones, no "Mi círculo de cuidado" directo (que sigue aparte, en
+            // el menú "⋮", como pantalla de gestión). Ver `Plan/08-decisiones-tecnicas.md`.
+            IconButton(onClick = onAbrirNotificaciones) {
+                BadgedBox(
+                    badge = {
+                        if (uiState.notificacionesNoLeidas > 0) {
+                            Badge { Text("${uiState.notificacionesNoLeidas}") }
+                        }
+                    },
+                ) {
+                    // Silueta neutra sin nada pendiente; se "enciende" en amarillo apenas hay
+                    // algo por leer — antes el emoji 🔔 se veía igual de amarillo siempre,
+                    // sin distinguir a simple vista si había algo nuevo. Ver
+                    // `Plan/08-decisiones-tecnicas.md`.
+                    if (uiState.notificacionesNoLeidas > 0) {
+                        Icon(Icons.Filled.Notifications, contentDescription = "Notificaciones", tint = Color(0xFFFFC107))
+                    } else {
+                        Icon(Icons.Outlined.Notifications, contentDescription = "Notificaciones")
+                    }
                 }
             }
 
@@ -183,5 +209,23 @@ fun LulaTopBar(
                 }
             }
         }
+    }
+
+    if (mostrarExplicacionRacha) {
+        AlertDialog(
+            onDismissRequest = { mostrarExplicacionRacha = false },
+            confirmButton = {
+                TextButton(onClick = { mostrarExplicacionRacha = false; onVerHistorial() }) { Text("Ver historial") }
+            },
+            dismissButton = { TextButton(onClick = { mostrarExplicacionRacha = false }) { Text("Cerrar") } },
+            title = { Text("🔥 Tu racha") },
+            text = {
+                Text(
+                    "Sube cada vez que cierras tu día (con al menos una actividad cumplida). " +
+                        "Si te saltas un día no baja — se queda igual hasta que vuelvas a cerrar. " +
+                        "¿Se te pasó un día? Puedes cerrarlo desde el calendario.",
+                )
+            },
+        )
     }
 }

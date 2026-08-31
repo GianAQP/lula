@@ -81,15 +81,21 @@ class CerrarDiaViewModel @Inject constructor(
                     )
                 }
             } else {
-                // Un día anterior no tiene forma confiable de "recalcular en vivo" cuántas
-                // actividades se cumplieron ese día en particular — se escribe a mano (con lo ya
-                // guardado como punto de partida, si ese día ya se había cerrado antes).
+                // Se calcula solo, reconstruyendo la agenda real de ese día puntual (mismo
+                // camino que usan las vistas Semana/Mes del Calendario, que ya reconstruyen el
+                // estado histórico correcto de Hábito/Tarea/Cita/Medicamento/Fecha importante
+                // para cualquier fecha) — antes esto se escribía siempre a mano, quedando en 0
+                // hasta que la persona lo tipeara ella misma. Los campos siguen editables por si
+                // hace falta corregir algo. Ver `Plan/08-decisiones-tecnicas.md`.
+                val itemsDelDia = obtenerAgendaDelRangoUseCase(sesionActual.espacioId, fecha, fecha)[fecha]
+                    .orEmpty()
+                    .filterNot { it.eliminado }
                 val registroExistente = obtenerRegistroDiarioDeFechaUseCase(sesionActual.espacioId, fechaEpochDay)
                 _uiState.update {
                     it.copy(
                         cargando = false,
-                        actividadesCompletadas = registroExistente?.actividadesCompletadas ?: 0,
-                        actividadesTotales = registroExistente?.actividadesTotales ?: 0,
+                        actividadesCompletadas = itemsDelDia.count { item -> item.estado == EstadoActividad.CONFIRMADO },
+                        actividadesTotales = itemsDelDia.size,
                         yaExistiaRegistro = registroExistente != null,
                         queLogreInicial = registroExistente?.queLogre,
                         queCostoInicial = registroExistente?.queCosto,

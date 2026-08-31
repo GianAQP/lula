@@ -74,16 +74,20 @@ rondas. Falta:
   Meta no vive en la tabla `Actividad` — al aceptar, la búsqueda por `elementoId` no encuentra
   nada y no pasa nada. Necesita su propio camino de aceptar/sincronizar contenido (Meta no tiene
   ni registro de tomas/sesiones, así que sería más simple que el resto).
-- El nivel "Puede ver y recordar" no hace nada especial todavía en "Lo que me comparten" (no hay
-  botón de "recordarle") — hoy la pantalla es de solo lectura sin importar el permiso.
+- **"Puede ver y recordar" — construido (2026-08-29)**: botón "🔔 Recordarle" en "Lo que me
+  comparten" (solo visible con ese permiso). Best-effort vía Firestore (`recordatoriosSolicitados`)
+  + listener en `TopBarStatsViewModel` que muestra una notificación local mientras la app de
+  quien comparte esté abierta — no es push real, no hay FCM en esta app. Ver
+  `08-decisiones-tecnicas.md`. **Falta publicar la regla de Firestore en Firebase Console** y
+  probarlo de punta a punta con los dos celulares reales.
 
-**Perfil de usuario — arreglado + Ajustes sin sincronizar (2026-08-23)**: el nombre real y los
-horarios de comida ahora se suben y se recuperan bien en un celular nuevo, y el registro se salta
-solo si la cuenta ya lo había completado antes en otro lado (ver `08-decisiones-tecnicas.md`).
-Sin resolver: **Ajustes** (posición de la barra inferior, duración máxima de la alarma tipo
-"Alarma", espacio activo) siguen siendo 100% locales — se pierden al cambiar de celular. Menor
-prioridad que datos reales (son preferencias de pantalla, no contenido), pero el usuario los
-mencionó explícitamente al pedir "que no se pierda nada".
+**Perfil de usuario — arreglado (2026-08-23) + Ajustes sincronizados (2026-08-28)**: el nombre
+real y los horarios de comida se suben y se recuperan bien en un celular nuevo, y el registro se
+salta solo si la cuenta ya lo había completado antes en otro lado. Sonido de check, horas de
+recordatorio, barra inferior y duración de Alarma ahora también viajan (se restauran una sola
+vez al vincular la cuenta). A propósito sigue sin sincronizar el **espacio activo** — vive solo
+en memoria por una decisión anterior (2026-07-30, para que cerrar/abrir la app siempre vuelva a
+Personal). Ver `08-decisiones-tecnicas.md`.
 
 ## 1. Bloqueado por backend (necesita Firebase + algo de sync)
 
@@ -127,11 +131,13 @@ falta activar en cuanto exista:
   Ver `08-decisiones-tecnicas.md`. Para Círculo de cuidado (compartir una Tarea/Medicamento
   puntual) sigue pendiente — construirlo ahí requeriría antes resolver el punto de arriba (ver
   contenido real compartido), si no, aceptar no mostraría nada del otro lado.
-- **Aviso "📩" de invitación pendiente** — corregido dos veces el mismo bug (filtraba por
-  `usuarioId` en vez de por correo): primero en `observarPendientesPara` (DAO), después se
-  encontró que `TopBarStatsViewModel` seguía llamándolo con el id viejo (2026-08-20). Ya debería
-  activarse solo una vez haya una solicitud real pendiente — falta confirmarlo con una segunda
-  cuenta real.
+- **Pantalla real de Notificaciones — construida (2026-08-29/30)**: historial permanente
+  (tabla `notificacion` en Room), agrupado por fecha, leído/no leído, con notificación local en
+  ambos sentidos (nueva invitación recibida, y respuesta a la que envié) vía un listener global
+  en `TopBarStatsViewModel`, copy motivador, diálogo de bienvenida al aceptar. El ícono 🔔 abre
+  esta pantalla (badge = no leídas); "Mi círculo de cuidado" sigue aparte en el menú "⋮" como
+  pantalla de gestión. Ver `08-decisiones-tecnicas.md`. Falta confirmarlo con una segunda cuenta
+  real (bloqueado ahora mismo por el bug de "Continuar con Google" de abajo).
 - **Fase 1.5 — Familia/Equipo**: invitar miembros de verdad (2026-08-20) y sincronizar el
   contenido — Tareas y Retos familiares (2026-08-21) — ya están construidos. Roles admin/miembro
   con sentido real — **construido (2026-08-27/28)**: varios co-admins, "Hacer admin"/"Quitar
@@ -145,6 +151,12 @@ falta activar en cuanto exista:
 - **Compartir una Lista en seguimiento conjunto con un amigo puntual** (no solo dentro de un
   espacio Familia) — mismo patrón que ya existe en Retos familiares ("X de Y ya cumplieron
   hoy"), aplicado a una Lista. Pedido por el usuario 2026-08-15, ver `08-decisiones-tecnicas.md`.
+- **"Continuar con Google" se queda pegado en un celular específico** (reportado 2026-08-30,
+  Xiaomi/POCO con HyperOS, Android 16) — en otros 2 celulares instaló y funcionó normal, así que
+  no es un bug de la app/Firebase en general. Candidatos: Google Play Services desactualizado en
+  ese celular, sin cuenta de Google agregada, o señal débil (la captura mostraba velocidad de
+  datos muy baja). La app usa Credential Manager (`GoogleSignInHelper.kt`), no la API vieja.
+  Pendiente de diagnosticar con ese celular conectado por USB — el usuario lo probará después.
 
 ## 2. Piezas de UI que quedaron afuera de una fase ya "completa"
 
@@ -173,12 +185,10 @@ solo con la primera Familia (`firstOrNull`); ahora `FamiliaScreen` lista todas (
 familiares"), cada una con su propio "Administrar" (miembros, invitar, QR, renombrar, eliminar,
 salir) — pensado para el caso real de una persona con varias familias (la que formó, la de sus
 padres, la de su pareja). No fue un rediseño de datos/sync (ya soportaban N espacios sin cambios,
-solo la UI se quedaba con uno) — ver `08-decisiones-tecnicas.md`. Queda pendiente: "🏆 Retos
-familiares" solo se puede abrir para la Familia que sea el espacio ACTIVO en ese momento (arriba,
-"Tus espacios") — si administras una Familia distinta a la activa, ve un aviso de "cambia de
-espacio primero" en vez del botón. Extender Retos (y Tareas del hogar) para navegarse por
-`espacioId` explícito, sin depender del espacio activo, queda para una ronda futura si hace
-falta.
+solo la UI se quedaba con uno) — ver `08-decisiones-tecnicas.md`. "🏆 Retos familiares" ya
+navega por `espacioId` explícito (construido 2026-08-28) — se puede abrir para cualquier Familia
+que se esté administrando, no solo la que sea el espacio activo. Queda pendiente lo mismo para
+Tareas del hogar (menor prioridad, no reportado como confuso todavía).
 - Aviso "tienes pendientes en Familia" en Hoy Personal (ver `08-decisiones-tecnicas.md`,
   2026-07-30): hoy es un contador simple (hábitos + tareas de hoy sin confirmar), no una vista
   unificada de todo lo pendiente en ambos espacios a la vez. Si más adelante hace falta algo

@@ -13,6 +13,7 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -45,7 +46,7 @@ fun DiaryListScreen(
             FloatingActionButton(onClick = onNuevaEntrada) { Text("+") }
         },
     ) { innerPadding ->
-        if (!uiState.cargando && uiState.entradas.isEmpty()) {
+        if (!uiState.cargando && uiState.entradas.isEmpty() && uiState.consulta.isBlank()) {
             EmptyState(
                 emoji = "📓",
                 titulo = "Todavía no tienes entradas en tu diario.",
@@ -60,6 +61,21 @@ fun DiaryListScreen(
             Text(text = "Diario", style = MaterialTheme.typography.titleLarge)
             TextButton(onClick = onVerCalendario, modifier = Modifier.padding(top = 4.dp)) {
                 Text("📅 Ver calendario")
+            }
+            OutlinedTextField(
+                value = uiState.consulta,
+                onValueChange = viewModel::buscar,
+                label = { Text("🔎 Buscar en tu diario") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+            )
+
+            if (uiState.entradas.isEmpty()) {
+                Text(
+                    text = "No encontré nada con \"${uiState.consulta}\".",
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(top = 16.dp),
+                )
             }
 
             LazyColumn(modifier = Modifier.padding(top = 8.dp)) {

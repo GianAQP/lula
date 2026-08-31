@@ -18,4 +18,8 @@ interface FinanzasRepository {
     suspend fun eliminarMovimiento(movimientoId: String, usuarioId: String)
     suspend fun obtenerPorId(movimientoId: String): MovimientoFinanciero?
     fun observarMovimientosEntrePeriodo(espacioId: String, desde: Long, hasta: Long): Flow<List<MovimientoFinanciero>>
+
+    /** Busca en TODO el historial, no solo un período — para encontrar cuándo se gastó/recibió
+     * algo. Vacío (no todos) si `consulta` está en blanco. */
+    fun buscarMovimientos(espacioId: String, consulta: String): Flow<List<MovimientoFinanciero>>
 }

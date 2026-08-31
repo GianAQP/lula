@@ -9,4 +9,8 @@ interface EntradaDiarioRepository {
     suspend fun eliminar(entradaId: String, usuarioId: String)
     suspend fun obtenerPorId(entradaId: String): EntradaDiario?
     fun observarPorEspacio(espacioId: String): Flow<List<EntradaDiario>>
+
+    /** Vacío (no todas) si `consulta` está en blanco — la pantalla decide qué mostrar en ese
+     * caso. */
+    fun buscar(espacioId: String, consulta: String): Flow<List<EntradaDiario>>
 }

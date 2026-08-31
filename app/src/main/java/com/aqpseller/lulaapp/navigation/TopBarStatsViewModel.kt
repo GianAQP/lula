@@ -1,19 +1,30 @@
 package com.aqpseller.lulaapp.navigation
 
+import android.content.Context
+import android.content.Intent
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.aqpseller.lulaapp.MainActivity
+import com.aqpseller.lulaapp.core.notifications.NotificationChannels
 import com.aqpseller.lulaapp.core.utils.DateTimeUtils
 import com.aqpseller.lulaapp.core.utils.decodificarCodigoCompartirQr
 import com.aqpseller.lulaapp.core.utils.decodificarCodigoEspacioQr
 import com.aqpseller.lulaapp.core.utils.decodificarContactoQr
 import com.aqpseller.lulaapp.core.utils.decodificarListaQr
+import com.aqpseller.lulaapp.domain.model.EstadoSolicitud
 import com.aqpseller.lulaapp.domain.model.TipoEspacio
 import com.aqpseller.lulaapp.domain.model.TipoMovimientoFinanciero
+import com.aqpseller.lulaapp.domain.model.TipoSolicitud
+import com.aqpseller.lulaapp.domain.repository.CompartirSyncRepository
 import com.aqpseller.lulaapp.domain.repository.EspacioRepository
+import com.aqpseller.lulaapp.domain.repository.NotificacionRepository
 import com.aqpseller.lulaapp.domain.repository.UsuarioRepository
-import com.aqpseller.lulaapp.domain.usecase.carecircle.ObtenerSolicitudesRecibidasUseCase
+import com.aqpseller.lulaapp.domain.usecase.carecircle.EventoSolicitud
 import com.aqpseller.lulaapp.domain.usecase.carecircle.ReclamarCodigoCompartirActividadUseCase
 import com.aqpseller.lulaapp.domain.usecase.carecircle.ResultadoReclamoCompartir
+import com.aqpseller.lulaapp.domain.usecase.carecircle.SincronizarYDetectarEventosSolicitudesUseCase
 import com.aqpseller.lulaapp.domain.usecase.espacio.ResultadoUnionEspacio
 import com.aqpseller.lulaapp.domain.usecase.espacio.SincronizarEspacioFamiliaUseCase
 import com.aqpseller.lulaapp.domain.usecase.espacio.UnirseAEspacioConCodigoUseCase
@@ -22,6 +33,7 @@ import com.aqpseller.lulaapp.domain.usecase.lista.ImportarListaDesdeQrUseCase
 import com.aqpseller.lulaapp.domain.usecase.registrodiario.ObtenerProgresoDeHoyUseCase
 import com.aqpseller.lulaapp.domain.usecase.usuario.ObtenerSesionActualUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -34,7 +46,9 @@ import javax.inject.Inject
 data class TopBarStatsUiState(
     val racha: Int = 0,
     val gastosHoyTotal: Double = 0.0,
-    val solicitudesPendientes: Int = 0,
+    /** Cuenta del historial permanente de notificaciones (`NotificacionRepository`), no de
+     * solicitudes pendientes — ver `Plan/08-decisiones-tecnicas.md`. */
+    val notificacionesNoLeidas: Int = 0,
     /** Null = espacio Personal — ver "banda de espacio activo", `Plan/08-decisiones-tecnicas.md`. */
     val nombreEspacioActivo: String? = null,
     val mensaje: String? = null,
@@ -51,13 +65,16 @@ class TopBarStatsViewModel @Inject constructor(
     private val obtenerSesionActualUseCase: ObtenerSesionActualUseCase,
     private val obtenerProgresoDeHoyUseCase: ObtenerProgresoDeHoyUseCase,
     private val obtenerBalanceMesUseCase: ObtenerBalanceMesUseCase,
-    private val obtenerSolicitudesRecibidasUseCase: ObtenerSolicitudesRecibidasUseCase,
     private val espacioRepository: EspacioRepository,
     private val usuarioRepository: UsuarioRepository,
     private val importarListaDesdeQrUseCase: ImportarListaDesdeQrUseCase,
     private val sincronizarEspacioFamiliaUseCase: SincronizarEspacioFamiliaUseCase,
     private val unirseAEspacioConCodigoUseCase: UnirseAEspacioConCodigoUseCase,
     private val reclamarCodigoCompartirActividadUseCase: ReclamarCodigoCompartirActividadUseCase,
+    private val compartirSyncRepository: CompartirSyncRepository,
+    private val sincronizarYDetectarEventosSolicitudesUseCase: SincronizarYDetectarEventosSolicitudesUseCase,
+    private val notificacionRepository: NotificacionRepository,
+    @ApplicationContext private val context: Context,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(TopBarStatsUiState())
@@ -81,14 +98,119 @@ class TopBarStatsViewModel @Inject constructor(
             }
 
             launch {
-                // `observarPendientesPara` filtra por correo (no por usuarioId) — vacío hasta
-                // que la cuenta esté vinculada con Google. Ver `Plan/12-firebase-auth-y-sync.md`.
-                val correo = usuarioRepository.observarUsuario().first()?.correo ?: ""
-                obtenerSolicitudesRecibidasUseCase(correo).collect { solicitudes ->
-                    _uiState.update { it.copy(solicitudesPendientes = solicitudes.size) }
+                notificacionRepository.observarNoLeidas().collect { cantidad ->
+                    _uiState.update { it.copy(notificacionesNoLeidas = cantidad) }
+                }
+            }
+
+            launch {
+                // "Recordarle" (Círculo de cuidado, permiso PUEDE_VER_Y_RECORDAR) — best-effort:
+                // solo se muestra si esta pantalla sigue viva cuando llega. Vacío hasta que la
+                // cuenta esté vinculada con Google. Ver `Plan/08-decisiones-tecnicas.md`.
+                val firebaseUid = usuarioRepository.observarUsuario().first()?.firebaseUid ?: return@launch
+                compartirSyncRepository.escucharRecordatoriosSolicitados(firebaseUid).collect { recordatorios ->
+                    recordatorios.forEach { recordatorio ->
+                        mostrarNotificacionRecordatorio(recordatorio.nombreActividad, recordatorio.deNombre)
+                        runCatching { compartirSyncRepository.eliminarRecordatorioSolicitado(recordatorio.id) }
+                    }
+                }
+            }
+
+            launch {
+                // Invitaciones a Familia y Círculo de cuidado, en ambos sentidos — ver
+                // `Plan/08-decisiones-tecnicas.md`. Vacío hasta que la cuenta esté vinculada.
+                val correo = usuarioRepository.observarUsuario().first()?.correo ?: return@launch
+                sincronizarYDetectarEventosSolicitudesUseCase(sesion.usuarioId, correo).collect { evento ->
+                    mostrarNotificacionSolicitud(evento)
                 }
             }
         }
+    }
+
+    private suspend fun mostrarNotificacionRecordatorio(nombreActividad: String, deNombre: String) {
+        postearYRegistrar(
+            emoji = "🔔",
+            titulo = "$deNombre te recuerda",
+            cuerpo = nombreActividad,
+            claveNotificacion = "recordarle:$nombreActividad",
+        )
+    }
+
+    /** Copys motivadores a propósito — la idea es que abrir una notificación de Lula se sienta
+     * bien (una invitación, una bienvenida, un logro), nunca como un trámite. Ver
+     * `Plan/08-decisiones-tecnicas.md`. */
+    private suspend fun mostrarNotificacionSolicitud(evento: EventoSolicitud) {
+        val (emoji, titulo, cuerpo) = when (evento) {
+            is EventoSolicitud.NuevaRecibida -> {
+                val s = evento.solicitud
+                when (s.tipo) {
+                    TipoSolicitud.ESPACIO -> Triple(
+                        "👨‍👩‍👧",
+                        "Nueva invitación de familia",
+                        "${s.deNombre} te invitó a la Familia \"${s.contexto}\" — entra y únete",
+                    )
+                    TipoSolicitud.ACTIVIDAD -> Triple(
+                        "👥",
+                        "Nueva invitación",
+                        "${s.deNombre} quiere que lo acompañes en \"${s.contexto}\" — entra y acepta",
+                    )
+                }
+            }
+            is EventoSolicitud.Respondida -> {
+                val s = evento.solicitud
+                val quien = s.nombreQuienResponde ?: s.para
+                when (s.estado) {
+                    EstadoSolicitud.ACEPTADA -> when (s.tipo) {
+                        TipoSolicitud.ESPACIO -> Triple(
+                            "✅",
+                            "¡Invitación aceptada!",
+                            "$quien se unió a la Familia \"${s.contexto}\" — ahora pueden avanzar juntos 🎉",
+                        )
+                        TipoSolicitud.ACTIVIDAD -> Triple(
+                            "✅",
+                            "¡Invitación aceptada!",
+                            "$quien ahora te acompaña en \"${s.contexto}\" — sigue así 💪",
+                        )
+                    }
+                    else -> Triple(
+                        "👋",
+                        "Invitación no aceptada",
+                        "$quien no aceptó por ahora la invitación a \"${s.contexto}\" — puedes volver a intentarlo más adelante",
+                    )
+                }
+            }
+        }
+        val solicitudId = when (evento) {
+            is EventoSolicitud.NuevaRecibida -> evento.solicitud.id
+            is EventoSolicitud.Respondida -> evento.solicitud.id
+        }
+        postearYRegistrar(emoji, titulo, cuerpo, claveNotificacion = "solicitud:$solicitudId", solicitudId = solicitudId)
+    }
+
+    /** Único lugar que posta al sistema Y guarda en el historial permanente (`notificacion`) —
+     * así ningún aviso nuevo se puede olvidar de quedar registrado. Ver
+     * `Plan/08-decisiones-tecnicas.md`. */
+    private suspend fun postearYRegistrar(emoji: String, titulo: String, cuerpo: String, claveNotificacion: String, solicitudId: String? = null) {
+        notificacionRepository.registrar(emoji, titulo, cuerpo, solicitudId)
+        val pendingIntent = android.app.PendingIntent.getActivity(
+            context,
+            0,
+            Intent(context, MainActivity::class.java).apply { flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP },
+            android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE,
+        )
+        val notificacion = NotificationCompat.Builder(context, NotificationChannels.RECORDATORIOS_SONIDO)
+            .setSmallIcon(android.R.drawable.ic_popup_reminder)
+            .setContentTitle("$emoji $titulo")
+            .setContentText(cuerpo)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(cuerpo))
+            .setAutoCancel(true)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setContentIntent(pendingIntent)
+            .build()
+        // Sin permiso POST_NOTIFICATIONS (Android 13+) esto se descarta en silencio, mismo
+        // criterio que `RecordatorioReceiver.mostrarNotificacionConNivel` — el historial (arriba)
+        // igual queda guardado.
+        runCatching { NotificationManagerCompat.from(context).notify(claveNotificacion.hashCode(), notificacion) }
     }
 
     /** Botón global de escanear (barra superior, visible en toda la app) — detecta solo qué

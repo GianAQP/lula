@@ -232,9 +232,11 @@ class CareCircleContenidoSyncRepositoryImpl @Inject constructor(
                 tipoAviso = runCatching { TipoAviso.valueOf(doc.getString("detalleTipoAviso") ?: "") }.getOrDefault(TipoAviso.MENSAJE_SILENCIOSO),
             )
         }
+        val deFirebaseUid = doc.getString("deFirebaseUid") ?: return null
         return ActividadCompartidaRemota(
             solicitudId = doc.id,
             deNombre = doc.getString("deNombre") ?: "Alguien",
+            deFirebaseUid = deFirebaseUid,
             permiso = runCatching { PermisoCompartir.valueOf(doc.getString("permiso") ?: "") }.getOrDefault(PermisoCompartir.PUEDE_VER),
             actividad = actividad,
             detalle = detalle,

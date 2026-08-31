@@ -9,9 +9,11 @@ import com.aqpseller.lulaapp.domain.model.SolicitudCompartir
 import com.aqpseller.lulaapp.domain.model.TipoActividad
 import com.aqpseller.lulaapp.domain.model.TipoSolicitud
 import com.aqpseller.lulaapp.domain.model.Usuario
+import com.aqpseller.lulaapp.domain.repository.AjustesRemotos
 import com.aqpseller.lulaapp.domain.repository.CodigoCompartirActividad
 import com.aqpseller.lulaapp.domain.repository.CompartirSyncRepository
 import com.aqpseller.lulaapp.domain.repository.PerfilRemoto
+import com.aqpseller.lulaapp.domain.repository.RecordatorioSolicitado
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Filter
@@ -26,6 +28,8 @@ private const val COLECCION_SOLICITUDES = "solicitudes_compartir"
 private const val COLECCION_CONEXIONES = "conexiones"
 private const val COLECCION_CODIGOS_COMPARTIR = "codigosCompartirActividad"
 private const val DURACION_CODIGO_COMPARTIR_MS = 3 * 60 * 1000L
+private const val DOC_AJUSTES = "config"
+private const val COLECCION_RECORDATORIOS_SOLICITADOS = "recordatoriosSolicitados"
 
 /**
  * `de`/`para`/`usuarioA`/`usuarioB` son ids/contactos de la app (UUID local o texto libre), no
@@ -83,6 +87,7 @@ class CompartirSyncRepositoryImpl @Inject constructor(
             "canalEnvio" to solicitud.canalEnvio?.name,
             "fechaSolicitud" to solicitud.fechaSolicitud,
             "fechaRespuesta" to solicitud.fechaRespuesta,
+            "nombreQuienResponde" to solicitud.nombreQuienResponde,
         )
         firestore.collection(COLECCION_SOLICITUDES).document(solicitud.id).set(datos).await()
     }
@@ -139,6 +144,7 @@ class CompartirSyncRepositoryImpl @Inject constructor(
                     canalEnvio = doc.getString("canalEnvio")?.let { runCatching { CanalEnvio.valueOf(it) }.getOrNull() },
                     fechaSolicitud = doc.getLong("fechaSolicitud") ?: 0L,
                     fechaRespuesta = doc.getLong("fechaRespuesta"),
+                    nombreQuienResponde = doc.getString("nombreQuienResponde"),
                 )
             }
             trySend(solicitudes)
@@ -215,5 +221,84 @@ class CompartirSyncRepositoryImpl @Inject constructor(
                 trySend(snapshot.getString("reclamadoPorNombre"))
             }
         awaitClose { registro.remove() }
+    }
+
+    // Subcolección aparte de `usuarios/{uid}` (no campos en el documento raíz) a propósito:
+    // `subirPerfil` hace un `.set()` completo (sin merge) sobre ese documento — si Ajustes
+    // viviera ahí, cada subida de uno pisaría los campos del otro.
+    override suspend fun subirAjustes(ajustes: AjustesRemotos) {
+        val uid = firebaseAuth.currentUser?.uid ?: return
+        val datos = mapOf(
+            "sonidoCheckHabilitado" to ajustes.sonidoCheckHabilitado,
+            "diaRevisionSemanal" to ajustes.diaRevisionSemanal,
+            "horaRecordatorioCierreDia" to ajustes.horaRecordatorioCierreDia,
+            "horaRecordatorioFranjaManana" to ajustes.horaRecordatorioFranjaManana,
+            "horaRecordatorioFranjaTarde" to ajustes.horaRecordatorioFranjaTarde,
+            "horaRecordatorioFranjaNoche" to ajustes.horaRecordatorioFranjaNoche,
+            "bottomBarPosicion2" to ajustes.bottomBarPosicion2,
+            "bottomBarPosicion3" to ajustes.bottomBarPosicion3,
+            "bottomBarPosicion4" to ajustes.bottomBarPosicion4,
+            "duracionMaximaAlarmaMin" to ajustes.duracionMaximaAlarmaMin,
+        )
+        firestore.collection(COLECCION_USUARIOS).document(uid)
+            .collection("ajustes").document(DOC_AJUSTES).set(datos).await()
+    }
+
+    override suspend fun restaurarAjustes(firebaseUid: String): AjustesRemotos? {
+        val doc = firestore.collection(COLECCION_USUARIOS).document(firebaseUid)
+            .collection("ajustes").document(DOC_AJUSTES).get().await()
+        if (!doc.exists()) return null
+        return AjustesRemotos(
+            sonidoCheckHabilitado = doc.getBoolean("sonidoCheckHabilitado"),
+            diaRevisionSemanal = doc.getLong("diaRevisionSemanal")?.toInt(),
+            horaRecordatorioCierreDia = doc.getString("horaRecordatorioCierreDia"),
+            horaRecordatorioFranjaManana = doc.getString("horaRecordatorioFranjaManana"),
+            horaRecordatorioFranjaTarde = doc.getString("horaRecordatorioFranjaTarde"),
+            horaRecordatorioFranjaNoche = doc.getString("horaRecordatorioFranjaNoche"),
+            bottomBarPosicion2 = doc.getString("bottomBarPosicion2"),
+            bottomBarPosicion3 = doc.getString("bottomBarPosicion3"),
+            bottomBarPosicion4 = doc.getString("bottomBarPosicion4"),
+            duracionMaximaAlarmaMin = doc.getLong("duracionMaximaAlarmaMin")?.toInt(),
+        )
+    }
+
+    override suspend fun solicitarRecordatorio(actividadId: String, nombreActividad: String, deNombre: String, paraFirebaseUid: String) {
+        val miFirebaseUid = firebaseAuth.currentUser?.uid ?: return
+        val datos = mapOf(
+            "actividadId" to actividadId,
+            "nombreActividad" to nombreActividad,
+            "deFirebaseUid" to miFirebaseUid,
+            "deNombre" to deNombre,
+            "paraFirebaseUid" to paraFirebaseUid,
+            "fecha" to System.currentTimeMillis(),
+        )
+        firestore.collection(COLECCION_RECORDATORIOS_SOLICITADOS).document(IdGenerator.newId()).set(datos).await()
+    }
+
+    override fun escucharRecordatoriosSolicitados(miFirebaseUid: String): Flow<List<RecordatorioSolicitado>> = callbackFlow {
+        val registro = firestore.collection(COLECCION_RECORDATORIOS_SOLICITADOS)
+            .whereEqualTo("paraFirebaseUid", miFirebaseUid)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null || snapshot == null) {
+                    trySend(emptyList())
+                    return@addSnapshotListener
+                }
+                trySend(
+                    snapshot.documents.mapNotNull { doc ->
+                        val actividadId = doc.getString("actividadId") ?: return@mapNotNull null
+                        RecordatorioSolicitado(
+                            id = doc.id,
+                            actividadId = actividadId,
+                            nombreActividad = doc.getString("nombreActividad") ?: "",
+                            deNombre = doc.getString("deNombre") ?: "Alguien",
+                        )
+                    },
+                )
+            }
+        awaitClose { registro.remove() }
+    }
+
+    override suspend fun eliminarRecordatorioSolicitado(recordatorioId: String) {
+        firestore.collection(COLECCION_RECORDATORIOS_SOLICITADOS).document(recordatorioId).delete().await()
     }
 }

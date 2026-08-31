@@ -20,6 +20,7 @@ import com.aqpseller.lulaapp.data.local.dao.ListaItemDao
 import com.aqpseller.lulaapp.data.local.dao.MedicamentoDetalleDao
 import com.aqpseller.lulaapp.data.local.dao.MetaDao
 import com.aqpseller.lulaapp.data.local.dao.NotaDao
+import com.aqpseller.lulaapp.data.local.dao.NotificacionDao
 import com.aqpseller.lulaapp.data.local.dao.PropositoPersonalDao
 import com.aqpseller.lulaapp.data.local.dao.RegistroActividadDao
 import com.aqpseller.lulaapp.data.local.dao.RegistroDiarioDao
@@ -49,6 +50,7 @@ import com.aqpseller.lulaapp.data.local.entity.MedicamentoDetalleEntity
 import com.aqpseller.lulaapp.data.local.entity.MetaActividadCrossRef
 import com.aqpseller.lulaapp.data.local.entity.MetaEntity
 import com.aqpseller.lulaapp.data.local.entity.NotaEntity
+import com.aqpseller.lulaapp.data.local.entity.NotificacionEntity
 import com.aqpseller.lulaapp.data.local.entity.PropositoPersonalEntity
 import com.aqpseller.lulaapp.data.local.entity.RegistroActividadEntity
 import com.aqpseller.lulaapp.data.local.entity.RegistroDiarioEntity
@@ -96,8 +98,9 @@ import com.aqpseller.lulaapp.data.local.entity.UsuarioEntity
         PropositoPersonalEntity::class,
         ConexionEntity::class,
         SesionCitaEntity::class,
+        NotificacionEntity::class,
     ],
-    version = 32,
+    version = 34,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -131,6 +134,7 @@ abstract class LulaDatabase : RoomDatabase() {
     abstract fun propositoPersonalDao(): PropositoPersonalDao
     abstract fun conexionDao(): ConexionDao
     abstract fun sesionCitaDao(): SesionCitaDao
+    abstract fun notificacionDao(): NotificacionDao
 
     companion object {
         const val NOMBRE_BD = "lula.db"

@@ -60,6 +60,12 @@ interface EntradaDiarioDao {
 
     @Query("DELETE FROM entrada_diario WHERE id = :id")
     suspend fun eliminar(id: String)
+
+    /** Filtra en la base de datos (no trae todo a memoria para recién ahí buscar) — `LIKE` sobre
+     * `texto`, sin distinguir mayúsculas/minúsculas (comportamiento por defecto de `LIKE` en
+     * SQLite para texto ASCII). Ver `Plan/08-decisiones-tecnicas.md`. */
+    @Query("SELECT * FROM entrada_diario WHERE espacioId = :espacioId AND texto LIKE '%' || :consulta || '%' ORDER BY fecha DESC, id DESC")
+    fun buscar(espacioId: String, consulta: String): Flow<List<EntradaDiarioEntity>>
 }
 
 @Dao

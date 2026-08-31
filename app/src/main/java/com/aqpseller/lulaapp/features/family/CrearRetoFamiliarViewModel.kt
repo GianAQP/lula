@@ -1,5 +1,6 @@
 package com.aqpseller.lulaapp.features.family
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aqpseller.lulaapp.domain.model.FrecuenciaRetoFamiliar
@@ -18,14 +19,18 @@ import javax.inject.Inject
 
 data class MiembroSeleccionableUi(val usuarioId: String, val nombre: String, val seleccionado: Boolean)
 
+/** El espacio en el que se crea el reto es el que trae la navegación (`espacioId`), no
+ * necesariamente el espacio activo — mismo criterio que `RetosFamiliaresViewModel`. */
 @HiltViewModel
 class CrearRetoFamiliarViewModel @Inject constructor(
+    savedStateHandle: SavedStateHandle,
     private val obtenerSesionActualUseCase: ObtenerSesionActualUseCase,
     private val obtenerMiembrosEspacioUseCase: ObtenerMiembrosEspacioUseCase,
     private val crearRetoFamiliarUseCase: CrearRetoFamiliarUseCase,
     private val usuarioRepository: UsuarioRepository,
 ) : ViewModel() {
 
+    private val espacioId: String = checkNotNull(savedStateHandle["espacioId"])
     private var sesion: SesionActual? = null
 
     private val _miembros = MutableStateFlow<List<MiembroSeleccionableUi>>(emptyList())
@@ -46,7 +51,7 @@ class CrearRetoFamiliarViewModel @Inject constructor(
             val sesionActual = obtenerSesionActualUseCase()
             sesion = sesionActual
             val nombreUsuario = usuarioRepository.observarUsuario().first()?.nombrePreferido ?: "Tú"
-            obtenerMiembrosEspacioUseCase(sesionActual.espacioId).collect { miembros ->
+            obtenerMiembrosEspacioUseCase(espacioId).collect { miembros ->
                 val seleccionActual = _miembros.value.associate { it.usuarioId to it.seleccionado }
                 _miembros.value = miembros.map { miembro ->
                     MiembroSeleccionableUi(
@@ -79,7 +84,7 @@ class CrearRetoFamiliarViewModel @Inject constructor(
         viewModelScope.launch {
             val sesionActual = sesion ?: obtenerSesionActualUseCase().also { sesion = it }
             crearRetoFamiliarUseCase(
-                espacioId = sesionActual.espacioId,
+                espacioId = espacioId,
                 nombre = nombre,
                 objetivo = objetivo,
                 frecuencia = frecuencia,

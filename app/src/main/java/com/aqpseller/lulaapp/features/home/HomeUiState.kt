@@ -40,6 +40,9 @@ data class HomeUiState(
     val pendientesEnFamilia: Int = 0,
     val racha: Int = 0,
     val diaYaCerrado: Boolean = false,
+    /** Ayer se quedó sin cerrar (y ya tiene el hábito de cerrar) — banner motivador para que lo
+     * cierre desde el calendario y su racha 🔥 siga sumando. */
+    val diaAnteriorSinCerrar: Boolean = false,
     val actividadesManana: List<ActividadUi> = emptyList(),
     val actividadesTarde: List<ActividadUi> = emptyList(),
     val actividadesNoche: List<ActividadUi> = emptyList(),

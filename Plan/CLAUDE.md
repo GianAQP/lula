@@ -1238,3 +1238,95 @@ ninguna señal de error. Se encontró comparando el APK realmente instalado (ext
 dispositivo con `adb pull` + `pm path`) contra el código fuente, byte a byte. Desde ahora, los
 comandos de compilar/instalar corren sin pipes que puedan ocultar el código de salida. Detalle
 completo en `Plan/08-decisiones-tecnicas.md`.
+
+**Ajustes sincronizados + Retos familiares por espacio explícito** (2026-08-28): dos huecos
+conocidos, cerrados. (1) Sonido de check, horas de recordatorio, barra inferior y duración de
+Alarma ahora se suben a `usuarios/{uid}/ajustes/config` (subcolección aparte del perfil, para no
+pisarlo) y se restauran una sola vez al vincular la cuenta — a propósito no en cada apertura
+(arriesgaría pisar un cambio reciente) ni el espacio activo (ya vive solo en memoria por una
+decisión anterior). (2) "Retos familiares" ahora navega con el `espacioId` de la Familia que se
+está administrando, no del espacio activo — se sacó el aviso "cambia de espacio primero" que
+existía desde que se agregó soporte a varias Familias. Detalle completo en
+`Plan/08-decisiones-tecnicas.md`.
+
+**"Recordarle" (permiso "Puede ver y recordar")** (2026-08-29): tercer y último hueco de la
+ronda del 2026-08-28. Botón "🔔 Recordarle" en "Lo que me comparten" — best-effort vía una nueva
+colección Firestore `recordatoriosSolicitados`, con un listener en `TopBarStatsViewModel` que
+muestra una notificación local (canal Sonido) mientras la app de quien comparte esté abierta y
+borra el aviso apenas se muestra. No hay push real (sin FCM en esta app), mismo criterio que el
+resto de esta sincronización. Compilado sin pipe, instalado y verificado sin crash. Falta
+publicar la nueva regla de Firestore en Firebase Console. Detalle completo en
+`Plan/08-decisiones-tecnicas.md`.
+
+**Notificaciones bidireccionales + racha que no castiga** (2026-08-29): ronda grande a pedido
+del usuario tras dos preguntas suyas. (1) Invitar por correo/teléfono (Familia o Círculo de
+cuidado) ahora avisa en ambos sentidos — notificación local al recibir una invitación y al
+enterarse de que la aceptaron/rechazaron (listener global en `TopBarStatsViewModel`, copy
+motivador), más un diálogo de bienvenida al aceptar. El ícono 🔔 de la barra superior es ahora
+permanente (antes solo aparecía con algo pendiente). Reutiliza toda la infraestructura de
+`SolicitudCompartir` ya existente, sin tocar `firestore.rules`. (2) La racha 🔥 dejó de ser
+"días consecutivos" (se rompía a 0 si faltaba un día) y ahora es acumulativa — sube al cerrar,
+nunca baja — decisión de producto explícita del usuario ("un fuego que retrocede castiga, no
+motiva"). Se agregó un diálogo explicando la mecánica al tocar el número, un banner motivador en
+Hoy si ayer se quedó sin cerrar, y cerrar un día pasado desde el Calendario ahora calcula solo
+las actividades cumplidas de esa fecha (antes había que escribirlo a mano). Migración Room
+32→33 (`solicitud_compartir` gana `nombreQuienResponde`). Compilado sin pipe, instalado y
+verificado sin crash, racha confirmada contra datos reales del dispositivo (pasó de mostrar 0 a
+14). Detalle completo en `Plan/08-decisiones-tecnicas.md`.
+
+**Pantalla real de Notificaciones** (2026-08-30): la primera versión del punto anterior reusaba
+"Mi círculo de cuidado" como destino del 🔔 — el usuario aclaró (con una captura de referencia)
+que esperaba un historial real: agrupado por fecha, leído/no leído, que queda guardado aunque ya
+se haya actuado. Se reconstruyó con una tabla nueva en Room (`notificacion`, migración 33→34) —
+cada aviso que antes solo se posteaba al sistema y se perdía ahora también queda guardado ahí.
+Pantalla nueva `NotificacionesScreen`, el ícono 🔔 ahora abre esa pantalla (badge = no leídas);
+"Mi círculo de cuidado" sigue aparte, en el menú "⋮", como pantalla de gestión (aceptar/
+rechazar/cancelar), no de historial. Compilado sin pipe, instalado y verificado sin crash.
+Detalle completo en `Plan/08-decisiones-tecnicas.md`.
+
+**Nota de proceso**: en paralelo, el usuario reportó que en un celular nuevo (Xiaomi/POCO,
+HyperOS, Android 16) el botón "Continuar con Google" se queda pegado sin entrar — confirmó que
+en otros 2 celulares instaló y funcionó normal, así que es específico de ese dispositivo (Google
+Play Services desactualizado, sin cuenta de Google agregada, o señal débil — la app usa
+Credential Manager, ver `GoogleSignInHelper.kt`). Pendiente de diagnosticar con el celular
+conectado por USB — el usuario pidió seguir con lo demás mientras tanto.
+
+**Ícono 🔔 con estado + historial de Notificaciones sincronizado** (2026-08-30): el emoji 🔔 se
+veía amarillo siempre; ahora es un ícono real que cambia — silueta neutra sin nada pendiente,
+relleno y amarillo con algo sin leer. Además, el usuario preguntó directamente si el historial
+sobrevivía a un cambio de celular — no lo hacía (solo era local) — así que se agregó sync
+completo a Firestore (subir al crear, actualizar `leido` remoto al marcar, restaurar en cada
+apertura vía el mismo mecanismo que el resto de "lo Personal"). Nueva regla de Firestore ya
+publicada en Firebase Console. Compilado, instalado, sin crash. Detalle completo en
+`Plan/08-decisiones-tecnicas.md`.
+
+**Buscadores (Diario/Finanzas) + categorías + exportar a Excel** (2026-08-30): el usuario
+preguntó cómo armar estadísticas de gastos y cómo buscar entradas del Diario. Explícitamente
+**sin gráficos** — solo texto, prefiere copiar los valores a Excel para graficar él mismo (una
+web para verlo todo desde la computadora quedó como idea a futuro, no ahora). Se agregó: (1)
+buscador de texto en Diario, eficiente (`LIKE` en la base de datos + debounce, no carga todo a
+memoria como hacía el calendario). (2) Buscador en Finanzas que cruza TODO el historial (no solo
+el mes visible) para "¿cuándo gasté eso?". (3) Desglose de gastos/ingresos por categoría, suma
+de mayor a menor. (4) Botón "📋 Copiar" que arma el período visible separado por tabulador, listo
+para pegar en Excel/Sheets. Compilado, instalado, sin crash. Detalle completo en
+`Plan/08-decisiones-tecnicas.md`.
+
+**Rediseño de "Historial" de Finanzas** (2026-08-30): el usuario mandó una captura mostrando que
+el encabezado de esa pantalla se comía ~40% de la pantalla en su celular — la causa era una
+`Column` fija que nunca scrolleaba, solo la lista de abajo lo hacía. Se pasó todo a una sola
+`LazyColumn` (encabezado como parte del scroll) y el desglose por categoría ahora arranca
+colapsado. Verificado con una captura real del dispositivo, no solo compilación — de paso se
+confirmó ahí mismo que la racha acumulativa (16 días) y el ícono 🔔 con estado (silueta blanca
+sin nada pendiente) ya están funcionando en el celular real. Detalle completo en
+`Plan/08-decisiones-tecnicas.md`.
+
+**Alarma que no se apagó en videollamada** (2026-08-30): reporte real — sonó Alarma durante una
+videollamada de WhatsApp, el usuario tocó "Detener", la notificación se ocultó pero el sonido
+siguió. El log del dispositivo confirmó un `MediaPlayer` huérfano (nunca pasó por nuestro código
+de limpieza, lo cerró el recolector de basura minutos tarde) — la causa exacta no quedó 100%
+confirmada porque el buffer de logcat se cortó antes de capturar el detalle fino, pero sí quedó
+confirmado que el bug es real. Se blindó `AlarmaSonidoService` contra una carrera real y
+plausible (dos disparos casi simultáneos pisándose el `MediaPlayer` compartido) con
+`@Synchronized` + `stopSelf(startId)` + logging explícito en cada paso, para que la próxima vez
+el log sea concluyente. Compilado, instalado, sin crash. Detalle completo en
+`Plan/08-decisiones-tecnicas.md`.

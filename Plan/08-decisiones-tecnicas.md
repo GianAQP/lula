@@ -4745,3 +4745,291 @@ confirmado con las mismas 3 capas de evidencia (fecha de instalación nueva, tam
 distinto, y el texto "Quitar admin" presente en el `.dex` real) antes de decirle al usuario que
 ya estaba listo — nunca más solo "el comando no tiró error".
 
+## Ajustes sincronizados entre celulares — añadido 2026-08-28
+
+Cierra un hueco documentado desde hace varias rondas: sonido de check, día de Revisión semanal,
+horas de recordatorio (cierre de día + las 3 franjas), posición de la barra inferior (2/3/4), y
+duración máxima de la Alarma — antes 100% locales (DataStore), se perdían al cambiar de celular.
+
+**Diseño**: nueva subcolección `usuarios/{firebaseUid}/ajustes/config` en Firestore —
+deliberadamente NO como campos del documento raíz `usuarios/{firebaseUid}` (ahí vive el perfil,
+y `subirPerfil` hace un `.set()` completo sin merge; agregar Ajustes ahí haría que cada subida
+de uno pisara los campos del otro). `AjustesRepositoryImpl` (la única clase que toca DataStore)
+ahora recibe `CompartirSyncRepository` inyectado, y cada setter relevante llama a un
+`sincronizarConNube()` privado al final — sube una foto completa de todos los Ajustes
+sincronizables cada vez que cambia cualquiera (más simple que rastrear campo por campo).
+
+**Restaurar es una sola vez, no en cada apertura** (a diferencia de `PersonalSyncRepository`,
+que sí corre en cada apertura porque ahí es un *merge* seguro) — Ajustes son escalares simples
+sin versión/timestamp propio, así que restaurar en cada apertura arriesgaría pisar un cambio
+recién hecho en ESE MISMO celular con una copia vieja de otro. Se ata al momento de vincular la
+cuenta (`ReclamarCuentaConGoogleUseCase`, nuevo `RestaurarAjustesUseCase`), igual que el perfil.
+
+**Deliberadamente fuera de esta ronda**: `espacioActivoId` NO se sincroniza — ya se había
+decidido antes (2026-07-30) que ese valor vive solo en memoria (nunca en disco) para que cerrar
+y volver a abrir la app siempre vuelva a Personal, evitando que el usuario piense que sus datos
+se borraron. Sincronizarlo entre celulares chocaría con esa decisión ya validada. Tampoco
+`ultimoHitoRachaCelebrado` (no es una preferencia real, es solo para no repetir una celebración).
+
+Compilado sin pipe (ver lección de la sección anterior), `installDebug` confirmado con fecha de
+instalación nueva, sin crash verificado con `adb logcat`.
+
+## Retos familiares navegables por `espacioId` explícito — añadido 2026-08-28
+
+Cierra el límite que había quedado documentado al agregar varias Familias por usuario
+(2026-08-24): "🏆 Retos familiares" solo se podía abrir para la Familia que fuera el espacio
+ACTIVO en ese momento — si administrabas una Familia distinta a la activa, veías un aviso de
+"cambia de espacio primero" en vez del botón.
+
+**Cambio**: `LulaDestinations.RETOS_FAMILIARES`/`CREAR_RETO_FAMILIAR` ganaron `{espacioId}` como
+argumento de ruta (mismo patrón que `habito/{actividadId}`, etc.) — `RetosFamiliaresViewModel`/
+`CrearRetoFamiliarViewModel` lo leen de `SavedStateHandle` en vez de resolverlo desde
+`ObtenerSesionActualUseCase().espacioId` (el espacio activo global). `FamiliaScreen` ahora
+navega siempre con `uiState.familiaSeleccionadaId` — la Familia que se está administrando, sin
+importar cuál sea la activa. Se sacó el aviso "cambia de espacio primero", ya no hace falta.
+
+Compilado sin pipe, `installDebug` confirmado con fecha de instalación nueva, sin crash
+verificado con `adb logcat`.
+
+## "Recordarle" (permiso "Puede ver y recordar") — añadido 2026-08-29
+
+Último de los 3 huecos elegidos el 2026-08-28 (junto con Ajustes sincronizados y Retos por
+`espacioId`). Quien acompaña con permiso `PUEDE_VER_Y_RECORDAR` en "Lo que me comparten" ahora
+tiene un botón real "🔔 Recordarle" — antes el permiso existía en el modelo de datos pero no
+hacía nada.
+
+**Diseño, mismo criterio "best-effort" que el resto de esta sincronización** (no hay
+infraestructura FCM/push en la app): nueva colección Firestore `recordatoriosSolicitados/{id}`.
+Quien acompaña escribe un documento (`deFirebaseUid`, `paraFirebaseUid`, `actividadId`,
+`nombreActividad`, `deNombre`) vía `SolicitarRecordatorioUseCase` →
+`CompartirSyncRepository.solicitarRecordatorio`. Del lado de quien comparte, `TopBarStatsViewModel`
+(ya elegido antes para el aviso 📩 de solicitudes pendientes, por ser "efectivamente global")
+agrega un listener en vivo (`escucharRecordatoriosSolicitados`) que, mientras la app esté
+abierta, muestra una notificación local (`NotificationChannels.RECORDATORIOS_SONIDO`, mismo
+canal que un recordatorio nivel Sonido normal) y borra el documento apenas se muestra —
+best-effort real: si el celular de quien comparte no tiene la app en memoria en ese momento, el
+aviso nunca llega (se queda el documento en Firestore hasta la próxima vez que se conecte el
+listener, entonces se muestra tarde). `ActividadCompartidaRemota` ganó el campo `deFirebaseUid`
+(faltaba, necesario para saber a quién dirigir el aviso).
+
+Regla de Firestore agregada (`recordatoriosSolicitados/{id}`): crear solo si
+`request.auth.uid == deFirebaseUid`; leer/borrar solo si `request.auth.uid == paraFirebaseUid`.
+**Pendiente de publicar en Firebase Console** — no se ha pedido ni confirmado esta ronda.
+
+Compilado sin pipe, `installDebug` confirmado con fecha de instalación nueva y el texto
+"Recordarle"/"recordatoriosSolicitados" presente en el `.dex` real, sin crash verificado con
+`adb logcat`.
+
+## Notificaciones bidireccionales de invitación (Familia + Círculo de cuidado) — añadido 2026-08-29
+
+Cierra un hueco real reportado por el usuario: invitar a alguien por correo/teléfono (sin estar
+presente, a diferencia del QR) no avisaba a nadie — ni a quien invita cuando la otra persona
+responde, ni llegaba nada nuevo a quien recibe salvo que abriera la app y por casualidad entrara
+a revisar. El usuario pidió explícitamente que fuera "lo más motivador y entendible posible".
+
+**Reutiliza toda la infraestructura existente de `SolicitudCompartir`** (ya cubre tanto Familia
+como Círculo de cuidado, `TipoSolicitud.ESPACIO`/`ACTIVIDAD` — ver `InvitarAEspacioUseCase`) en
+vez de construir un sistema nuevo. Piezas agregadas:
+
+- `SolicitudCompartir` ganó `nombreQuienResponde` (nueva columna, migración Room 32→33) — antes
+  solo se sabía `para` (correo/teléfono, feo para un mensaje) de quien acepta/rechaza; ahora
+  `AceptarSolicitudCompartirUseCase`/`RechazarSolicitudCompartirUseCase` guardan el nombre real.
+- `SincronizarYDetectarEventosSolicitudesUseCase` (nuevo): envuelve
+  `escucharSolicitudes` comparando cada solicitud entrante contra lo que ya había en Room antes
+  de aplicarla — detecta solo 2 eventos reales (`NuevaRecibida`, `Respondida`), nunca se repite
+  al reabrir la app ni reconectar el listener (una vez aplicado el cambio a Room, la próxima
+  comparación ya no encuentra diferencia — no hace falta una bandera aparte de "ya avisado").
+- `TopBarStatsViewModel` corre este listener globalmente (mismo patrón que "Recordarle") y
+  postea una notificación local con copy motivador según tipo+evento (invitación nueva,
+  aceptada, rechazada) — canal `RECORDATORIOS_SONIDO`.
+- Al aceptar (`CareCircleViewModel.aceptar`), además del cambio de estado, muestra de inmediato
+  un diálogo de bienvenida motivador en pantalla (no espera al roundtrip de Firestore, ya está
+  ahí mismo tocando el botón).
+- El ícono 🔔 de la barra superior (antes 📩, solo visible si había algo pendiente) ahora es
+  permanente con `BadgedBox` — es la única entrada real a "Mi círculo de cuidado", que ya
+  mostraba tanto lo pendiente por responder como el estado de lo enviado.
+
+No hizo falta tocar `firestore.rules`: la regla de `solicitudes_compartir` ya permite `update`
+sin restricción de campos a quien envió o a quien recibe, así que el nuevo campo pasa igual.
+
+Compilado sin pipe, `installDebug` confirmado con fecha de instalación nueva, migración 32→33
+aplicada sin error (verificado con `adb logcat`, datos existentes intactos), y el texto
+"nombreQuienResponde" presente en el `.dex` real.
+
+**Corrección el mismo día**: la primera versión de esto reusaba "Mi círculo de cuidado" como
+destino del ícono 🔔, sin pantalla propia. El usuario aclaró que esperaba un historial real
+(mandó como referencia el "Notificaciones" de una app de alarma: agrupado por fecha, leído/no
+leído, queda guardado aunque ya se haya actuado). Se construyó de nuevo con tabla propia — ver
+sección siguiente.
+
+## Pantalla real de Notificaciones (historial permanente) — añadido 2026-08-30
+
+Reemplaza el enfoque anterior (🔔 como acceso directo a "Mi círculo de cuidado") por un
+historial de verdad: tabla nueva `notificacion` en Room (migración 33→34,
+`NotificacionRepository`/`NotificacionDao`) — cada aviso que antes solo se posteaba al sistema
+(y se perdía) ahora también queda guardado ahí (`emoji`, `titulo`, `cuerpo`, `fecha`, `leido`,
+`solicitudId` opcional para poder llevar a "Mi círculo de cuidado" si sigue siendo una
+invitación). `TopBarStatsViewModel.postearYRegistrar` es el único punto que posta Y guarda —
+así ningún aviso nuevo puede quedar fuera del historial por accidente.
+
+Pantalla nueva `NotificacionesScreen` (ruta `notificaciones`): agrupada por fecha ("Hoy"/"Ayer"/
+fecha), filtro "Todo"/"No leído", punto rojo en lo no leído, tocar una fila la marca leída y, si
+tiene `solicitudId`, navega a "Mi círculo de cuidado" (que sigue existiendo aparte, como pantalla
+de GESTIÓN — aceptar/rechazar/cancelar — no de historial). El ícono 🔔 de la barra superior ahora
+abre esta pantalla nueva, con el badge = no leídas (antes contaba solo solicitudes pendientes).
+"Mi círculo de cuidado" se mantiene accesible desde el menú "⋮".
+
+Compilado sin pipe, `installDebug` confirmado con fecha de instalación nueva, migración 33→34
+sin error (verificado con `adb logcat`), y el texto "notificacionesNoLeidas" presente en el
+`.dex` real.
+
+## Ícono 🔔 con estado (color) + sincronizar el historial de Notificaciones — añadido 2026-08-30
+
+Dos ajustes pedidos tras probar la ronda anterior:
+
+**Ícono con estado**: el 🔔 (emoji) se veía amarillo siempre, sin distinguir a simple vista si
+había algo nuevo. Se reemplazó por `Icon` real (Material, ya se usa `material-icons-extended`
+en el proyecto): `Icons.Outlined.Notifications` (silueta neutra) sin nada pendiente,
+`Icons.Filled.Notifications` con tinte amarillo (`0xFFFFC107`) apenas hay algo sin leer.
+
+**Historial sincronizado**: antes la tabla `notificacion` era 100% local — el usuario preguntó
+directamente qué pasaba al cambiar de celular, y la respuesta real era "el historial se pierde"
+(lo pendiente se recupera solo porque `solicitud_compartir` sí sincroniza; lo ya leído/resuelto,
+no). Se agregó sync completo, mismo patrón que el resto de "lo Personal"
+(`PersonalSyncRepository`, subcolección `usuarios/{uid}/notificaciones/{id}`):
+- `NotificacionRepositoryImpl.registrar` sube la notificación a Firestore además de guardarla
+  local (best-effort, `runCatching`).
+- `marcarLeida` también actualiza el campo `leido` remoto — así el estado de lectura también
+  viaja entre celulares, no solo la existencia del aviso.
+- `RestaurarDatosPersonalesUseCase` (corre en cada apertura, ya es un merge seguro para todo lo
+  Personal) ahora también restaura notificaciones — `@Upsert` por id, nunca duplica.
+
+Regla de Firestore agregada (`usuarios/{uid}/notificaciones/{id}`, mismo patrón que
+`registrosDiarios`/`ajustes`): solo el dueño de la cuenta lee/escribe. **Publicada en Firebase
+Console (2026-08-30).**
+
+**Límite conocido, aceptado a propósito**: si `marcarNotificacionLeidaRemota` falla por estar
+offline, la próxima restauración (merge) podría devolver esa notificación a "no leída" — mismo
+tipo de compromiso "best-effort" que ya existe en el resto de esta sincronización, no se
+construyó cola de reintentos para este caso.
+
+Compilado sin pipe, `installDebug` confirmado con fecha de instalación nueva, sin crash
+verificado con `adb logcat`. Verificación visual del ícono pendiente — el celular de prueba
+tenía bloqueo por patrón y no se forzó.
+
+## Buscadores en Diario y Finanzas + desglose por categoría + exportar a Excel — añadido 2026-08-30
+
+A pedido del usuario, explícitamente **sin gráficos** (la app usa texto/emoji, no charts —
+confirmó que prefiere copiar los valores y graficarlos él mismo en Excel si quiere). Una idea de
+"web para ver todo desde la computadora" quedó anotada para más adelante, no esta ronda.
+
+**Diario**: `EntradaDiarioDao.buscar` (nuevo, `LIKE` sobre `texto` en la base de datos, no trae
+todo a memoria) + `BuscarEntradasDiarioUseCase`. `DiaryListViewModel` alterna entre
+`observarPorEspacio` (consulta vacía) y `buscar` (consulta con texto) vía `flatMapLatest` con
+`debounce(250)` — evita disparar una consulta por cada tecla y cancela la anterior si llega una
+más nueva ("un buscador eficiente que no se sienta lento", pedido explícito). `DiaryListScreen`
+gana un `OutlinedTextField` de búsqueda; el estado vacío distingue "nunca escribiste nada" de
+"no hay resultados para tu búsqueda".
+
+**Finanzas**: mismo patrón — `FinanzasDao.buscar` (`LIKE` sobre `categoria`/`descripcion`) +
+`BuscarMovimientosUseCase`, pero a propósito busca en **todo el historial**, no solo el
+mes/rango visible (el pedido era "ver cuándo gasté eso", cruza períodos). `FinancesHistoryUiState`
+gana `movimientosVisibles` (resultados de búsqueda si hay consulta activa, si no el período
+normal) y `egresosPorCategoria`/`ingresosPorCategoria` (suma agrupada por categoría, de mayor a
+menor, calculada en memoria sobre lo ya visible — sin necesidad de una consulta nueva). Mientras
+se busca, la navegación por mes/rango se oculta (no aplica).
+
+**Copiar a Excel**: `FinancesHistoryViewModel.textoParaCopiar()` arma el período/búsqueda
+visible como texto separado por tabulador (fecha ISO, tipo, categoría, monto, descripción) —
+pega directo como columnas en Excel/Sheets. Botón "📋 Copiar lo que estás viendo" usa
+`ClipboardManager` (mismo mecanismo que "Correo copiado" en el escáner QR global).
+
+Compilado sin pipe, `installDebug` confirmado con fecha de instalación nueva, sin crash
+verificado con `adb logcat`, y "textoParaCopiar"/"egresosPorCategoria" presentes en el `.dex`
+real.
+
+## Rediseño de "Historial" de Finanzas — añadido 2026-08-30
+
+El usuario reportó (con captura) que el encabezado de esta pantalla (buscador + chips + mes +
+resumen + categorías + copiar) se comía ~40% de la pantalla en su celular, dejando muy poco
+espacio real para ver el historial de movimientos.
+
+**Causa**: la pantalla usaba una `Column` fija arriba de una `LazyColumn` — el encabezado nunca
+scrolleaba, solo la lista de abajo, así que ese espacio quedaba perdido para siempre sin importar
+cuánto se scrolleara.
+
+**Arreglo**: todo pasó a una sola `LazyColumn` (encabezado como `item {}`, movimientos como
+`items()`) — al scrollear, el encabezado se va con el resto y la lista gana toda la pantalla.
+Además, el desglose por categoría (lo más largo del encabezado) ahora arranca **colapsado**
+("📊 Por categoría ▸ Ver"), a pedido explícito del usuario ("poner como desplegable").
+
+Verificado visualmente con una captura real del dispositivo (no solo compilación) — el
+encabezado quedó compacto y "MOVIMIENTOS" con varias filas visibles aparece sin necesidad de
+scrollear. Compilado sin pipe, instalado, sin crash.
+
+## Racha ya no baja + calendario calcula solo — añadido 2026-08-29
+
+Dos cambios pedidos juntos tras un caso real: el usuario tenía una racha de varios días, se le
+olvidó cerrar un día (una jornada particularmente ocupada probando la app conmigo) y a la mañana
+siguiente la vio en 0 — sintiéndolo como un castigo, no como algo que lo invite a seguir.
+
+**Racha ahora es acumulativa, nunca baja** (`ObtenerProgresoDeHoyUseCase.calcularRachaActual`):
+antes era "días CONSECUTIVOS cerrados" (se rompía a 0 si faltaba uno); ahora es el total de días
+cerrados con ≥1 actividad cumplida, sin importar los huecos — saltarse un día simplemente no la
+sube, nunca la baja. Decisión de producto explícita del usuario, con el respaldo de que un
+contador que retrocede castiga algo que ya pasó en vez de motivar a seguir (mismo principio que
+el "perdón de un día" de apps de hábitos como Duolingo).
+
+Tres piezas nuevas para que el cambio se entienda (a pedido explícito, no solo el número solo):
+- Tocar el 🔥 de la barra superior (antes solo navegaba a Historial) ahora muestra primero un
+  diálogo explicando la mecánica, con un botón para seguir a Historial.
+- `ObtenerProgresoDeHoyUseCase.diaAnteriorSinCerrar` (nuevo): true si ayer quedó sin cerrar Y la
+  persona ya tiene el hábito de cerrar (para no molestar a alguien que recién instaló la app el
+  día de hoy). Banner motivador en Hoy (color propio, no el rojo de error de los otros avisos)
+  invitando a cerrarlo desde el calendario.
+- **Cerrar un día pasado desde el Calendario ahora calcula solo** en vez de partir en 0/manual:
+  `CerrarDiaViewModel` reutiliza `ObtenerAgendaDelRangoUseCase` (la misma reconstrucción
+  histórica día-por-día que ya usan las vistas Semana/Mes del Calendario) para contar
+  actividades completadas/totales de esa fecha puntual — el comentario anterior de "no hay forma
+  confiable de recalcular" quedó desactualizado desde que esa reconstrucción existe. Los campos
+  siguen editables por si hace falta corregir algo a mano.
+
+Compilado sin pipe, `installDebug` confirmado con fecha de instalación nueva, sin crash
+verificado con `adb logcat`. Racha verificada contra los datos reales del dispositivo: pasó de
+mostrar 0 a mostrar 14 (el total real de días cerrados con actividad, antes escondido por la
+regla de "consecutivos").
+
+## Alarma que no se apagó al tocar "Detener" durante una videollamada — diagnosticado 2026-08-30
+
+Reporte real del usuario: estaba en videollamada de WhatsApp, sonó un recordatorio nivel Alarma,
+tocó el botón que apareció, la notificación se ocultó, pero el sonido siguió.
+
+**Evidencia real en `adb logcat`** (no adivinado): el proceso de Lula arrancó normal
+(`RecordatorioReceiver` → `AlarmaSonidoService` en foreground), pero minutos después aparecieron
+`"mediaplayer went away with unhandled events"` y `"A resource failed to call release"` — el
+`MediaPlayer` de la alarma nunca pasó por nuestro código de limpieza (`detenerReproduccion()`,
+que sí libera todo correctamente cuando se ejecuta); quedó huérfano y recién lo cerró el
+recolector de basura, minutos tarde. Eso confirma que en algún momento `detener()` no llegó a
+correr sobre la instancia que de verdad tenía el sonido activo — el registro se cortó antes de
+capturar el detalle fino de por qué (el buffer de logcat es limitado y hay mucho tráfico durante
+una videollamada), así que la causa exacta (¿doble entrega del disparo de `AlarmManager` bajo
+presión de CPU/batería de la videollamada? ¿una carrera entre dos `onStartCommand`?) no quedó
+100% confirmada — pero sí quedó confirmado que es real, no una percepción.
+
+**Corrección aplicada, defensiva**: `AlarmaSonidoService.iniciar()`/`detener()`/
+`detenerReproduccion()` ahora son `@Synchronized` — antes nada protegía el campo `mediaPlayer`
+compartido si dos `onStartCommand` llegaban casi al mismo tiempo (ej. la misma alarma entregada
+dos veces), que podían pisarse entre sí y dejar un reproductor sonando sin que ninguna
+notificación visible ya apuntara a él. También: `stopSelf(startId)` en vez de `stopSelf()` sin
+argumentos (más correcto con múltiples comandos pendientes), y logging explícito en cada punto
+(`onStartCommand`, `iniciar()`, `detener()`, error real de `stop()`/`release()`) para que, si
+esto vuelve a pasar, el log deje ver exactamente qué instancia tenía el reproductor y qué pasó,
+en vez de quedar ambiguo como esta vez.
+
+**Límite honesto**: si la causa real fue el sistema operativo matando el proceso bajo presión de
+memoria/CPU de una videollamada activa (posible, Android puede hacerlo con casi cualquier
+proceso en background bajo suficiente presión), esto no se puede prevenir al 100% desde la app.
+
+Compilado sin pipe, `installDebug` confirmado con fecha de instalación nueva, sin crash
+verificado con `adb logcat`.
+

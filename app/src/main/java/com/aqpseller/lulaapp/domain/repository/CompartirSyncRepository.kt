@@ -19,6 +19,38 @@ data class PerfilRemoto(
     val onboardingCompletadoEn: Long?,
 )
 
+/** Ajustes de pantalla/preferencias — a diferencia de todo lo demás en `CompartirSyncRepository`
+ * (que involucra a otra persona), esto es 100% mío, pero el usuario pidió explícitamente que no
+ * se pierda al cambiar de celular. Se restaura una sola vez, al vincular la cuenta (ver
+ * `ReclamarCuentaConGoogleUseCase`) — no en cada apertura de la app, para no pisar un cambio
+ * reciente hecho en ESTE dispositivo con una copia vieja de otro. Deliberadamente NO incluye
+ * `espacioActivoId` (vive solo en memoria a propósito, ver `AjustesRepositoryImpl`) ni
+ * `ultimoHitoRachaCelebrado` (no es una preferencia real, es solo para no repetir una
+ * celebración). Ver `Plan/08-decisiones-tecnicas.md`. */
+/** Un "recordarle" pedido por quien acompaña (permiso `PUEDE_VER_Y_RECORDAR`) — no es una
+ * notificación push real (esta app no tiene esa infraestructura), es un aviso que se muestra si
+ * el celular de quien comparte tiene la app abierta/en memoria cuando llega, mismo criterio
+ * "best-effort" que el resto de esta sincronización. Ver `Plan/08-decisiones-tecnicas.md`. */
+data class RecordatorioSolicitado(
+    val id: String,
+    val actividadId: String,
+    val nombreActividad: String,
+    val deNombre: String,
+)
+
+data class AjustesRemotos(
+    val sonidoCheckHabilitado: Boolean?,
+    val diaRevisionSemanal: Int?,
+    val horaRecordatorioCierreDia: String?,
+    val horaRecordatorioFranjaManana: String?,
+    val horaRecordatorioFranjaTarde: String?,
+    val horaRecordatorioFranjaNoche: String?,
+    val bottomBarPosicion2: String?,
+    val bottomBarPosicion3: String?,
+    val bottomBarPosicion4: String?,
+    val duracionMaximaAlarmaMin: Int?,
+)
+
 /** Código para "Compartir seguimiento" con tiempo de vida corto — igual que
  * `CodigoInvitacionEspacio` de Familia, pero para una Actividad puntual (Hábito/Tarea/Rutina/
  * Medicamento/Cita). Escanearlo acompaña de inmediato, sin un paso de "aceptar" aparte — ver
@@ -77,4 +109,23 @@ interface CompartirSyncRepository {
      * mostrar la confirmación apenas la otra persona lo escanea. Emite el nombre de quien lo
      * reclamó, o null mientras nadie lo haya hecho todavía. */
     fun escucharReclamoDeCodigoCompartir(codigoId: String): Flow<String?>
+
+    /** No-op si la cuenta todavía no está vinculada. */
+    suspend fun subirAjustes(ajustes: AjustesRemotos)
+
+    /** null si nunca se subió nada (cuenta recién vinculada, o vinculada pero nunca abrió
+     * Ajustes en ningún dispositivo). */
+    suspend fun restaurarAjustes(firebaseUid: String): AjustesRemotos?
+
+    /** "Recordarle" — quien acompaña con permiso `PUEDE_VER_Y_RECORDAR` le pide a quien comparte
+     * que revise una actividad puntual. */
+    suspend fun solicitarRecordatorio(actividadId: String, nombreActividad: String, deNombre: String, paraFirebaseUid: String)
+
+    /** En vivo mientras se escuche — pensado para correr mientras la app esté abierta (ver
+     * `TopBarStatsViewModel`), no es un listener permanente en segundo plano. */
+    fun escucharRecordatoriosSolicitados(miFirebaseUid: String): Flow<List<RecordatorioSolicitado>>
+
+    /** Se borra apenas se muestra, para no repetir el mismo aviso la próxima vez que se
+     * reconecte el listener. */
+    suspend fun eliminarRecordatorioSolicitado(recordatorioId: String)
 }

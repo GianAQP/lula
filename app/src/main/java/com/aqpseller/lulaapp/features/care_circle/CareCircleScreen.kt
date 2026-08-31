@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -166,6 +167,14 @@ fun CareCircleScreen(
             mensaje = "Esto cancela el acceso de \"${solicitud.contacto}\" a \"${solicitud.elemento}\".",
             onConfirmar = { viewModel.cancelar(solicitud.id); solicitudACancelar = null },
             onCancelar = { solicitudACancelar = null },
+        )
+    }
+
+    uiState.mensajeBienvenida?.let { mensaje ->
+        AlertDialog(
+            onDismissRequest = viewModel::mensajeBienvenidaMostrado,
+            confirmButton = { TextButton(onClick = viewModel::mensajeBienvenidaMostrado) { Text("¡Genial!") } },
+            text = { Text(mensaje) },
         )
     }
 }

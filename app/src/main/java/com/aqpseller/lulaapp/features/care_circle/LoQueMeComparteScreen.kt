@@ -14,6 +14,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -24,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.aqpseller.lulaapp.core.ui.ConfirmarEliminarDialog
 import com.aqpseller.lulaapp.domain.model.PermisoCompartir
+import kotlinx.coroutines.delay
 
 private fun etiquetaPermiso(permiso: PermisoCompartir): String = when (permiso) {
     PermisoCompartir.PUEDE_VER -> "Puedes ver"
@@ -39,12 +41,27 @@ fun LoQueMeComparteScreen(
     var actividadADejarDeVer by remember { mutableStateOf<ActividadCompartidaUi?>(null) }
     if (uiState.cargando) return
 
+    LaunchedEffect(uiState.recordatorioEnviadoA) {
+        if (uiState.recordatorioEnviadoA != null) {
+            delay(2_500)
+            viewModel.recordatorioEnviadoMostrado()
+        }
+    }
+
     Column(modifier = modifier.fillMaxSize()) {
         Text(
             text = "Lo que me comparten",
             style = MaterialTheme.typography.titleLarge,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
         )
+        uiState.recordatorioEnviadoA?.let { nombre ->
+            Text(
+                text = "🔔 Le avisamos a $nombre",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+            )
+        }
         if (uiState.actividades.isEmpty()) {
             Text(
                 text = "Nadie te comparte nada todavía. Cuando alguien te comparta un hábito, " +
@@ -73,6 +90,11 @@ fun LoQueMeComparteScreen(
                             modifier = Modifier.padding(top = 6.dp),
                         )
                         Row(modifier = Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.End) {
+                            if (item.permiso == PermisoCompartir.PUEDE_VER_Y_RECORDAR) {
+                                TextButton(onClick = { viewModel.recordar(item) }) {
+                                    Text("🔔 Recordarle")
+                                }
+                            }
                             TextButton(onClick = { actividadADejarDeVer = item }) {
                                 Text("Dejar de ver esto")
                             }

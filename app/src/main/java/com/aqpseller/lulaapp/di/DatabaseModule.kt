@@ -20,6 +20,8 @@ import com.aqpseller.lulaapp.core.database.MIGRATION_28_29
 import com.aqpseller.lulaapp.core.database.MIGRATION_29_30
 import com.aqpseller.lulaapp.core.database.MIGRATION_30_31
 import com.aqpseller.lulaapp.core.database.MIGRATION_31_32
+import com.aqpseller.lulaapp.core.database.MIGRATION_32_33
+import com.aqpseller.lulaapp.core.database.MIGRATION_33_34
 import com.aqpseller.lulaapp.data.local.dao.AreaDeVidaDao
 import com.aqpseller.lulaapp.data.local.dao.ActividadDao
 import com.aqpseller.lulaapp.data.local.dao.CitaDetalleDao
@@ -37,6 +39,7 @@ import com.aqpseller.lulaapp.data.local.dao.ListaItemDao
 import com.aqpseller.lulaapp.data.local.dao.MedicamentoDetalleDao
 import com.aqpseller.lulaapp.data.local.dao.MetaDao
 import com.aqpseller.lulaapp.data.local.dao.NotaDao
+import com.aqpseller.lulaapp.data.local.dao.NotificacionDao
 import com.aqpseller.lulaapp.data.local.dao.PropositoPersonalDao
 import com.aqpseller.lulaapp.data.local.dao.RegistroActividadDao
 import com.aqpseller.lulaapp.data.local.dao.RegistroDiarioDao
@@ -63,7 +66,7 @@ object DatabaseModule {
     @Singleton
     fun provideLulaDatabase(@ApplicationContext context: Context): LulaDatabase =
         Room.databaseBuilder(context, LulaDatabase::class.java, LulaDatabase.NOMBRE_BD)
-            .addMigrations(MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25, MIGRATION_25_26, MIGRATION_26_27, MIGRATION_27_28, MIGRATION_28_29, MIGRATION_29_30, MIGRATION_30_31, MIGRATION_31_32)
+            .addMigrations(MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25, MIGRATION_25_26, MIGRATION_26_27, MIGRATION_27_28, MIGRATION_28_29, MIGRATION_29_30, MIGRATION_30_31, MIGRATION_31_32, MIGRATION_32_33, MIGRATION_33_34)
             // Solo permite borrar y recrear si alguien tiene una versión de pruebas vieja
             // (1-14, ninguna con datos reales de un usuario de verdad) — de la 15 en adelante
             // ya hay migraciones reales registradas arriba, así que un cambio de esquema sin
@@ -104,5 +107,6 @@ object DatabaseModule {
     @Provides fun provideNotaDao(db: LulaDatabase): NotaDao = db.notaDao()
     @Provides fun providePropositoPersonalDao(db: LulaDatabase): PropositoPersonalDao = db.propositoPersonalDao()
     @Provides fun provideConexionDao(db: LulaDatabase): ConexionDao = db.conexionDao()
+    @Provides fun provideNotificacionDao(db: LulaDatabase): NotificacionDao = db.notificacionDao()
     @Provides fun provideSesionCitaDao(db: LulaDatabase): SesionCitaDao = db.sesionCitaDao()
 }

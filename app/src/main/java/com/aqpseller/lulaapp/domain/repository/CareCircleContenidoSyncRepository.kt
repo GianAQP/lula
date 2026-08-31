@@ -14,6 +14,10 @@ import kotlinx.coroutines.flow.Flow
 data class ActividadCompartidaRemota(
     val solicitudId: String,
     val deNombre: String,
+    /** uid de Firebase de quien comparte — necesario para poder "Recordarle" (ver
+     * `SolicitarRecordatorioUseCase`), ya que se guarda como `deFirebaseUid` en el documento
+     * pero antes no viajaba hasta acá. */
+    val deFirebaseUid: String,
     val permiso: PermisoCompartir,
     val actividad: Actividad,
     val detalle: ActividadDetalle?,

@@ -30,4 +30,8 @@ data class SolicitudCompartir(
     val canalEnvio: CanalEnvio?,
     val fechaSolicitud: Long,
     val fechaRespuesta: Long? = null,
+    /** Nombre de quien aceptó/rechazó, denormalizado igual que [deNombre] — para poder avisarle
+     * a quien envió con un nombre real en vez de mostrar `para` (que es solo un correo/teléfono).
+     * Ver `Plan/08-decisiones-tecnicas.md`. */
+    val nombreQuienResponde: String? = null,
 )
